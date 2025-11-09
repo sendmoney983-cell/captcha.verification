@@ -1,0 +1,266 @@
+import { Button } from "@/components/ui/button";
+import { ArrowRight } from "lucide-react";
+import { FaXTwitter, FaDiscord } from "react-icons/fa6";
+import { useEffect, useState } from "react";
+
+export default function Home() {
+  const [scrollY, setScrollY] = useState(0);
+
+  useEffect(() => {
+    const handleScroll = () => setScrollY(window.scrollY);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  return (
+    <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">
+      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#1a2e2a]/50 backdrop-blur-md bg-[#0a1614]/80">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center gap-8">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold tracking-tight" data-testid="text-logo">Hourglass</span>
+                <span className="text-[#6b7280]">/</span>
+                <div className="flex items-center gap-1.5">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8]">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                  </svg>
+                  <span className="text-base font-medium">Stable</span>
+                </div>
+              </div>
+            </div>
+            
+            <nav className="hidden md:flex items-center gap-6">
+              <a 
+                href="https://twitter.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors"
+                data-testid="link-twitter"
+                aria-label="Twitter"
+              >
+                <FaXTwitter className="w-5 h-5" />
+              </a>
+              <a 
+                href="https://discord.com" 
+                target="_blank" 
+                rel="noopener noreferrer" 
+                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors"
+                data-testid="link-discord"
+                aria-label="Discord"
+              >
+                <FaDiscord className="w-5 h-5" />
+              </a>
+              <a 
+                href="#docs" 
+                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors text-sm font-medium"
+                data-testid="link-docs"
+              >
+                Docs
+              </a>
+              <Button 
+                className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg"
+                data-testid="button-connect-wallet-header"
+              >
+                CONNECT WALLET
+              </Button>
+            </nav>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
+          <div className="absolute inset-0 bg-gradient-to-br from-[#0a1614] via-[#0d1f1b] to-[#0a1614]"></div>
+          
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-20 w-full">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <div className="space-y-8">
+                <h1 className="text-5xl lg:text-7xl font-bold leading-[1.1] tracking-tight">
+                  <span className="text-[#f5f1e8]">Early access to</span>
+                  <br />
+                  <span 
+                    className="bg-gradient-to-r from-[#5ce1d7] via-[#4fd1c5] to-[#3dd9b3] bg-clip-text text-transparent"
+                    data-testid="text-gradient-headline"
+                  >
+                    institutional
+                  </span>
+                  <br />
+                  <span className="bg-gradient-to-r from-[#5ce1d7] via-[#4fd1c5] to-[#3dd9b3] bg-clip-text text-transparent">
+                    yield
+                  </span>
+                  <span className="text-[#f5f1e8]"> on Stable</span>
+                </h1>
+
+                <div className="space-y-4">
+                  <p className="text-sm text-[#9ca3af] uppercase tracking-wider font-medium">BACKED BY</p>
+                  <div className="flex flex-wrap items-center gap-6">
+                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-4 py-2 rounded-lg" data-testid="badge-investor-electric">
+                      <span className="text-sm font-semibold text-[#f5f1e8] tracking-wide">ELECTRIC CAPITAL</span>
+                    </div>
+                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-4 py-2 rounded-lg" data-testid="badge-investor-coinbase">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-semibold text-[#f5f1e8]">coinbase</span>
+                        <span className="text-xs text-[#9ca3af]">Ventures</span>
+                      </div>
+                    </div>
+                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-4 py-2 rounded-lg" data-testid="badge-investor-tribe">
+                      <span className="text-sm font-semibold text-[#f5f1e8] tracking-wide">TRIBE CAPITAL</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000" data-testid="hero-mockup-container" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
+                <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a2e2a] to-[#0f1e1a] p-1 transition-transform duration-300 hover:scale-[1.02]">
+                  <div className="bg-[#0d1a17] rounded-3xl p-8 backdrop-blur-xl">
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between">
+                        <div className="space-y-1">
+                          <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
+                          <p className="text-xs text-[#6b7280] uppercase tracking-wide">pre-iUSDT</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Balance</p>
+                          <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between border-t border-[#1a2e2a] pt-6">
+                        <div className="space-y-1">
+                          <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
+                          <p className="text-xs text-[#6b7280] uppercase tracking-wide">iUSDT</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Value</p>
+                          <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-[#1a2e2a]/50 rounded-2xl p-6 text-center">
+                        <p className="text-lg font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-gradient-to-br from-[#5ce1d7]/20 to-transparent rounded-full blur-3xl"></div>
+                <div className="absolute -top-4 -left-4 w-32 h-32 bg-gradient-to-br from-[#3dd9b3]/20 to-transparent rounded-full blur-3xl"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative py-32 bg-gradient-to-b from-[#0a1614] to-[#f5f1e8]">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8">
+            <div className="grid lg:grid-cols-2 gap-16 items-start">
+              <div className="space-y-8">
+                <h2 className="text-4xl lg:text-5xl font-bold text-[#f5f1e8] leading-tight">
+                  The early access program
+                </h2>
+
+                <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] p-1 transition-all duration-300 hover:shadow-2xl hover:shadow-[#3dd9b3]/20">
+                  <div className="bg-gradient-to-br from-[#2d7a6e]/90 to-[#1e5449]/90 rounded-3xl p-8 backdrop-blur-xl">
+                    <div className="flex items-center justify-between gap-6">
+                      <div className="flex-shrink-0">
+                        <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#3dd9b3] to-[#2d7a6e] flex items-center justify-center relative">
+                          <div className="absolute inset-2 rounded-full bg-[#1e5449] flex flex-col items-center justify-center">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-1">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                            <span className="text-[10px] font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
+                            <span className="text-[10px] font-semibold text-[#3dd9b3] uppercase mt-0.5">MAINNET</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex-shrink-0 animate-pulse">
+                        <ArrowRight className="w-10 h-10 text-[#f5f1e8]" />
+                      </div>
+
+                      <div className="flex-shrink-0">
+                        <div className="bg-[#0a1614] rounded-full px-6 py-3">
+                          <span className="text-sm font-bold text-[#f5f1e8] uppercase tracking-wide" data-testid="text-claim-iusdt">
+                            CLAIM iUSDT
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-8" data-testid="process-steps-container">
+                <div className="flex items-center justify-end mb-4">
+                  <Button 
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-6 rounded-lg transition-all duration-200 hover:scale-105"
+                    data-testid="button-connect-wallet-process"
+                  >
+                    CONNECT WALLET
+                  </Button>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2 opacity-60">
+                    <p className="text-5xl font-bold text-[#d1d5db]">01</p>
+                    <h3 className="text-2xl font-bold text-[#d1d5db]">Deposit</h3>
+                  </div>
+
+                  <div className="space-y-2 opacity-60">
+                    <p className="text-5xl font-bold text-[#d1d5db]">02</p>
+                    <h3 className="text-2xl font-bold text-[#d1d5db]">KYC</h3>
+                  </div>
+
+                  <div className="space-y-2 opacity-60">
+                    <p className="text-5xl font-bold text-[#d1d5db]">03</p>
+                    <h3 className="text-2xl font-bold text-[#d1d5db]">Yield</h3>
+                  </div>
+
+                  <div className="space-y-2">
+                    <p className="text-5xl font-bold text-[#0a1614]">04</p>
+                    <h3 className="text-2xl font-bold text-[#0a1614]">Withdraw</h3>
+                    <p className="text-base text-[#4b5563] max-w-md">
+                      Bridge your pre-iUSDT and claim iUSDT on Stable.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative py-32 bg-[#f5f1e8] overflow-hidden">
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <h2 className="text-[12rem] lg:text-[18rem] font-bold text-[#e8e4db] opacity-40 select-none whitespace-nowrap" data-testid="text-watermark">
+              Hourglass
+            </h2>
+          </div>
+          
+          <div className="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
+            <p className="text-xl lg:text-2xl font-medium text-[#374151]" data-testid="text-tagline">
+              Institutional yield for stablecoins
+            </p>
+          </div>
+        </section>
+      </main>
+
+      <footer className="bg-[#0a1614] border-t border-[#1a2e2a]/50 py-8">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-[#6b7280]">© Pitch Foundation 2025</p>
+            <div className="flex items-center gap-6">
+              <a href="#terms" className="text-sm text-[#6b7280] hover:text-[#9ca3af] transition-colors" data-testid="link-terms">
+                Terms
+              </a>
+              <a href="#privacy" className="text-sm text-[#6b7280] hover:text-[#9ca3af] transition-colors" data-testid="link-privacy">
+                Privacy
+              </a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+  );
+}
