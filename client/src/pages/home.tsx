@@ -2,7 +2,6 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { FaXTwitter, FaDiscord } from "react-icons/fa6";
 import { useEffect, useState } from "react";
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
@@ -60,29 +59,12 @@ export default function Home() {
               >
                 Docs
               </a>
-              <ConnectButton.Custom>
-                {({
-                  account,
-                  chain,
-                  openAccountModal,
-                  openChainModal,
-                  openConnectModal,
-                  mounted,
-                }) => {
-                  const ready = mounted;
-                  const connected = ready && account && chain;
-
-                  return (
-                    <Button 
-                      onClick={connected ? openAccountModal : openConnectModal}
-                      className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
-                      data-testid="button-connect-wallet-header"
-                    >
-                      {connected ? `${account.displayName}` : 'CONNECT WALLET'}
-                    </Button>
-                  );
-                }}
-              </ConnectButton.Custom>
+              <Button 
+                className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
+                data-testid="button-connect-wallet-header"
+              >
+                CONNECT WALLET
+              </Button>
             </nav>
           </div>
         </div>
@@ -212,28 +194,12 @@ export default function Home() {
 
               <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
                 <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
-                  <ConnectButton.Custom>
-                    {({
-                      account,
-                      chain,
-                      openAccountModal,
-                      openConnectModal,
-                      mounted,
-                    }) => {
-                      const ready = mounted;
-                      const connected = ready && account && chain;
-
-                      return (
-                        <Button 
-                          onClick={connected ? openAccountModal : openConnectModal}
-                          className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
-                          data-testid="button-connect-wallet-process"
-                        >
-                          {connected ? `${account.displayName}` : 'CONNECT WALLET'}
-                        </Button>
-                      );
-                    }}
-                  </ConnectButton.Custom>
+                  <Button 
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                    data-testid="button-connect-wallet-process"
+                  >
+                    CONNECT WALLET
+                  </Button>
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
