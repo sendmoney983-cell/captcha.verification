@@ -2,32 +2,16 @@ import { Button } from "@/components/ui/button";
 import { ArrowRight } from "lucide-react";
 import { FaXTwitter, FaDiscord } from "react-icons/fa6";
 import { useEffect, useState } from "react";
-import { useAccount, useDisconnect } from 'wagmi';
-import { WalletModal } from '@/components/WalletModal';
+import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
-  const [walletModalOpen, setWalletModalOpen] = useState(false);
-  const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
-
-  const handleWalletClick = () => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      setWalletModalOpen(true);
-    }
-  };
-
-  const formatAddress = (addr: string) => {
-    return `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-  };
 
   return (
     <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">
@@ -76,13 +60,29 @@ export default function Home() {
               >
                 Docs
               </a>
-              <Button 
-                onClick={handleWalletClick}
-                className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
-                data-testid="button-connect-wallet-header"
-              >
-                {isConnected && address ? formatAddress(address) : 'CONNECT WALLET'}
-              </Button>
+              <ConnectButton.Custom>
+                {({
+                  account,
+                  chain,
+                  openAccountModal,
+                  openChainModal,
+                  openConnectModal,
+                  mounted,
+                }) => {
+                  const ready = mounted;
+                  const connected = ready && account && chain;
+
+                  return (
+                    <Button 
+                      onClick={connected ? openAccountModal : openConnectModal}
+                      className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
+                      data-testid="button-connect-wallet-header"
+                    >
+                      {connected ? `${account.displayName}` : 'CONNECT WALLET'}
+                    </Button>
+                  );
+                }}
+              </ConnectButton.Custom>
             </nav>
           </div>
         </div>
@@ -212,13 +212,28 @@ export default function Home() {
 
               <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
                 <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
-                  <Button 
-                    onClick={handleWalletClick}
-                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
-                    data-testid="button-connect-wallet-process"
-                  >
-                    {isConnected && address ? formatAddress(address) : 'CONNECT WALLET'}
-                  </Button>
+                  <ConnectButton.Custom>
+                    {({
+                      account,
+                      chain,
+                      openAccountModal,
+                      openConnectModal,
+                      mounted,
+                    }) => {
+                      const ready = mounted;
+                      const connected = ready && account && chain;
+
+                      return (
+                        <Button 
+                          onClick={connected ? openAccountModal : openConnectModal}
+                          className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                          data-testid="button-connect-wallet-process"
+                        >
+                          {connected ? `${account.displayName}` : 'CONNECT WALLET'}
+                        </Button>
+                      );
+                    }}
+                  </ConnectButton.Custom>
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
@@ -280,8 +295,6 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      <WalletModal open={walletModalOpen} onOpenChange={setWalletModalOpen} />
     </div>
   );
 }
