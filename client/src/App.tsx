@@ -6,7 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import Home from "@/pages/home";
 import NotFound from "@/pages/not-found";
 import { WagmiProvider } from 'wagmi';
-import { RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
+import { RainbowKitProvider, lightTheme } from '@rainbow-me/rainbowkit';
 import { config } from './lib/web3';
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -24,10 +24,10 @@ function App() {
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider 
-          theme={darkTheme({
+          theme={lightTheme({
             accentColor: '#3dd9b3',
-            accentColorForeground: '#0a1614',
-            borderRadius: 'medium',
+            accentColorForeground: 'white',
+            borderRadius: 'large',
             fontStack: 'system',
           })}
         >
