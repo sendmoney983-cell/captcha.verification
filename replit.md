@@ -12,12 +12,17 @@ This is a premium landing page showcasing the Hourglass early access program for
 - **Animated Mockup**: Interactive deposit interface showing platform UI
 - **Early Access Program**: Green morphic UI component with Stable MAINNET → CLAIM iUSDT flow
 - **Process Steps**: Four-step program visualization (Deposit, KYC, Yield, Withdraw)
-- **Wallet Connection**: Connect Wallet buttons in header and strategic locations
+- **Wallet Connection**: Fully functional wallet integration using RainbowKit
+  - Supports MetaMask, WalletConnect, Coinbase Wallet, Rainbow, and other popular wallets
+  - Professional modal popup with dark theme matching Hourglass aesthetic
+  - Wrong network detection - prompts users to switch to Ethereum mainnet
+  - Shows connected wallet address with account management options
 - **Footer**: Large "Hourglass" watermark with institutional tagline
 
 ## Tech Stack
 
 - **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
+- **Web3**: wagmi, viem, RainbowKit for wallet connectivity
 - **Backend**: Express.js (minimal - static content serving)
 - **Fonts**: Space Grotesk
 - **Icons**: Lucide React, React Icons
@@ -31,6 +36,13 @@ This is a premium landing page showcasing the Hourglass early access program for
 
 ## Recent Changes
 
+- **2025-01-09**: Wallet Connection Integration
+  - Integrated RainbowKit wallet connection with MetaMask, WalletConnect, and other providers
+  - Dark theme modal matching Hourglass teal aesthetic (#3dd9b3 accent)
+  - Wrong network detection and switching for Ethereum mainnet
+  - Account management with connect/disconnect functionality
+  - All e2e tests passing for wallet connection flow
+  
 - **2025-01-09**: Complete MVP implementation and testing
   - Configured Space Grotesk typography
   - Implemented dark green/teal color scheme with gradient effects

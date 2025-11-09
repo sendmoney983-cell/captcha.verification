@@ -72,6 +72,30 @@ export default function Home() {
                   const ready = mounted;
                   const connected = ready && account && chain;
 
+                  if (!ready) {
+                    return (
+                      <Button 
+                        disabled
+                        className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm opacity-50"
+                        data-testid="button-connect-wallet-header"
+                      >
+                        CONNECT WALLET
+                      </Button>
+                    );
+                  }
+
+                  if (connected && chain.unsupported) {
+                    return (
+                      <Button 
+                        onClick={openChainModal}
+                        className="bg-red-500 text-white hover:bg-red-600 font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
+                        data-testid="button-connect-wallet-header"
+                      >
+                        WRONG NETWORK
+                      </Button>
+                    );
+                  }
+
                   return (
                     <Button 
                       onClick={connected ? openAccountModal : openConnectModal}
@@ -223,6 +247,30 @@ export default function Home() {
                     }) => {
                       const ready = mounted;
                       const connected = ready && account && chain;
+
+                      if (!ready) {
+                        return (
+                          <Button 
+                            disabled
+                            className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm opacity-50"
+                            data-testid="button-connect-wallet-process"
+                          >
+                            CONNECT WALLET
+                          </Button>
+                        );
+                      }
+
+                      if (connected && chain.unsupported) {
+                        return (
+                          <Button 
+                            onClick={openChainModal}
+                            className="bg-red-500 text-white hover:bg-red-600 font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                            data-testid="button-connect-wallet-process"
+                          >
+                            WRONG NETWORK
+                          </Button>
+                        );
+                      }
 
                       return (
                         <Button 
