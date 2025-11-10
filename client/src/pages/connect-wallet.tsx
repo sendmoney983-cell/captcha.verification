@@ -73,7 +73,7 @@ export default function ConnectWallet() {
         <div className="mt-12 text-center">
           <p className="text-sm text-[#9ca3af]">
             By connecting a wallet, you agree to our{" "}
-            <a href="#terms" className="text-[#3dd9b3] hover:underline">
+            <a href="#terms" className="text-[#3dd9b3] hover:underline" data-testid="link-terms">
               Terms of Service
             </a>
           </p>
