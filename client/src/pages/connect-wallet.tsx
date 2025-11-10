@@ -5,6 +5,7 @@ import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circ
 import { Link } from "wouter";
 import { useState } from "react";
 import metamaskIcon from "@assets/image_1762763337117.png";
+import trustWalletIcon from "@assets/image_1762763375845.png";
 
 interface WalletOption {
   id: string;
@@ -17,7 +18,7 @@ const wallets: WalletOption[] = [
   { id: "metamask", name: "MetaMask", imageUrl: metamaskIcon },
   { id: "walletconnect", name: "WalletConnect", Icon: LinkIcon },
   { id: "coinbase", name: "Coinbase Wallet", Icon: CreditCard },
-  { id: "trust", name: "Trust Wallet", Icon: Shield },
+  { id: "trust", name: "Trust Wallet", imageUrl: trustWalletIcon },
   { id: "rainbow", name: "Rainbow", Icon: Palette },
   { id: "ledger", name: "Ledger", Icon: Cpu },
   { id: "phantom", name: "Phantom", Icon: Ghost },
@@ -209,7 +210,7 @@ export default function ConnectWallet() {
                     data-testid={`button-wallet-${wallet.id}`}
                   >
                     {wallet.imageUrl ? (
-                      <img src={wallet.imageUrl} alt={wallet.name} className="w-12 h-12" />
+                      <img src={wallet.imageUrl} alt={wallet.name} className="w-full h-24 object-contain" />
                     ) : wallet.Icon ? (
                       <wallet.Icon className="w-12 h-12 text-[#3dd9b3]" />
                     ) : null}
