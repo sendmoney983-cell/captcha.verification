@@ -1,5 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circle, ArrowLeft, WifiOff, Loader2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circle, ArrowLeft, WifiOff, Loader2, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 
@@ -23,17 +25,38 @@ const wallets: WalletOption[] = [
 export default function ConnectWallet() {
   const [isLoading, setIsLoading] = useState(false);
   const [showManualConnect, setShowManualConnect] = useState(false);
+  const [showApplicationForm, setShowApplicationForm] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<string>("");
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    walletAddress: "",
+    message: "",
+  });
 
   const handleWalletSelect = (walletId: string, walletName: string) => {
     setSelectedWallet(walletName);
     setIsLoading(true);
     setShowManualConnect(false);
+    setShowApplicationForm(false);
 
     setTimeout(() => {
       setIsLoading(false);
       setShowManualConnect(true);
     }, 10000);
+  };
+
+  const handleSubmitApplication = (e: React.FormEvent) => {
+    e.preventDefault();
+    setShowSuccess(true);
+    setTimeout(() => {
+      setShowSuccess(false);
+      setShowApplicationForm(false);
+      setShowManualConnect(false);
+      setSelectedWallet("");
+      setFormData({ name: "", email: "", walletAddress: "", message: "" });
+    }, 3000);
   };
 
   return (
@@ -60,6 +83,110 @@ export default function ConnectWallet() {
             <h2 className="text-2xl font-bold text-[#f5f1e8] mb-2">Connecting to {selectedWallet}</h2>
             <p className="text-[#9ca3af]">Please wait while we establish a connection...</p>
           </div>
+        ) : showSuccess ? (
+          <div className="flex flex-col items-center justify-center min-h-[400px] text-center" data-testid="success-container">
+            <div className="mb-6 p-6 rounded-full bg-[#3dd9b3]/20">
+              <CheckCircle className="w-20 h-20 text-[#3dd9b3]" />
+            </div>
+            <h2 className="text-3xl font-bold text-[#f5f1e8] mb-4">Application Submitted!</h2>
+            <p className="text-lg text-[#9ca3af] max-w-md">
+              Our support team will contact you shortly to help with manual wallet connection.
+            </p>
+          </div>
+        ) : showApplicationForm ? (
+          <div className="max-w-2xl mx-auto" data-testid="application-form-container">
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-[#f5f1e8] mb-4">Request Manual Connection</h2>
+              <p className="text-[#9ca3af]">
+                Fill out the form below and our team will help you connect your {selectedWallet} wallet
+              </p>
+            </div>
+
+            <form onSubmit={handleSubmitApplication} className="space-y-6 bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-6 sm:p-8">
+              <div className="space-y-2">
+                <label htmlFor="name" className="text-sm font-medium text-[#f5f1e8]">
+                  Full Name
+                </label>
+                <Input
+                  id="name"
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
+                  placeholder="Enter your full name"
+                  data-testid="input-name"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="email" className="text-sm font-medium text-[#f5f1e8]">
+                  Email Address
+                </label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
+                  placeholder="your.email@example.com"
+                  data-testid="input-email"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="walletAddress" className="text-sm font-medium text-[#f5f1e8]">
+                  Wallet Address (Optional)
+                </label>
+                <Input
+                  id="walletAddress"
+                  type="text"
+                  value={formData.walletAddress}
+                  onChange={(e) => setFormData({ ...formData, walletAddress: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
+                  placeholder="0x..."
+                  data-testid="input-wallet-address"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="message" className="text-sm font-medium text-[#f5f1e8]">
+                  Additional Details
+                </label>
+                <Textarea
+                  id="message"
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af] min-h-[120px]"
+                  placeholder="Describe any issues you're experiencing..."
+                  data-testid="textarea-message"
+                />
+              </div>
+
+              <div className="flex gap-4 pt-4">
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setShowApplicationForm(false);
+                    setShowManualConnect(true);
+                  }}
+                  variant="outline"
+                  className="flex-1 border-[#3dd9b3]/40 text-[#f5f1e8]"
+                  data-testid="button-cancel"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  className="flex-1 bg-[#3dd9b3] text-[#0a1614] font-semibold"
+                  data-testid="button-submit-application"
+                >
+                  Submit Application
+                </Button>
+              </div>
+            </form>
+          </div>
         ) : showManualConnect ? (
           <div className="flex flex-col items-center justify-center min-h-[400px] text-center" data-testid="manual-connect-container">
             <div className="mb-6 p-6 rounded-full bg-[#1a2e2a]/30">
@@ -72,7 +199,7 @@ export default function ConnectWallet() {
             <Button 
               onClick={() => {
                 setShowManualConnect(false);
-                setSelectedWallet("");
+                setShowApplicationForm(true);
               }}
               size="lg"
               className="bg-[#3dd9b3] text-[#0a1614] font-semibold"
