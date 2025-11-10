@@ -76,9 +76,9 @@ export default function ConnectWallet() {
               }}
               size="lg"
               className="bg-[#3dd9b3] text-[#0a1614] font-semibold"
-              data-testid="button-try-again"
+              data-testid="button-connect-manually"
             >
-              Try Again
+              Connect Manually
             </Button>
           </div>
         ) : (
