@@ -132,7 +132,7 @@ export default function ConnectWallet() {
                 required
                 value={formData.message}
                 onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="bg-[#0f2520] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[180px] text-base"
+                className="bg-[#0f2520] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#5f7872] min-h-[180px] text-sm"
                 placeholder="Name: Your Full Name&#10;Email: your.email@example.com&#10;Wallet Address (optional): 0x...&#10;Issue Description: Describe what happened when trying to connect..."
                 data-testid="textarea-application"
               />
