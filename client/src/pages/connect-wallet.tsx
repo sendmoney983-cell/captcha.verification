@@ -200,13 +200,13 @@ export default function ConnectWallet() {
               </p>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 max-w-3xl mx-auto">
+            <div className="grid grid-cols-4 gap-2 max-w-xl mx-auto">
               {wallets.map((wallet) => {
                 return (
                   <button
                     key={wallet.id}
                     onClick={() => handleWalletSelect(wallet.id, wallet.name)}
-                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-4 flex flex-col items-center justify-center gap-3 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all"
+                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-md p-2 flex flex-col items-center justify-center gap-1.5 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all"
                     data-testid={`button-wallet-${wallet.id}`}
                   >
                     {wallet.imageUrl ? (
@@ -214,7 +214,7 @@ export default function ConnectWallet() {
                     ) : wallet.Icon ? (
                       <wallet.Icon className="w-20 h-20 text-[#3dd9b3]" />
                     ) : null}
-                    <span className="text-sm font-medium text-[#f5f1e8] text-center">{wallet.name}</span>
+                    <span className="text-xs font-medium text-[#f5f1e8] text-center">{wallet.name}</span>
                   </button>
                 );
               })}
