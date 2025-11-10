@@ -60,14 +60,13 @@ export default function Home() {
               >
                 Docs
               </a>
-              <Link href="/connect-wallet">
-                <Button 
-                  className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
-                  data-testid="button-connect-wallet-header"
-                >
-                  CONNECT WALLET
-                </Button>
-              </Link>
+              <Button 
+                asChild
+                className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 hover:shadow-lg text-xs sm:text-sm"
+                data-testid="button-connect-wallet-header"
+              >
+                <Link href="/connect-wallet">CONNECT WALLET</Link>
+              </Button>
             </nav>
           </div>
         </div>
@@ -197,14 +196,13 @@ export default function Home() {
 
               <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
                 <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
-                  <Link href="/connect-wallet">
-                    <Button 
-                      className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
-                      data-testid="button-connect-wallet-process"
-                    >
-                      CONNECT WALLET
-                    </Button>
-                  </Link>
+                  <Button 
+                    asChild
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                    data-testid="button-connect-wallet-process"
+                  >
+                    <Link href="/connect-wallet">CONNECT WALLET</Link>
+                  </Button>
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
