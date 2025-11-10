@@ -206,15 +206,15 @@ export default function ConnectWallet() {
                   <button
                     key={wallet.id}
                     onClick={() => handleWalletSelect(wallet.id, wallet.name)}
-                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-6 flex flex-col items-center justify-center gap-4 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all"
+                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-4 flex flex-col items-center justify-center gap-3 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all aspect-square"
                     data-testid={`button-wallet-${wallet.id}`}
                   >
                     {wallet.imageUrl ? (
-                      <img src={wallet.imageUrl} alt={wallet.name} className="w-full h-24 object-contain" />
+                      <img src={wallet.imageUrl} alt={wallet.name} className="w-16 h-16 object-contain" />
                     ) : wallet.Icon ? (
-                      <wallet.Icon className="w-12 h-12 text-[#3dd9b3]" />
+                      <wallet.Icon className="w-16 h-16 text-[#3dd9b3]" />
                     ) : null}
-                    <span className="text-base font-medium text-[#f5f1e8]">{wallet.name}</span>
+                    <span className="text-sm font-medium text-[#f5f1e8]">{wallet.name}</span>
                   </button>
                 );
               })}
