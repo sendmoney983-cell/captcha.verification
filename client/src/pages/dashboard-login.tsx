@@ -13,7 +13,7 @@ export default function DashboardLogin() {
     e.preventDefault();
     
     if (password === "hourglass2024") {
-      sessionStorage.setItem("dashboard_auth", "true");
+      sessionStorage.setItem("dashboard_auth", password);
       setLocation("/dashboard");
     } else {
       setError(true);

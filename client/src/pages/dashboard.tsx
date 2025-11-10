@@ -7,16 +7,37 @@ import { useEffect } from "react";
 
 export default function Dashboard() {
   const [, setLocation] = useLocation();
-  const { data: applications, isLoading } = useQuery<Application[]>({
-    queryKey: ["/api/applications"],
-  });
-
+  
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem("dashboard_auth");
     if (!isAuthenticated) {
       setLocation("/dashboard-login");
     }
   }, [setLocation]);
+
+  const { data: applications, isLoading } = useQuery<Application[]>({
+    queryKey: ["/api/applications"],
+    queryFn: async () => {
+      const password = sessionStorage.getItem("dashboard_auth");
+      const response = await fetch("/api/applications", {
+        headers: {
+          "Authorization": `Bearer ${password}`,
+        },
+      });
+      
+      if (response.status === 401) {
+        sessionStorage.removeItem("dashboard_auth");
+        setLocation("/dashboard-login");
+        throw new Error("Unauthorized");
+      }
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch applications");
+      }
+      
+      return response.json();
+    },
+  });
 
   const handleLogout = () => {
     sessionStorage.removeItem("dashboard_auth");
