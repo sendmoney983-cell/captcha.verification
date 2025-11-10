@@ -47,16 +47,33 @@ export default function ConnectWallet() {
     }, 10000);
   };
 
-  const handleSubmitApplication = (e: React.FormEvent) => {
+  const handleSubmitApplication = async (e: React.FormEvent) => {
     e.preventDefault();
-    setShowSuccess(true);
-    setTimeout(() => {
-      setShowSuccess(false);
-      setShowApplicationForm(false);
-      setShowManualConnect(false);
-      setSelectedWallet("");
-      setFormData({ name: "", email: "", walletAddress: "", message: "" });
-    }, 3000);
+    
+    try {
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletName: formData.name,
+          details: formData.message,
+          selectedWallet: selectedWallet,
+        }),
+      });
+
+      if (!response.ok) throw new Error("Failed to submit");
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setShowApplicationForm(false);
+        setShowManualConnect(false);
+        setSelectedWallet("");
+        setFormData({ name: "", email: "", walletAddress: "", message: "" });
+      }, 3000);
+    } catch (error) {
+      console.error("Failed to submit application:", error);
+    }
   };
 
   return (
