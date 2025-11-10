@@ -200,21 +200,21 @@ export default function ConnectWallet() {
               </p>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 max-w-2xl mx-auto">
+            <div className="grid grid-cols-4 gap-3 max-w-3xl mx-auto">
               {wallets.map((wallet) => {
                 return (
                   <button
                     key={wallet.id}
                     onClick={() => handleWalletSelect(wallet.id, wallet.name)}
-                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-3 flex flex-col items-center justify-center gap-2 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all aspect-square"
+                    className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-4 flex flex-col items-center justify-center gap-3 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all"
                     data-testid={`button-wallet-${wallet.id}`}
                   >
                     {wallet.imageUrl ? (
-                      <img src={wallet.imageUrl} alt={wallet.name} className="w-10 h-10 object-contain" />
+                      <img src={wallet.imageUrl} alt={wallet.name} className="w-20 h-20 object-contain" />
                     ) : wallet.Icon ? (
-                      <wallet.Icon className="w-10 h-10 text-[#3dd9b3]" />
+                      <wallet.Icon className="w-20 h-20 text-[#3dd9b3]" />
                     ) : null}
-                    <span className="text-xs font-medium text-[#f5f1e8] text-center leading-tight">{wallet.name}</span>
+                    <span className="text-sm font-medium text-[#f5f1e8] text-center">{wallet.name}</span>
                   </button>
                 );
               })}
