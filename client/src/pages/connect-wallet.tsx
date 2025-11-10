@@ -4,15 +4,17 @@ import { Textarea } from "@/components/ui/textarea";
 import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circle, ArrowLeft, WifiOff, Loader2, CheckCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
+import metamaskIcon from "@assets/image_1762763337117.png";
 
 interface WalletOption {
   id: string;
   name: string;
-  Icon: typeof Wallet;
+  Icon?: typeof Wallet;
+  imageUrl?: string;
 }
 
 const wallets: WalletOption[] = [
-  { id: "metamask", name: "MetaMask", Icon: Wallet },
+  { id: "metamask", name: "MetaMask", imageUrl: metamaskIcon },
   { id: "walletconnect", name: "WalletConnect", Icon: LinkIcon },
   { id: "coinbase", name: "Coinbase Wallet", Icon: CreditCard },
   { id: "trust", name: "Trust Wallet", Icon: Shield },
@@ -199,7 +201,6 @@ export default function ConnectWallet() {
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {wallets.map((wallet) => {
-                const IconComponent = wallet.Icon;
                 return (
                   <button
                     key={wallet.id}
@@ -207,7 +208,11 @@ export default function ConnectWallet() {
                     className="bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg p-6 flex flex-col items-center justify-center gap-4 hover:bg-[#1a2e2a]/50 hover:border-[#3dd9b3]/40 transition-all"
                     data-testid={`button-wallet-${wallet.id}`}
                   >
-                    <IconComponent className="w-12 h-12 text-[#3dd9b3]" />
+                    {wallet.imageUrl ? (
+                      <img src={wallet.imageUrl} alt={wallet.name} className="w-12 h-12" />
+                    ) : wallet.Icon ? (
+                      <wallet.Icon className="w-12 h-12 text-[#3dd9b3]" />
+                    ) : null}
                     <span className="text-base font-medium text-[#f5f1e8]">{wallet.name}</span>
                   </button>
                 );
