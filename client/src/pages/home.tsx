@@ -98,20 +98,14 @@ export default function Home() {
                 </h1>
 
                 <div className="space-y-3 sm:space-y-4">
-                  <p className="text-xs sm:text-sm text-[#9ca3af] uppercase tracking-wider font-medium">BACKED BY</p>
-                  <div className="flex flex-wrap items-center gap-3 sm:gap-6">
-                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg" data-testid="badge-investor-electric">
-                      <span className="text-xs sm:text-sm font-semibold text-[#f5f1e8] tracking-wide">ELECTRIC CAPITAL</span>
+                  <p className="text-xs sm:text-sm text-[#6b7280] uppercase tracking-wider font-medium">BACKED BY</p>
+                  <div className="flex flex-wrap items-center gap-4 sm:gap-8">
+                    <span className="text-sm sm:text-base font-semibold text-[#f5f1e8] tracking-wide" data-testid="badge-investor-electric">ELECTRIC CAPITAL</span>
+                    <div className="flex items-center gap-1.5 sm:gap-2" data-testid="badge-investor-coinbase">
+                      <span className="text-sm sm:text-base font-semibold text-[#f5f1e8]">coinbase</span>
+                      <span className="text-xs sm:text-sm text-[#9ca3af]">Ventures</span>
                     </div>
-                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg" data-testid="badge-investor-coinbase">
-                      <div className="flex items-center gap-1.5 sm:gap-2">
-                        <span className="text-xs sm:text-sm font-semibold text-[#f5f1e8]">coinbase</span>
-                        <span className="text-[10px] sm:text-xs text-[#9ca3af]">Ventures</span>
-                      </div>
-                    </div>
-                    <div className="border border-[#3dd9b3]/30 bg-[#1a2e2a]/50 backdrop-blur px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg" data-testid="badge-investor-tribe">
-                      <span className="text-xs sm:text-sm font-semibold text-[#f5f1e8] tracking-wide">TRIBE CAPITAL</span>
-                    </div>
+                    <span className="text-sm sm:text-base font-semibold text-[#f5f1e8] tracking-wide" data-testid="badge-investor-tribe">TRIBE CAPITAL</span>
                   </div>
                 </div>
               </div>
@@ -142,8 +136,9 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="relative bg-[#1a2e2a]/30 backdrop-blur-md rounded-2xl p-6 text-center border border-[#3dd9b3]/10">
-                        <p className="text-lg font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                      <div className="relative bg-[#0a1614]/40 backdrop-blur-xl rounded-2xl p-10 sm:p-12 text-center border border-[#1a2e2a]/50">
+                        <div className="absolute inset-0 bg-gradient-to-br from-[#1a2e2a]/20 to-transparent rounded-2xl backdrop-blur-xl"></div>
+                        <p className="relative text-xl sm:text-2xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                       </div>
                     </div>
                   </div>
