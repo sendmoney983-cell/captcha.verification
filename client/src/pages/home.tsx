@@ -287,7 +287,8 @@ export default function Home() {
                 <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
                   <Button 
                     asChild
-                    className="bg-[#3dd9b3] text-[#0a1614] hover:bg-[#2dc9a3] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                    variant="ghost"
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-semibold px-6 sm:px-8 py-5 sm:py-6 rounded-lg transition-all duration-200 hover:scale-105 text-sm sm:text-base"
                     data-testid="button-connect-wallet-process"
                   >
                     <Link href="/connect-wallet">CONNECT WALLET</Link>
