@@ -114,14 +114,14 @@ export default function Home() {
                 <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a2e2a] to-[#0f1e1a] p-1 transition-transform duration-300 hover:scale-[1.02]">
                   <div className="bg-[#0d1a17] rounded-3xl p-8 backdrop-blur-xl">
                     <div className="space-y-6">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="space-y-1">
                           <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
                           <p className="text-xs text-[#6b7280] uppercase tracking-wide">pre-iUSDT</p>
                         </div>
-                        <div className="relative bg-[#0a1614]/40 backdrop-blur-2xl rounded-2xl px-8 py-6 text-center border border-[#1a2e2a]/50">
+                        <div className="relative bg-[#0a1614]/40 backdrop-blur-2xl rounded-2xl px-8 sm:px-10 py-6 sm:py-7 text-center border border-[#1a2e2a]/50 ml-auto">
                           <div className="absolute inset-0 bg-gradient-to-br from-[#1a2e2a]/20 to-transparent rounded-2xl backdrop-blur-2xl"></div>
-                          <p className="relative text-lg font-semibold text-[#f5f1e8] whitespace-nowrap" data-testid="text-deposits-closed">Deposits closed</p>
+                          <p className="relative text-lg sm:text-xl font-semibold text-[#f5f1e8] whitespace-nowrap" data-testid="text-deposits-closed">Deposits closed</p>
                         </div>
                       </div>
 
