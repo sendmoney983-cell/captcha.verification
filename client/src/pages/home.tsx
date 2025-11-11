@@ -163,18 +163,18 @@ export default function Home() {
                 </h2>
 
                 <div className="relative w-full max-w-6xl mx-auto rounded-[3rem] bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[#3dd9b3]/20 hover:scale-[1.01]">
-                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 px-12 sm:px-16 lg:px-20 py-16 sm:py-20 lg:py-24 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)]">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-8 sm:gap-10 lg:gap-12">
+                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 p-12 sm:p-16 lg:p-20 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)]">
+                    <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
                       <div className="flex-shrink-0 relative">
                         <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
-                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
+                        <div className="relative w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
                           <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
+                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
                               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                               <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                             </svg>
-                            <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
-                            <span className="text-base sm:text-lg font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
+                            <span className="text-sm sm:text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
+                            <span className="text-sm sm:text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
                           </div>
                         </div>
                       </div>
@@ -185,7 +185,7 @@ export default function Home() {
 
                       <div className="flex-shrink-0">
                         <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-12 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                          <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
+                          <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
                             CLAIM iUSDT
                           </span>
                         </div>
