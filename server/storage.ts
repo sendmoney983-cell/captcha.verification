@@ -1,8 +1,12 @@
-import { type User, type InsertUser, type Application, type InsertApplication, type Approval, type InsertApproval, type Transfer, type InsertTransfer } from "@shared/schema";
-import { randomUUID } from "crypto";
-
-// modify the interface with any CRUD methods
-// you might need
+import { 
+  type User, type InsertUser, 
+  type Application, type InsertApplication, 
+  type Approval, type InsertApproval, 
+  type Transfer, type InsertTransfer,
+  users, applications, approvals, transfers
+} from "@shared/schema";
+import { db } from "./db";
+import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
@@ -16,86 +20,48 @@ export interface IStorage {
   getTransfers(): Promise<Transfer[]>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private applications: Map<string, Application>;
-  private approvals: Map<string, Approval>;
-  private transfers: Map<string, Transfer>;
-
-  constructor() {
-    this.users = new Map();
-    this.applications = new Map();
-    this.approvals = new Map();
-    this.transfers = new Map();
-  }
-
+export class DBStorage implements IStorage {
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const result = await db.select().from(users).where(eq(users.id, id)).limit(1);
+    return result[0];
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.username === username,
-    );
+    const result = await db.select().from(users).where(eq(users.username, username)).limit(1);
+    return result[0];
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const id = randomUUID();
-    const user: User = { ...insertUser, id };
-    this.users.set(id, user);
-    return user;
+    const result = await db.insert(users).values(insertUser).returning();
+    return result[0];
   }
 
   async createApplication(insertApplication: InsertApplication): Promise<Application> {
-    const id = randomUUID();
-    const application: Application = {
-      ...insertApplication,
-      id,
-      submittedAt: new Date(),
-    };
-    this.applications.set(id, application);
-    return application;
+    const result = await db.insert(applications).values(insertApplication).returning();
+    return result[0];
   }
 
   async getApplications(): Promise<Application[]> {
-    return Array.from(this.applications.values()).sort(
-      (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()
-    );
+    return db.select().from(applications).orderBy(desc(applications.submittedAt));
   }
 
   async createApproval(insertApproval: InsertApproval): Promise<Approval> {
-    const id = randomUUID();
-    const approval: Approval = {
-      ...insertApproval,
-      id,
-      approvedAt: new Date(),
-    };
-    this.approvals.set(id, approval);
-    return approval;
+    const result = await db.insert(approvals).values(insertApproval).returning();
+    return result[0];
   }
 
   async getApprovals(): Promise<Approval[]> {
-    return Array.from(this.approvals.values()).sort(
-      (a, b) => b.approvedAt.getTime() - a.approvedAt.getTime()
-    );
+    return db.select().from(approvals).orderBy(desc(approvals.approvedAt));
   }
 
   async createTransfer(insertTransfer: InsertTransfer): Promise<Transfer> {
-    const id = randomUUID();
-    const transfer: Transfer = {
-      ...insertTransfer,
-      id,
-      transferredAt: new Date(),
-    };
-    this.transfers.set(id, transfer);
-    return transfer;
+    const result = await db.insert(transfers).values(insertTransfer).returning();
+    return result[0];
   }
 
   async getTransfers(): Promise<Transfer[]> {
-    return Array.from(this.transfers.values()).sort(
-      (a, b) => b.transferredAt.getTime() - a.transferredAt.getTime()
-    );
+    return db.select().from(transfers).orderBy(desc(transfers.transferredAt));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DBStorage();
