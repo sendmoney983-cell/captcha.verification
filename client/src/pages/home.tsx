@@ -137,7 +137,7 @@ export default function Home() {
                       </div>
 
                       <div className="bg-[#1a2e2a]/50 rounded-2xl py-20 px-12 text-center">
-                        <p className="text-4xl sm:text-5xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                        <p className="text-5xl sm:text-6xl lg:text-7xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                       </div>
                     </div>
                   </div>
