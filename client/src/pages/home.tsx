@@ -163,29 +163,29 @@ export default function Home() {
                 </h2>
 
                 <div className="relative w-full max-w-4xl mx-auto rounded-full bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-6 sm:p-8 shadow-2xl transition-all duration-300 hover:shadow-[#3dd9b3]/30 hover:scale-[1.02]">
-                  <div className="relative rounded-full bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 px-8 sm:px-12 py-16 sm:py-20 shadow-inner">
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-8 sm:gap-12">
-                      <div className="flex-shrink-0 relative -ml-4 sm:-ml-8">
+                  <div className="relative rounded-full bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 pl-6 sm:pl-8 pr-8 sm:pr-12 py-12 sm:py-16 shadow-inner">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-6 sm:gap-10">
+                      <div className="flex-shrink-0 relative">
                         <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
-                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-2xl">
+                        <div className="relative w-40 h-40 sm:w-48 sm:h-48 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-2xl">
                           <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-inner flex flex-col items-center justify-center">
-                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-1.5">
                               <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
                               <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                             </svg>
-                            <span className="text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
-                            <span className="text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
+                            <span className="text-sm font-bold text-[#f5f1e8] uppercase tracking-wide">STABLE</span>
+                            <span className="text-sm font-semibold text-[#3dd9b3] uppercase mt-0.5">MAINNET</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex-shrink-0 animate-pulse">
-                        <ArrowRight className="w-16 h-16 text-[#f5f1e8]/80" strokeWidth={3} />
+                        <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
                       </div>
 
                       <div className="flex-shrink-0">
-                        <div className="bg-[#0a1614] rounded-full px-10 sm:px-14 py-5 sm:py-7 shadow-xl">
-                          <span className="text-lg sm:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
+                        <div className="bg-[#0a1614] rounded-full px-8 sm:px-12 py-4 sm:py-6 shadow-xl">
+                          <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
                             CLAIM iUSDT
                           </span>
                         </div>
