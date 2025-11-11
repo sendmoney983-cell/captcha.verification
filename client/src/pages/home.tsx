@@ -154,11 +154,11 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="relative py-16 sm:py-24 lg:py-32 bg-gradient-to-b from-[#0a1614] to-[#f5f1e8]">
+        <section className="relative py-16 sm:py-24 lg:py-32 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-start">
               <div className="space-y-6 sm:space-y-8">
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#f5f1e8] leading-tight">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0a1614] leading-tight">
                   The early access program
                 </h2>
 
@@ -198,7 +198,7 @@ export default function Home() {
                 <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
                   <Button 
                     asChild
-                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                    className="bg-[#3dd9b3] text-[#0a1614] hover:bg-[#2dc9a3] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
                     data-testid="button-connect-wallet-process"
                   >
                     <Link href="/connect-wallet">CONNECT WALLET</Link>
