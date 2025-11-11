@@ -206,22 +206,31 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
-                  <div className="space-y-1 sm:space-y-2 opacity-60">
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db]">01</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db]">Deposit</h3>
+                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">01</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Deposit</h3>
+                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
+                      Mint pre-iUSDT by depositing USDC into the protocol smart contract.
+                    </p>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2 opacity-60">
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db]">02</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db]">KYC</h3>
+                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">02</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">KYC</h3>
+                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
+                      Complete identity verification to access institutional yield opportunities.
+                    </p>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2 opacity-60">
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db]">03</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db]">Yield</h3>
+                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">03</p>
+                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Yield</h3>
+                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
+                      Earn competitive institutional-grade yield on your stablecoin holdings.
+                    </p>
                   </div>
 
-                  <div className="space-y-1 sm:space-y-2">
+                  <div className="group space-y-1 sm:space-y-2 cursor-pointer">
                     <p className="text-4xl sm:text-5xl font-bold text-[#0a1614]">04</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0a1614]">Withdraw</h3>
                     <p className="text-sm sm:text-base text-[#4b5563] max-w-md">
