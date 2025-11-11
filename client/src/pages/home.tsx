@@ -136,8 +136,8 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="bg-[#1a2e2a]/50 rounded-2xl p-6 text-center">
-                        <p className="text-lg font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                      <div className="bg-[#1a2e2a]/50 rounded-2xl p-12 text-center">
+                        <p className="text-3xl sm:text-4xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                       </div>
                     </div>
                   </div>
