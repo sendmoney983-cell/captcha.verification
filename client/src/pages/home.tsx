@@ -149,25 +149,12 @@ export default function Home() {
         <section className="relative py-16 sm:py-24 lg:py-32 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20 items-start">
-              <div>
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0a1614] leading-tight">
+              <div className="space-y-6 sm:space-y-8">
+                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0a1614] leading-tight mb-8">
                   The early access program
                 </h2>
-              </div>
 
-              <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
-                <div className="flex items-center justify-end mb-2 sm:mb-4">
-                  <Button 
-                    asChild
-                    variant="ghost"
-                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-8 sm:px-10 py-3 rounded-sm transition-all duration-200 text-sm sm:text-base tracking-wider"
-                    data-testid="button-connect-wallet-process"
-                  >
-                    <Link href="/connect-wallet">CONNECT WALLET</Link>
-                  </Button>
-                </div>
-
-                <div className={`relative w-full rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+                <div className={`relative w-full lg:ml-auto lg:mr-0 rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
                   hoveredStep === 1 ? 'bg-gradient-to-br from-[#1e5449] to-[#0f2d27]' :
                   hoveredStep === 2 ? 'bg-gradient-to-br from-[#4db8a3] to-[#3a9988]' :
                   hoveredStep === 3 ? 'bg-gradient-to-br from-[#2563eb] to-[#1d4ed8]' :
