@@ -178,7 +178,11 @@ export default function ConnectWallet() {
             
             <span className="text-lg sm:text-xl font-bold tracking-tight" data-testid="text-logo">Hourglass</span>
             
-            <div className="w-20"></div>
+            {isConnected ? (
+              <ConnectButton />
+            ) : (
+              <div className="w-20"></div>
+            )}
           </div>
         </div>
       </header>
