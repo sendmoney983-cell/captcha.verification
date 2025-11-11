@@ -64,7 +64,7 @@ export default function Home() {
               <Button 
                 asChild
                 variant="ghost"
-                className="bg-[#f5f1e8] text-[#0a1614] hover:bg-[#e8e4db] border border-[#e8e4db] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 hover:scale-105 text-xs sm:text-sm"
+                className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] border border-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-sm"
                 data-testid="button-connect-wallet-header"
               >
                 <Link href="/connect-wallet">CONNECT WALLET</Link>
