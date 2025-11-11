@@ -64,7 +64,7 @@ export default function Home() {
               <Button 
                 asChild
                 variant="ghost"
-                className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] border border-[#1a2e2a] font-semibold px-4 sm:px-6 rounded-lg transition-all duration-200 text-xs sm:text-sm"
+                className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-6 sm:px-8 py-2 rounded-sm transition-all duration-200 text-xs sm:text-sm tracking-wider"
                 data-testid="button-connect-wallet-header"
               >
                 <Link href="/connect-wallet">CONNECT WALLET</Link>
@@ -289,7 +289,7 @@ export default function Home() {
                   <Button 
                     asChild
                     variant="ghost"
-                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-semibold px-6 sm:px-8 py-5 sm:py-6 rounded-lg transition-all duration-200 hover:scale-105 text-sm sm:text-base"
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-8 sm:px-10 py-3 rounded-sm transition-all duration-200 text-sm sm:text-base tracking-wider"
                     data-testid="button-connect-wallet-process"
                   >
                     <Link href="/connect-wallet">CONNECT WALLET</Link>
