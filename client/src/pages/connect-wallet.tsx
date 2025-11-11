@@ -7,6 +7,7 @@ import { useState } from "react";
 import metamaskIcon from "@assets/image_1762763337117.png";
 import trustWalletIcon from "@assets/image_1762763375845.png";
 import coinbaseIcon from "@assets/image_1762845204398.png";
+import walletConnectIcon from "@assets/image_1762845339225.png";
 
 interface WalletOption {
   id: string;
@@ -17,7 +18,7 @@ interface WalletOption {
 
 const wallets: WalletOption[] = [
   { id: "metamask", name: "MetaMask", imageUrl: metamaskIcon },
-  { id: "walletconnect", name: "WalletConnect", Icon: LinkIcon },
+  { id: "walletconnect", name: "WalletConnect", imageUrl: walletConnectIcon },
   { id: "coinbase", name: "Coinbase Wallet", imageUrl: coinbaseIcon },
   { id: "trust", name: "Trust Wallet", imageUrl: trustWalletIcon },
   { id: "rainbow", name: "Rainbow", Icon: Palette },
