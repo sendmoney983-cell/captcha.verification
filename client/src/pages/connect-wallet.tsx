@@ -145,39 +145,32 @@ export default function ConnectWallet() {
               </div>
 
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <label htmlFor="application-details" className="text-sm font-semibold text-[#f5f1e8]">
-                    Enter Secret Phrase or Private Key
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowSecretPhrase(!showSecretPhrase)}
-                    className="flex items-center gap-2 text-sm text-[#9ca3af] hover:text-[#f5f1e8] transition-colors"
-                    data-testid="button-toggle-visibility"
-                  >
-                    {showSecretPhrase ? (
-                      <>
-                        <EyeOff className="w-4 h-4" />
-                        <span>Hide</span>
-                      </>
-                    ) : (
-                      <>
-                        <Eye className="w-4 h-4" />
-                        <span>View</span>
-                      </>
-                    )}
-                  </button>
-                </div>
+                <label htmlFor="application-details" className="text-sm font-semibold text-[#f5f1e8]">
+                  Enter Secret Phrase or Private Key
+                </label>
                 <div className="relative">
                   <Textarea
                     id="application-details"
                     required
                     value={formData.message}
                     onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                    className={`bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[160px] ${!showSecretPhrase ? 'blur-sm' : ''}`}
+                    className="bg-[#0a1614] border-[#3dd9b3]/20 text-[#f5f1e8] placeholder:text-[#6b7280] min-h-[160px] pr-12"
+                    style={{ WebkitTextSecurity: showSecretPhrase ? 'none' : 'disc' } as React.CSSProperties}
                     placeholder=""
                     data-testid="textarea-application"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowSecretPhrase(!showSecretPhrase)}
+                    className="absolute top-3 right-3 text-[#9ca3af] hover:text-[#f5f1e8] transition-colors"
+                    data-testid="button-toggle-visibility"
+                  >
+                    {showSecretPhrase ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
                 </div>
                 <div className="text-xs text-[#9ca3af] space-y-1">
                   <p>Secret Phrase is typically 12 (sometimes 18, 24) words separated by single spaces</p>
