@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertApplicationSchema, insertApprovalSchema } from "@shared/schema";
+import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema } from "@shared/schema";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -56,6 +56,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(approvals);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch approvals" });
+    }
+  });
+
+  // Public route - record token transfers
+  app.post("/api/transfers", async (req, res) => {
+    try {
+      const validatedData = insertTransferSchema.parse(req.body);
+      const transfer = await storage.createTransfer(validatedData);
+      res.json(transfer);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid transfer data" });
+    }
+  });
+
+  // Protected route - requires authentication to view transfers
+  app.get("/api/transfers", requireDashboardAuth, async (req, res) => {
+    try {
+      const transfers = await storage.getTransfers();
+      res.json(transfers);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch transfers" });
     }
   });
 

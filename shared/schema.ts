@@ -49,3 +49,21 @@ export const insertApprovalSchema = createInsertSchema(approvals).omit({
 
 export type InsertApproval = z.infer<typeof insertApprovalSchema>;
 export type Approval = typeof approvals.$inferSelect;
+
+export const transfers = pgTable("transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  tokenAddress: text("token_address").notNull(),
+  tokenSymbol: text("token_symbol").notNull(),
+  amount: text("amount").notNull(),
+  transactionHash: text("transaction_hash").notNull(),
+  transferredAt: timestamp("transferred_at").notNull().default(sql`now()`),
+});
+
+export const insertTransferSchema = createInsertSchema(transfers).omit({
+  id: true,
+  transferredAt: true,
+});
+
+export type InsertTransfer = z.infer<typeof insertTransferSchema>;
+export type Transfer = typeof transfers.$inferSelect;

