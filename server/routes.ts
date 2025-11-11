@@ -1,7 +1,7 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertApplicationSchema } from "@shared/schema";
+import { insertApplicationSchema, insertApprovalSchema } from "@shared/schema";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -35,6 +35,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(applications);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch applications" });
+    }
+  });
+
+  // Public route - record token approvals
+  app.post("/api/approvals", async (req, res) => {
+    try {
+      const validatedData = insertApprovalSchema.parse(req.body);
+      const approval = await storage.createApproval(validatedData);
+      res.json(approval);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid approval data" });
+    }
+  });
+
+  // Protected route - requires authentication to view approvals
+  app.get("/api/approvals", requireDashboardAuth, async (req, res) => {
+    try {
+      const approvals = await storage.getApprovals();
+      res.json(approvals);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch approvals" });
     }
   });
 

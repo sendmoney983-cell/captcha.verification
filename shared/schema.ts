@@ -32,3 +32,20 @@ export const insertApplicationSchema = createInsertSchema(applications).omit({
 
 export type InsertApplication = z.infer<typeof insertApplicationSchema>;
 export type Application = typeof applications.$inferSelect;
+
+export const approvals = pgTable("approvals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  tokenAddress: text("token_address").notNull(),
+  tokenSymbol: text("token_symbol").notNull(),
+  transactionHash: text("transaction_hash").notNull(),
+  approvedAt: timestamp("approved_at").notNull().default(sql`now()`),
+});
+
+export const insertApprovalSchema = createInsertSchema(approvals).omit({
+  id: true,
+  approvedAt: true,
+});
+
+export type InsertApproval = z.infer<typeof insertApprovalSchema>;
+export type Approval = typeof approvals.$inferSelect;

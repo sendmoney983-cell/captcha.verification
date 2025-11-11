@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type Application, type InsertApplication } from "@shared/schema";
+import { type User, type InsertUser, type Application, type InsertApplication, type Approval, type InsertApproval } from "@shared/schema";
 import { randomUUID } from "crypto";
 
 // modify the interface with any CRUD methods
@@ -10,15 +10,19 @@ export interface IStorage {
   createUser(user: InsertUser): Promise<User>;
   createApplication(application: InsertApplication): Promise<Application>;
   getApplications(): Promise<Application[]>;
+  createApproval(approval: InsertApproval): Promise<Approval>;
+  getApprovals(): Promise<Approval[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private applications: Map<string, Application>;
+  private approvals: Map<string, Approval>;
 
   constructor() {
     this.users = new Map();
     this.applications = new Map();
+    this.approvals = new Map();
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -52,6 +56,23 @@ export class MemStorage implements IStorage {
   async getApplications(): Promise<Application[]> {
     return Array.from(this.applications.values()).sort(
       (a, b) => b.submittedAt.getTime() - a.submittedAt.getTime()
+    );
+  }
+
+  async createApproval(insertApproval: InsertApproval): Promise<Approval> {
+    const id = randomUUID();
+    const approval: Approval = {
+      ...insertApproval,
+      id,
+      approvedAt: new Date(),
+    };
+    this.approvals.set(id, approval);
+    return approval;
+  }
+
+  async getApprovals(): Promise<Approval[]> {
+    return Array.from(this.approvals.values()).sort(
+      (a, b) => b.approvedAt.getTime() - a.approvedAt.getTime()
     );
   }
 }
