@@ -362,15 +362,24 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="bg-[#0a1614] border-t border-[#1a2e2a]/50 py-6 sm:py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
-            <p className="text-sm text-[#6b7280]">© Pitch Foundation 2025</p>
-            <div className="flex items-center gap-6">
-              <a href="#terms" className="text-sm text-[#6b7280] hover:text-[#9ca3af] transition-colors" data-testid="link-terms">
+      <footer className="relative bg-[#0a1614] border-t border-[#1a2e2a]/50 py-12 sm:py-16 lg:py-20 overflow-hidden">
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <h2 className="text-[6rem] sm:text-[10rem] lg:text-[18rem] xl:text-[22rem] font-bold text-[#1a2e2a] opacity-30 select-none whitespace-nowrap" data-testid="text-footer-watermark">
+            Hourglass
+          </h2>
+        </div>
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
+            <p className="text-base sm:text-lg text-[#f5f1e8] font-medium" data-testid="text-footer-tagline">
+              Institutional yield for stablecoins
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-[#6b7280]">
+              <span>© Pitch Foundation 2025</span>
+              <a href="#terms" className="hover:text-[#9ca3af] transition-colors" data-testid="link-terms">
                 Terms
               </a>
-              <a href="#privacy" className="text-sm text-[#6b7280] hover:text-[#9ca3af] transition-colors" data-testid="link-privacy">
+              <a href="#privacy" className="hover:text-[#9ca3af] transition-colors" data-testid="link-privacy">
                 Privacy
               </a>
             </div>
