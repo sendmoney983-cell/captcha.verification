@@ -137,8 +137,8 @@ export default function Home() {
                       </div>
                     </div>
                     
-                    <div className="absolute inset-0 bg-[#0a1614]/80 backdrop-blur-[40px] rounded-3xl flex items-center justify-center">
-                      <p className="text-2xl sm:text-3xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                    <div className="absolute inset-0 bg-[#0a1614]/90 backdrop-blur-[50px] rounded-3xl flex items-center justify-center">
+                      <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                     </div>
                   </div>
                 </div>
