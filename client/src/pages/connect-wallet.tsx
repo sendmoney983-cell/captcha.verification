@@ -220,12 +220,6 @@ export default function ConnectWallet() {
               </>
             ) : (
               <>
-                <div className="mb-8 text-center">
-                  <p className="text-4xl font-bold text-[#f5f1e8]">
-                    {formatBalance(tokenBalance)} {currentToken === "usdc" ? "USDC" : "USDT"}
-                  </p>
-                </div>
-
                 {error && (
                   <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3 max-w-md">
                     <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
