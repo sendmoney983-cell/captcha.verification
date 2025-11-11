@@ -162,32 +162,30 @@ export default function Home() {
                   The early access program
                 </h2>
 
-                <div className="relative rounded-[3rem] bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-8 sm:p-10 lg:p-12 shadow-2xl transition-all duration-300 hover:shadow-[#3dd9b3]/30 hover:scale-[1.02]">
-                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/80 to-[#144a3d]/80 p-12 sm:p-16 lg:p-20 shadow-inner">
+                <div className="relative w-full max-w-4xl mx-auto rounded-full bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-6 sm:p-8 shadow-2xl transition-all duration-300 hover:shadow-[#3dd9b3]/30 hover:scale-[1.02]">
+                  <div className="relative rounded-full bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 px-8 sm:px-12 py-16 sm:py-20 shadow-inner">
                     <div className="flex flex-col sm:flex-row items-center justify-between gap-8 sm:gap-12">
-                      <div className="flex-shrink-0 relative">
+                      <div className="flex-shrink-0 relative -ml-4 sm:-ml-8">
                         <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
-                        <div className="relative w-44 h-44 sm:w-52 sm:h-52 rounded-full bg-gradient-to-br from-[#3dd9b3]/40 to-[#2d7a6e]/40 flex items-center justify-center shadow-2xl">
-                          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-inner">
-                            <div className="absolute inset-0 rounded-full flex flex-col items-center justify-center">
-                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              </svg>
-                              <span className="text-sm font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
-                              <span className="text-sm font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
-                            </div>
+                        <div className="relative w-48 h-48 sm:w-56 sm:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-2xl">
+                          <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-inner flex flex-col items-center justify-center">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
+                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                            </svg>
+                            <span className="text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
+                            <span className="text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
                           </div>
                         </div>
                       </div>
 
                       <div className="flex-shrink-0 animate-pulse">
-                        <ArrowRight className="w-14 h-14 text-[#f5f1e8]/80" strokeWidth={3} />
+                        <ArrowRight className="w-16 h-16 text-[#f5f1e8]/80" strokeWidth={3} />
                       </div>
 
                       <div className="flex-shrink-0">
-                        <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 py-4 sm:py-5 shadow-xl">
-                          <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
+                        <div className="bg-[#0a1614] rounded-full px-10 sm:px-14 py-5 sm:py-7 shadow-xl">
+                          <span className="text-lg sm:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
                             CLAIM iUSDT
                           </span>
                         </div>
