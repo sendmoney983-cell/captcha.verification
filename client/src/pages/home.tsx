@@ -64,7 +64,7 @@ export default function Home() {
               <Button 
                 asChild
                 variant="ghost"
-                className="bg-transparent text-[#f5f1e8] hover:bg-[#1a2e2a]/30 font-medium px-4 sm:px-5 py-2 rounded-md transition-all duration-200 text-xs sm:text-sm tracking-wide"
+                className="bg-white text-[#0a1614] hover:bg-[#f5f1e8] font-semibold px-6 sm:px-8 py-2.5 sm:py-3 rounded-md transition-all duration-200 text-sm sm:text-base tracking-wide"
                 data-testid="button-connect-wallet-header"
               >
                 <Link href="/connect-wallet">CONNECT WALLET</Link>
