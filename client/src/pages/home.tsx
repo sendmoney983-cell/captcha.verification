@@ -364,7 +364,7 @@ export default function Home() {
 
       <footer className="relative bg-[#0a1614] border-t border-[#1a2e2a]/50 py-12 sm:py-16 lg:py-20 overflow-hidden">
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h2 className="text-[6rem] sm:text-[10rem] lg:text-[18rem] xl:text-[22rem] font-bold text-[#1a2e2a] opacity-30 select-none whitespace-nowrap" data-testid="text-footer-watermark">
+          <h2 className="text-[6rem] sm:text-[10rem] lg:text-[18rem] xl:text-[22rem] font-bold text-[#1e3e38] opacity-60 select-none whitespace-nowrap" data-testid="text-footer-watermark">
             Hourglass
           </h2>
         </div>
