@@ -112,7 +112,7 @@ export default function Home() {
 
               <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000" data-testid="hero-mockup-container" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
                 <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a2e2a] to-[#0f1e1a] p-1 transition-transform duration-300 hover:scale-[1.02]">
-                  <div className="relative bg-[#0d1a17] rounded-3xl p-8">
+                  <div className="bg-[#0d1a17] rounded-3xl p-8 backdrop-blur-xl">
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
@@ -135,10 +135,10 @@ export default function Home() {
                           <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
                         </div>
                       </div>
-                    </div>
-                    
-                    <div className="absolute inset-0 bg-[#0a1614]/90 backdrop-blur-[50px] rounded-3xl flex items-center justify-center">
-                      <p className="text-3xl sm:text-4xl lg:text-5xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+
+                      <div className="bg-[#1a2e2a]/50 rounded-2xl p-6 text-center">
+                        <p className="text-lg font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
+                      </div>
                     </div>
                   </div>
                 </div>
