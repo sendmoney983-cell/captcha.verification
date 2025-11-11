@@ -119,9 +119,9 @@ export default function Home() {
                           <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
                           <p className="text-xs text-[#6b7280] uppercase tracking-wide">pre-iUSDT</p>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Balance</p>
-                          <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
+                        <div className="relative bg-[#0a1614]/40 backdrop-blur-2xl rounded-2xl px-8 py-6 text-center border border-[#1a2e2a]/50">
+                          <div className="absolute inset-0 bg-gradient-to-br from-[#1a2e2a]/20 to-transparent rounded-2xl backdrop-blur-2xl"></div>
+                          <p className="relative text-lg font-semibold text-[#f5f1e8] whitespace-nowrap" data-testid="text-deposits-closed">Deposits closed</p>
                         </div>
                       </div>
 
@@ -134,11 +134,6 @@ export default function Home() {
                           <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Value</p>
                           <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
                         </div>
-                      </div>
-
-                      <div className="relative bg-[#0a1614]/40 backdrop-blur-xl rounded-2xl p-10 sm:p-12 text-center border border-[#1a2e2a]/50">
-                        <div className="absolute inset-0 bg-gradient-to-br from-[#1a2e2a]/20 to-transparent rounded-2xl backdrop-blur-xl"></div>
-                        <p className="relative text-xl sm:text-2xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                       </div>
                     </div>
                   </div>
@@ -153,13 +148,26 @@ export default function Home() {
 
         <section className="relative py-16 sm:py-24 lg:py-32 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-start">
-              <div className="space-y-6 sm:space-y-8">
+            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20 items-start">
+              <div>
                 <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0a1614] leading-tight">
                   The early access program
                 </h2>
+              </div>
 
-                <div className={`relative w-full max-w-6xl mx-auto rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+              <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
+                <div className="flex items-center justify-end mb-2 sm:mb-4">
+                  <Button 
+                    asChild
+                    variant="ghost"
+                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-8 sm:px-10 py-3 rounded-sm transition-all duration-200 text-sm sm:text-base tracking-wider"
+                    data-testid="button-connect-wallet-process"
+                  >
+                    <Link href="/connect-wallet">CONNECT WALLET</Link>
+                  </Button>
+                </div>
+
+                <div className={`relative w-full rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
                   hoveredStep === 1 ? 'bg-gradient-to-br from-[#1e5449] to-[#0f2d27]' :
                   hoveredStep === 2 ? 'bg-gradient-to-br from-[#4db8a3] to-[#3a9988]' :
                   hoveredStep === 3 ? 'bg-gradient-to-br from-[#2563eb] to-[#1d4ed8]' :
