@@ -162,9 +162,9 @@ export default function Home() {
                   The early access program
                 </h2>
 
-                <div className="relative w-full max-w-5xl mx-auto rounded-[3rem] bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-8 sm:p-10 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[#3dd9b3]/20 hover:scale-[1.01]">
-                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 pl-8 pr-8 sm:pl-12 sm:pr-12 lg:pl-16 lg:pr-16 py-16 sm:py-20 lg:py-24 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)]">
-                    <div className="flex flex-col sm:flex-row items-center justify-around gap-6 sm:gap-8">
+                <div className="relative w-full max-w-6xl mx-auto rounded-[3rem] bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[#3dd9b3]/20 hover:scale-[1.01]">
+                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 px-12 sm:px-16 lg:px-20 py-16 sm:py-20 lg:py-24 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)]">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-8 sm:gap-10 lg:gap-12">
                       <div className="flex-shrink-0 relative">
                         <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
                         <div className="relative w-48 h-48 sm:w-56 sm:h-56 lg:w-64 lg:h-64 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
@@ -180,11 +180,11 @@ export default function Home() {
                       </div>
 
                       <div className="flex-shrink-0 animate-pulse">
-                        <ArrowRight className="w-14 h-14 sm:w-16 sm:h-16 text-[#f5f1e8]/70" strokeWidth={2.5} />
+                        <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
                       </div>
 
                       <div className="flex-shrink-0">
-                        <div className="bg-[#0a1614] rounded-full px-8 sm:px-12 lg:px-14 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                        <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-12 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
                           <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
                             CLAIM iUSDT
                           </span>
