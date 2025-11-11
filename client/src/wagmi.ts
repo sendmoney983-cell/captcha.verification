@@ -3,7 +3,7 @@ import { mainnet } from 'wagmi/chains';
 
 export const config = getDefaultConfig({
   appName: 'Hourglass',
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'YOUR_PROJECT_ID',
+  projectId: 'e567c2ad31ee5e65d8ed972b0b289b76',
   chains: [mainnet],
   ssr: false,
 });
