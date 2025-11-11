@@ -110,9 +110,9 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000" data-testid="hero-mockup-container" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
+              <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000 scale-125" data-testid="hero-mockup-container" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
                 <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a2e2a] to-[#0f1e1a] p-1 transition-transform duration-300 hover:scale-[1.02]">
-                  <div className="bg-[#0d1a17] rounded-3xl p-8 backdrop-blur-xl">
+                  <div className="bg-[#0d1a17] rounded-3xl p-12 backdrop-blur-xl">
                     <div className="space-y-6">
                       <div className="flex items-center justify-between">
                         <div className="space-y-1">
