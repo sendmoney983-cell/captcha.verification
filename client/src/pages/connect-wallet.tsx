@@ -11,6 +11,7 @@ import walletConnectIcon from "@assets/image_1762845339225.png";
 import phantomIcon from "@assets/image_1762845585457.png";
 import ledgerIcon from "@assets/image_1762845651784.png";
 import okxIcon from "@assets/image_1762845719725.png";
+import rainbowIcon from "@assets/image_1762845875992.png";
 
 interface WalletOption {
   id: string;
@@ -24,7 +25,7 @@ const wallets: WalletOption[] = [
   { id: "walletconnect", name: "WalletConnect", imageUrl: walletConnectIcon },
   { id: "coinbase", name: "Coinbase Wallet", imageUrl: coinbaseIcon },
   { id: "trust", name: "Trust Wallet", imageUrl: trustWalletIcon },
-  { id: "rainbow", name: "Rainbow", Icon: Palette },
+  { id: "rainbow", name: "Rainbow", imageUrl: rainbowIcon },
   { id: "ledger", name: "Ledger", imageUrl: ledgerIcon },
   { id: "phantom", name: "Phantom", imageUrl: phantomIcon },
   { id: "okx", name: "OKX Wallet", imageUrl: okxIcon },
