@@ -346,20 +346,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-
-        <section className="relative py-20 sm:py-24 lg:py-32 bg-[#f5f1e8] overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <h2 className="text-[6rem] sm:text-[10rem] lg:text-[18rem] font-bold text-[#e8e4db] opacity-40 select-none whitespace-nowrap" data-testid="text-watermark">
-              Hourglass
-            </h2>
-          </div>
-          
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <p className="text-lg sm:text-xl lg:text-2xl font-medium text-[#374151]" data-testid="text-tagline">
-              Institutional yield for stablecoins
-            </p>
-          </div>
-        </section>
       </main>
 
       <footer className="relative bg-[#0a1614] border-t border-[#1a2e2a]/50 py-12 sm:py-16 lg:py-20 overflow-hidden">
