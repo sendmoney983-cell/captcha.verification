@@ -1,11 +1,12 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, ArrowDown, Check } from "lucide-react";
 import { FaXTwitter, FaDiscord } from "react-icons/fa6";
 import { useEffect, useState } from "react";
 import { Link } from "wouter";
 
 export default function Home() {
   const [scrollY, setScrollY] = useState(0);
+  const [hoveredStep, setHoveredStep] = useState<number>(4);
 
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
@@ -162,35 +163,122 @@ export default function Home() {
                   The early access program
                 </h2>
 
-                <div className="relative w-full max-w-6xl mx-auto rounded-[3rem] bg-gradient-to-br from-[#2d9a7e] to-[#238f6e] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-300 hover:shadow-[#3dd9b3]/20 hover:scale-[1.01]">
-                  <div className="relative rounded-[2.5rem] bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90 p-12 sm:p-16 lg:p-20 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)]">
-                    <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
-                      <div className="flex-shrink-0 relative">
-                        <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
-                        <div className="relative w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
-                          <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
-                            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
-                              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                            </svg>
-                            <span className="text-sm sm:text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
-                            <span className="text-sm sm:text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
+                <div className={`relative w-full max-w-6xl mx-auto rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+                  hoveredStep === 1 ? 'bg-gradient-to-br from-[#1e5449] to-[#0f2d27]' :
+                  hoveredStep === 2 ? 'bg-gradient-to-br from-[#4db8a3] to-[#3a9988]' :
+                  hoveredStep === 3 ? 'bg-gradient-to-br from-[#2563eb] to-[#1d4ed8]' :
+                  'bg-gradient-to-br from-[#2d9a7e] to-[#238f6e]'
+                }`}>
+                  <div className={`relative rounded-[2.5rem] p-12 sm:p-16 lg:p-20 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)] transition-all duration-500 ${
+                    hoveredStep === 1 ? 'bg-gradient-to-br from-[#0a1614]/95 to-[#051210]/95' :
+                    hoveredStep === 2 ? 'bg-gradient-to-br from-[#2d7a6e]/90 to-[#1e5449]/90' :
+                    hoveredStep === 3 ? 'bg-gradient-to-br from-[#0c2340]/95 to-[#051526]/95' :
+                    'bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90'
+                  }`}>
+                    {hoveredStep === 1 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
+                        <div className="flex-shrink-0">
+                          <div className="bg-[#1e5449] rounded-full px-10 sm:px-12 lg:px-16 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
+                              DEPOSIT USDC
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-14 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
+                              MINT pre-iUSDT
+                            </span>
                           </div>
                         </div>
                       </div>
+                    )}
 
-                      <div className="flex-shrink-0 animate-pulse">
-                        <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
-                      </div>
+                    {hoveredStep === 2 && (
+                      <div className="flex flex-col items-center justify-center gap-8 sm:gap-10 lg:gap-12">
+                        <div className="flex-shrink-0 w-full max-w-2xl">
+                          <div className="bg-[#f5f1e8] rounded-full px-12 sm:px-16 lg:px-20 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#0a1614] uppercase tracking-wider text-center block">
+                              COMPLETE KYC VERIFICATION
+                            </span>
+                          </div>
+                        </div>
 
-                      <div className="flex-shrink-0">
-                        <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-12 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                          <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
-                            CLAIM iUSDT
-                          </span>
+                        <div className="flex-shrink-0">
+                          <ArrowDown className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
+                        </div>
+
+                        <div className="flex-shrink-0 w-full max-w-2xl">
+                          <div className="bg-[#0a1614] rounded-full px-12 sm:px-14 lg:px-16 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)] flex items-center justify-center gap-3">
+                            <Check className="w-6 h-6 sm:w-7 sm:h-7 text-[#f5f1e8]" strokeWidth={3} />
+                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
+                              KYC VERIFIED
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
+
+                    {hoveredStep === 3 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
+                        <div className="flex-shrink-0 relative">
+                          <div className="w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#1e40af]/40 to-[#1e3a8a]/40 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
+                            <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#0c2340] to-[#051526] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center">
+                              <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#f5f1e8] uppercase tracking-wide">USDC</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
+                        </div>
+
+                        <div className="flex-shrink-0 relative">
+                          <div className="w-44 h-44 sm:w-52 sm:h-52 lg:w-64 lg:h-64 rounded-full bg-gradient-to-br from-[#2563eb]/40 to-[#1e40af]/40 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
+                            <div className="absolute inset-6 rounded-full bg-gradient-to-br from-[#1e40af] to-[#1e3a8a] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center px-6">
+                              <span className="text-sm sm:text-base lg:text-lg font-bold text-[#f5f1e8] uppercase tracking-wide text-center leading-tight">
+                                Tier-one financial institution
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {hoveredStep === 4 && (
+                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
+                        <div className="flex-shrink-0 relative">
+                          <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
+                          <div className="relative w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
+                            <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
+                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+                                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
+                              </svg>
+                              <span className="text-sm sm:text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
+                              <span className="text-sm sm:text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex-shrink-0 animate-pulse">
+                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
+                        </div>
+
+                        <div className="flex-shrink-0">
+                          <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-12 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
+                            <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
+                              CLAIM iUSDT
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -207,7 +295,11 @@ export default function Home() {
                 </div>
 
                 <div className="space-y-4 sm:space-y-6">
-                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                  <div 
+                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredStep(1)}
+                    onMouseLeave={() => setHoveredStep(4)}
+                  >
                     <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">01</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Deposit</h3>
                     <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
@@ -215,7 +307,11 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                  <div 
+                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredStep(2)}
+                    onMouseLeave={() => setHoveredStep(4)}
+                  >
                     <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">02</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">KYC</h3>
                     <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
@@ -223,7 +319,11 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer">
+                  <div 
+                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
+                    onMouseEnter={() => setHoveredStep(3)}
+                    onMouseLeave={() => setHoveredStep(4)}
+                  >
                     <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">03</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Yield</h3>
                     <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
@@ -231,7 +331,10 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <div className="group space-y-1 sm:space-y-2 cursor-pointer">
+                  <div 
+                    className="group space-y-1 sm:space-y-2 cursor-pointer"
+                    onMouseEnter={() => setHoveredStep(4)}
+                  >
                     <p className="text-4xl sm:text-5xl font-bold text-[#0a1614]">04</p>
                     <h3 className="text-xl sm:text-2xl font-bold text-[#0a1614]">Withdraw</h3>
                     <p className="text-sm sm:text-base text-[#4b5563] max-w-md">
