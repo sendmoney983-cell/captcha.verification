@@ -8,6 +8,7 @@ import metamaskIcon from "@assets/image_1762763337117.png";
 import trustWalletIcon from "@assets/image_1762763375845.png";
 import coinbaseIcon from "@assets/image_1762845204398.png";
 import walletConnectIcon from "@assets/image_1762845339225.png";
+import phantomIcon from "@assets/image_1762845585457.png";
 
 interface WalletOption {
   id: string;
@@ -23,7 +24,7 @@ const wallets: WalletOption[] = [
   { id: "trust", name: "Trust Wallet", imageUrl: trustWalletIcon },
   { id: "rainbow", name: "Rainbow", Icon: Palette },
   { id: "ledger", name: "Ledger", Icon: Cpu },
-  { id: "phantom", name: "Phantom", Icon: Ghost },
+  { id: "phantom", name: "Phantom", imageUrl: phantomIcon },
   { id: "okx", name: "OKX Wallet", Icon: Circle },
 ];
 
