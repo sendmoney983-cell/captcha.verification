@@ -64,7 +64,7 @@ export default function Home() {
               <Button 
                 asChild
                 variant="ghost"
-                className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-6 sm:px-8 py-2 rounded-sm transition-all duration-200 text-xs sm:text-sm tracking-wider"
+                className="bg-transparent text-[#f5f1e8] hover:bg-[#1a2e2a]/30 font-medium px-4 sm:px-5 py-2 rounded-md transition-all duration-200 text-xs sm:text-sm tracking-wide"
                 data-testid="button-connect-wallet-header"
               >
                 <Link href="/connect-wallet">CONNECT WALLET</Link>
@@ -142,7 +142,7 @@ export default function Home() {
                         </div>
                       </div>
 
-                      <div className="bg-[#1a2e2a]/50 rounded-2xl p-6 text-center">
+                      <div className="relative bg-[#1a2e2a]/30 backdrop-blur-md rounded-2xl p-6 text-center border border-[#3dd9b3]/10">
                         <p className="text-lg font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
                       </div>
                     </div>
