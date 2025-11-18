@@ -1,4 +1,4 @@
-import { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, TextChannel } from 'discord.js';
+import { Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, PermissionFlagsBits, TextChannel, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import { storage } from './storage';
 
 let client: Client | null = null;
@@ -20,11 +20,47 @@ export async function initializeDiscordBot() {
       ]
     });
 
-    client.on('ready', () => {
+    client.on('ready', async () => {
       console.log(`✅ Discord bot logged in as ${client?.user?.tag}`);
+      
+      // Register slash commands
+      if (client?.application) {
+        const commands = [
+          new SlashCommandBuilder()
+            .setName('panel')
+            .setDescription('Send the ticket panel to this channel')
+            .toJSON()
+        ];
+
+        const rest = new REST({ version: '10' }).setToken(token);
+        
+        try {
+          await rest.put(
+            Routes.applicationCommands(client.application.id),
+            { body: commands }
+          );
+          console.log('✅ Slash commands registered');
+        } catch (error) {
+          console.error('Failed to register slash commands:', error);
+        }
+      }
     });
 
     client.on('interactionCreate', async (interaction) => {
+      // Handle slash commands
+      if (interaction.isChatInputCommand()) {
+        if (interaction.commandName === 'panel') {
+          try {
+            await sendTicketPanel(interaction.channelId);
+            await interaction.reply({ content: '✅ Ticket panel sent!', ephemeral: true });
+          } catch (error) {
+            await interaction.reply({ content: '❌ Failed to send ticket panel.', ephemeral: true });
+          }
+        }
+        return;
+      }
+
+      // Handle button clicks
       if (!interaction.isButton()) return;
 
       if (interaction.customId === 'create_ticket_general') {

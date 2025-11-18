@@ -8,9 +8,18 @@ Your Discord ticketing bot is successfully connected and running as **Support sy
 
 ### Step 1: Send the Ticket Panel to Your Discord Server
 
-To create a ticket panel in your Discord server, you need to send a POST request to create the panel. You can do this using the admin dashboard or by making an API call.
+**✨ Easy Method - Use Slash Command:**
 
-**API Endpoint:**
+Simply type **`/panel`** in any Discord channel where you want the ticket panel to appear!
+
+The bot will instantly send the ticket panel with all 3 category buttons.
+
+---
+
+**Alternative Method - API Endpoint:**
+
+You can also send the panel programmatically via API:
+
 ```
 POST /api/discord/send-panel
 Authorization: Bearer hourglass2024
@@ -105,10 +114,22 @@ The ticket panel matches the Hourglass branding:
 ## 🚀 Next Steps
 
 To set up your ticket panel:
+
+**Quick Start:**
+1. Open Discord and go to the channel where you want tickets
+2. Type `/panel` and press Enter
+3. The ticket panel will appear with 3 buttons
+4. Users can now create tickets!
+
+**Or programmatically:**
 1. Get your Discord channel ID (enable Developer Mode → right-click channel → Copy Channel ID)
 2. Make a POST request to `/api/discord/send-panel` with your channel ID
 3. The ticket panel will appear in that channel
 4. Users can now create tickets!
+
+## 📝 Available Commands
+
+- `/panel` - Send the ticket panel to the current channel (Only works in Discord)
 
 ## 🔐 Security Notes
 
