@@ -52,9 +52,10 @@ export async function initializeDiscordBot() {
         if (interaction.commandName === 'panel') {
           try {
             await sendTicketPanel(interaction.channelId);
-            await interaction.reply({ content: '✅ Ticket panel sent!', ephemeral: true });
+            await interaction.reply({ content: '✅ Ticket panel sent!', flags: 64 });
           } catch (error) {
-            await interaction.reply({ content: '❌ Failed to send ticket panel.', ephemeral: true });
+            console.error('Error sending panel:', error);
+            await interaction.reply({ content: '❌ Failed to send ticket panel.', flags: 64 });
           }
         }
         return;
@@ -107,11 +108,11 @@ export async function initializeDiscordBot() {
 
 async function handleTicketCreation(interaction: any, category: string) {
   try {
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: 64 }); // 64 = ephemeral flag
 
     const guild = interaction.guild;
     if (!guild) {
-      await interaction.editReply('This command can only be used in a server.');
+      await interaction.editReply({ content: 'This command can only be used in a server.' });
       return;
     }
 
@@ -176,10 +177,18 @@ async function handleTicketCreation(interaction: any, category: string) {
       messageId: null,
     });
 
-    await interaction.editReply(`✅ Ticket created! Check <#${channel.id}>`);
+    await interaction.editReply({ content: `✅ Ticket created! Check <#${channel.id}>` });
   } catch (error) {
     console.error('Error creating ticket:', error);
-    await interaction.editReply('❌ Failed to create ticket. Please try again.');
+    try {
+      if (interaction.deferred) {
+        await interaction.editReply({ content: '❌ Failed to create ticket. Please try again.' });
+      } else {
+        await interaction.reply({ content: '❌ Failed to create ticket. Please try again.', flags: 64 });
+      }
+    } catch (replyError) {
+      console.error('Failed to send error message:', replyError);
+    }
   }
 }
 
@@ -189,12 +198,12 @@ async function handleTicketClaim(interaction: any) {
     const ticket = await storage.getTicketById(ticketId);
 
     if (!ticket) {
-      await interaction.reply({ content: '❌ Ticket not found.', ephemeral: true });
+      await interaction.reply({ content: '❌ Ticket not found.', flags: 64 });
       return;
     }
 
     if (ticket.claimedBy) {
-      await interaction.reply({ content: `❌ This ticket has already been claimed by ${ticket.claimedByUsername}.`, ephemeral: true });
+      await interaction.reply({ content: `❌ This ticket has already been claimed by ${ticket.claimedByUsername}.`, flags: 64 });
       return;
     }
 
@@ -219,7 +228,11 @@ async function handleTicketClaim(interaction: any) {
     });
   } catch (error) {
     console.error('Error claiming ticket:', error);
-    await interaction.reply({ content: '❌ Failed to claim ticket.', ephemeral: true });
+    try {
+      await interaction.reply({ content: '❌ Failed to claim ticket.', flags: 64 });
+    } catch (replyError) {
+      console.error('Failed to send error message:', replyError);
+    }
   }
 }
 
@@ -229,7 +242,7 @@ async function handleTicketClose(interaction: any) {
     const ticket = await storage.getTicketById(ticketId);
 
     if (!ticket) {
-      await interaction.reply({ content: '❌ Ticket not found.', ephemeral: true });
+      await interaction.reply({ content: '❌ Ticket not found.', flags: 64 });
       return;
     }
 
