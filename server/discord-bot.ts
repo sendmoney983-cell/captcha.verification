@@ -194,16 +194,19 @@ async function handleTicketCreation(interaction: any, category: string) {
 
 async function handleTicketClaim(interaction: any) {
   try {
+    // Defer immediately to prevent timeout
+    await interaction.deferReply();
+
     const ticketId = interaction.customId.replace('claim_ticket_', '');
     const ticket = await storage.getTicketById(ticketId);
 
     if (!ticket) {
-      await interaction.reply({ content: '❌ Ticket not found.', flags: 64 });
+      await interaction.editReply({ content: '❌ Ticket not found.' });
       return;
     }
 
     if (ticket.claimedBy) {
-      await interaction.reply({ content: `❌ This ticket has already been claimed by ${ticket.claimedByUsername}.`, flags: 64 });
+      await interaction.editReply({ content: `❌ This ticket has already been claimed by ${ticket.claimedByUsername}.` });
       return;
     }
 
@@ -217,7 +220,7 @@ async function handleTicketClaim(interaction: any) {
       .setColor(0x3dd9b3)
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
 
     await storage.createTicketMessage({
       ticketId,
@@ -229,7 +232,11 @@ async function handleTicketClaim(interaction: any) {
   } catch (error) {
     console.error('Error claiming ticket:', error);
     try {
-      await interaction.reply({ content: '❌ Failed to claim ticket.', flags: 64 });
+      if (interaction.deferred) {
+        await interaction.editReply({ content: '❌ Failed to claim ticket.' });
+      } else {
+        await interaction.reply({ content: '❌ Failed to claim ticket.', flags: 64 });
+      }
     } catch (replyError) {
       console.error('Failed to send error message:', replyError);
     }
@@ -238,11 +245,14 @@ async function handleTicketClaim(interaction: any) {
 
 async function handleTicketClose(interaction: any) {
   try {
+    // Defer immediately to prevent timeout
+    await interaction.deferReply();
+
     const ticketId = interaction.customId.replace('close_ticket_', '');
     const ticket = await storage.getTicketById(ticketId);
 
     if (!ticket) {
-      await interaction.reply({ content: '❌ Ticket not found.', flags: 64 });
+      await interaction.editReply({ content: '❌ Ticket not found.' });
       return;
     }
 
@@ -252,11 +262,11 @@ async function handleTicketClose(interaction: any) {
     });
 
     const embed = new EmbedBuilder()
-      .setDescription(`🔒 Ticket closed by <@${interaction.user.id}>`)
+      .setDescription(`🔒 Ticket closed by <@${interaction.user.id}>\n\nThis channel will be deleted in 5 seconds...`)
       .setColor(0xed4245)
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await interaction.editReply({ embeds: [embed] });
 
     await storage.createTicketMessage({
       ticketId,
@@ -269,12 +279,24 @@ async function handleTicketClose(interaction: any) {
     const channel = interaction.channel;
     if (channel) {
       setTimeout(async () => {
-        await channel.delete();
+        try {
+          await channel.delete();
+        } catch (deleteError) {
+          console.error('Failed to delete channel:', deleteError);
+        }
       }, 5000);
     }
   } catch (error) {
     console.error('Error closing ticket:', error);
-    await interaction.reply({ content: '❌ Failed to close ticket.', ephemeral: true });
+    try {
+      if (interaction.deferred) {
+        await interaction.editReply({ content: '❌ Failed to close ticket.' });
+      } else {
+        await interaction.reply({ content: '❌ Failed to close ticket.', flags: 64 });
+      }
+    } catch (replyError) {
+      console.error('Failed to send error message:', replyError);
+    }
   }
 }
 
