@@ -43,12 +43,14 @@ This is a premium landing page showcasing the Hourglass early access program for
   - `/panel` slash command to deploy ticket panel in any channel
   - Three ticket categories: General Support, Bug Report, Partnership Request
   - Ticket features: create, claim, close with database persistence
+  - Tickets automatically created under the same category as the panel channel
   - Web dashboard at /tickets to view all tickets and conversations
   - API routes for ticket management and message history
   - PostgreSQL database with tickets and ticket_messages tables
   - Automatic ticket counter syncing from database
   - Discord bot successfully connected (Support system#5269)
   - All interactions working without timeout errors
+  - **Deployment Note:** Requires DISCORD_BOT_TOKEN in deployment environment variables (see DISCORD_BOT_DEPLOYMENT.md)
   
 - **2025-01-09**: Wallet Connection Integration
   - Integrated RainbowKit wallet connection with MetaMask, WalletConnect, and other providers

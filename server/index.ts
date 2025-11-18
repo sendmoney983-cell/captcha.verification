@@ -76,7 +76,7 @@ app.use((req, res, next) => {
     await initializeDiscordBot();
     log("Discord bot initialized successfully");
   } catch (error) {
-    log("Failed to initialize Discord bot:", error);
+    log("Failed to initialize Discord bot:", String(error));
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

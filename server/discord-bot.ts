@@ -20,8 +20,26 @@ export async function initializeDiscordBot() {
       ]
     });
 
+    // Error handling for the bot
+    client.on('error', (error) => {
+      console.error('❌ Discord bot error:', error);
+    });
+
+    client.on('warn', (warning) => {
+      console.warn('⚠️ Discord bot warning:', warning);
+    });
+
+    client.on('disconnect', () => {
+      console.log('⚠️ Discord bot disconnected');
+    });
+
+    client.on('reconnecting', () => {
+      console.log('🔄 Discord bot reconnecting...');
+    });
+
     client.on('ready', async () => {
       console.log(`✅ Discord bot logged in as ${client?.user?.tag}`);
+      console.log(`✅ Bot is in ${client?.guilds.cache.size} server(s)`);
       
       // Load the highest ticket number from database
       try {
