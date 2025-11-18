@@ -23,6 +23,18 @@ export async function initializeDiscordBot() {
     client.on('ready', async () => {
       console.log(`✅ Discord bot logged in as ${client?.user?.tag}`);
       
+      // Load the highest ticket number from database
+      try {
+        const tickets = await storage.getTickets();
+        if (tickets.length > 0) {
+          const highestNumber = Math.max(...tickets.map(t => parseInt(t.ticketNumber)));
+          ticketCounter = highestNumber;
+          console.log(`✅ Loaded ticket counter: ${ticketCounter}`);
+        }
+      } catch (error) {
+        console.error('Failed to load ticket counter:', error);
+      }
+      
       // Register slash commands
       if (client?.application) {
         const commands = [
@@ -51,11 +63,21 @@ export async function initializeDiscordBot() {
       if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'panel') {
           try {
+            // Defer immediately to prevent timeout
+            await interaction.deferReply({ flags: 64 });
             await sendTicketPanel(interaction.channelId);
-            await interaction.reply({ content: '✅ Ticket panel sent!', flags: 64 });
+            await interaction.editReply({ content: '✅ Ticket panel sent!' });
           } catch (error) {
             console.error('Error sending panel:', error);
-            await interaction.reply({ content: '❌ Failed to send ticket panel.', flags: 64 });
+            try {
+              if (interaction.deferred) {
+                await interaction.editReply({ content: '❌ Failed to send ticket panel.' });
+              } else {
+                await interaction.reply({ content: '❌ Failed to send ticket panel.', flags: 64 });
+              }
+            } catch (replyError) {
+              console.error('Failed to send error response:', replyError);
+            }
           }
         }
         return;
