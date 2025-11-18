@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { initializeDiscordBot } from "./discord-bot";
 
 const app = express();
 
@@ -68,6 +69,14 @@ app.use((req, res, next) => {
     log("Vite setup complete");
   } else {
     serveStatic(app);
+  }
+
+  // Initialize Discord bot
+  try {
+    await initializeDiscordBot();
+    log("Discord bot initialized successfully");
+  } catch (error) {
+    log("Failed to initialize Discord bot:", error);
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

@@ -1,7 +1,8 @@
 import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema } from "@shared/schema";
+import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
+import { sendTicketPanel } from "./discord-bot";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -77,6 +78,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(transfers);
     } catch (error) {
       res.status(500).json({ error: "Failed to fetch transfers" });
+    }
+  });
+
+  // Ticket routes
+  app.get("/api/tickets", async (req, res) => {
+    try {
+      const tickets = await storage.getTickets();
+      res.json(tickets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch tickets" });
+    }
+  });
+
+  app.get("/api/tickets/:id", async (req, res) => {
+    try {
+      const ticket = await storage.getTicketById(req.params.id);
+      if (!ticket) {
+        return res.status(404).json({ error: "Ticket not found" });
+      }
+      res.json(ticket);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ticket" });
+    }
+  });
+
+  app.get("/api/tickets/:id/messages", async (req, res) => {
+    try {
+      const messages = await storage.getTicketMessages(req.params.id);
+      res.json(messages);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch ticket messages" });
+    }
+  });
+
+  app.post("/api/tickets/:id/messages", async (req, res) => {
+    try {
+      const validatedData = insertTicketMessageSchema.parse({
+        ...req.body,
+        ticketId: req.params.id,
+      });
+      const message = await storage.createTicketMessage(validatedData);
+      res.json(message);
+    } catch (error) {
+      res.status(400).json({ error: "Invalid message data" });
+    }
+  });
+
+  app.patch("/api/tickets/:id", async (req, res) => {
+    try {
+      const ticket = await storage.updateTicket(req.params.id, req.body);
+      res.json(ticket);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update ticket" });
+    }
+  });
+
+  app.post("/api/discord/send-panel", requireDashboardAuth, async (req, res) => {
+    try {
+      const { channelId } = req.body;
+      if (!channelId) {
+        return res.status(400).json({ error: "channelId is required" });
+      }
+      await sendTicketPanel(channelId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to send ticket panel" });
     }
   });
 

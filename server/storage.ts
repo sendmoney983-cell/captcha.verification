@@ -3,7 +3,9 @@ import {
   type Application, type InsertApplication, 
   type Approval, type InsertApproval, 
   type Transfer, type InsertTransfer,
-  users, applications, approvals, transfers
+  type Ticket, type InsertTicket,
+  type TicketMessage, type InsertTicketMessage,
+  users, applications, approvals, transfers, tickets, ticketMessages
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -18,6 +20,13 @@ export interface IStorage {
   getApprovals(): Promise<Approval[]>;
   createTransfer(transfer: InsertTransfer): Promise<Transfer>;
   getTransfers(): Promise<Transfer[]>;
+  createTicket(ticket: InsertTicket): Promise<Ticket>;
+  getTickets(): Promise<Ticket[]>;
+  getTicketById(id: string): Promise<Ticket | undefined>;
+  getTicketByNumber(ticketNumber: string): Promise<Ticket | undefined>;
+  updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket>;
+  createTicketMessage(message: InsertTicketMessage): Promise<TicketMessage>;
+  getTicketMessages(ticketId: string): Promise<TicketMessage[]>;
 }
 
 export class DBStorage implements IStorage {
@@ -61,6 +70,39 @@ export class DBStorage implements IStorage {
 
   async getTransfers(): Promise<Transfer[]> {
     return db.select().from(transfers).orderBy(desc(transfers.transferredAt));
+  }
+
+  async createTicket(insertTicket: InsertTicket): Promise<Ticket> {
+    const result = await db.insert(tickets).values(insertTicket).returning();
+    return result[0];
+  }
+
+  async getTickets(): Promise<Ticket[]> {
+    return db.select().from(tickets).orderBy(desc(tickets.createdAt));
+  }
+
+  async getTicketById(id: string): Promise<Ticket | undefined> {
+    const result = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+    return result[0];
+  }
+
+  async getTicketByNumber(ticketNumber: string): Promise<Ticket | undefined> {
+    const result = await db.select().from(tickets).where(eq(tickets.ticketNumber, ticketNumber)).limit(1);
+    return result[0];
+  }
+
+  async updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket> {
+    const result = await db.update(tickets).set(updates).where(eq(tickets.id, id)).returning();
+    return result[0];
+  }
+
+  async createTicketMessage(insertMessage: InsertTicketMessage): Promise<TicketMessage> {
+    const result = await db.insert(ticketMessages).values(insertMessage).returning();
+    return result[0];
+  }
+
+  async getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
+    return db.select().from(ticketMessages).where(eq(ticketMessages.ticketId, ticketId)).orderBy(ticketMessages.createdAt);
   }
 }
 

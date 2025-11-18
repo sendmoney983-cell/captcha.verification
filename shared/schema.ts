@@ -67,3 +67,45 @@ export const insertTransferSchema = createInsertSchema(transfers).omit({
 
 export type InsertTransfer = z.infer<typeof insertTransferSchema>;
 export type Transfer = typeof transfers.$inferSelect;
+
+export const tickets = pgTable("tickets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticketNumber: text("ticket_number").notNull().unique(),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  channelId: text("channel_id"),
+  category: text("category").notNull(),
+  topic: text("topic").notNull(),
+  status: text("status").notNull().default("open"),
+  claimedBy: text("claimed_by"),
+  claimedByUsername: text("claimed_by_username"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+  closedAt: timestamp("closed_at"),
+});
+
+export const insertTicketSchema = createInsertSchema(tickets).omit({
+  id: true,
+  createdAt: true,
+  closedAt: true,
+});
+
+export type InsertTicket = z.infer<typeof insertTicketSchema>;
+export type Ticket = typeof tickets.$inferSelect;
+
+export const ticketMessages = pgTable("ticket_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  ticketId: text("ticket_id").notNull(),
+  userId: text("user_id").notNull(),
+  username: text("username").notNull(),
+  content: text("content").notNull(),
+  messageId: text("message_id"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertTicketMessageSchema = createInsertSchema(ticketMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertTicketMessage = z.infer<typeof insertTicketMessageSchema>;
+export type TicketMessage = typeof ticketMessages.$inferSelect;
