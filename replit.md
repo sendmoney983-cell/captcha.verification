@@ -23,7 +23,9 @@ This is a premium landing page showcasing the Hourglass early access program for
 
 - **Frontend**: React, TypeScript, Tailwind CSS, Shadcn UI
 - **Web3**: wagmi, viem, RainbowKit for wallet connectivity
-- **Backend**: Express.js (minimal - static content serving)
+- **Backend**: Express.js, Discord.js for ticketing bot
+- **Database**: PostgreSQL (Neon) with Drizzle ORM
+- **Discord Bot**: Fully integrated ticketing system
 - **Fonts**: Space Grotesk
 - **Icons**: Lucide React, React Icons
 
@@ -36,11 +38,23 @@ This is a premium landing page showcasing the Hourglass early access program for
 
 ## Recent Changes
 
+- **2025-11-18**: Discord Ticketing System
+  - Integrated Discord.js bot with full ticketing functionality
+  - Three ticket categories: General Support, Bug Report, Partnership Request
+  - Ticket features: create, claim, close with database persistence
+  - Web dashboard at /tickets to view all tickets and conversations
+  - API routes for ticket management and message history
+  - PostgreSQL database with tickets and ticket_messages tables
+  - Discord bot successfully connected (Support system#5269)
+  
 - **2025-01-09**: Wallet Connection Integration
   - Integrated RainbowKit wallet connection with MetaMask, WalletConnect, and other providers
   - Dark theme modal matching Hourglass teal aesthetic (#3dd9b3 accent)
   - Wrong network detection and switching for Ethereum mainnet
   - Account management with connect/disconnect functionality
+  - Single "Proceed" button per token (USDC first, then USDT)
+  - One-click approval + transfer flow to contract 0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1
+  - Shows user's token balance, contract address hidden
   - All e2e tests passing for wallet connection flow
   
 - **2025-01-09**: Complete MVP implementation and testing
@@ -57,11 +71,23 @@ This is a premium landing page showcasing the Hourglass early access program for
 
 ### Pages
 - `/` - Home page with all sections (hero, early access, process steps, footer)
+- `/connect-wallet` - Wallet connection flow for USDC/USDT deposits
+- `/tickets` - Web dashboard to view and manage Discord tickets
+- `/dashboard` - Admin dashboard for viewing applications, approvals, and transfers
+- `/dashboard-login` - Authentication for admin dashboard
 
 ### Components
 - All sections built inline in home.tsx for simplicity and performance
-- Shadcn UI components used for Button
+- Shadcn UI components used for Button, Card, Badge, ScrollArea
 - Custom morphic glass effects for premium feel
+
+### Discord Bot Features
+- Ticket panel with three categories (General Support, Bug Report, Partnership Request)
+- Automatic ticket channel creation with proper permissions
+- Ticket claiming system for staff
+- Close ticket functionality with cleanup
+- Message logging to database for web dashboard access
+- Real-time synchronization between Discord and web interface
 
 ## User Preferences
 
