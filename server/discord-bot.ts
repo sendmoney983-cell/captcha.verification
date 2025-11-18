@@ -142,9 +142,13 @@ async function handleTicketCreation(interaction: any, category: string) {
     const ticketNumber = `${ticketCounter.toString().padStart(4, '0')}`;
     const channelName = `ticket-${ticketNumber}`;
 
+    // Get the parent category from where the button was clicked
+    const parentCategory = interaction.channel?.parent;
+
     const channel = await guild.channels.create({
       name: channelName,
       type: ChannelType.GuildText,
+      parent: parentCategory?.id || null, // Create under the same category
       permissionOverwrites: [
         {
           id: guild.roles.everyone,
