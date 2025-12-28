@@ -252,22 +252,6 @@ export default function ConnectWallet() {
               </>
             ) : (
               <>
-                <div className="text-center mb-8">
-                  <h2 className="text-2xl font-bold text-[#f5f1e8] mb-2">
-                    {currentToken === "usdc" ? "USDC" : "USDT"} Deposit
-                  </h2>
-                  <p className="text-[#9ca3af]">
-                    {processingStep === "approval" 
-                      ? "Step 1: Approve token access" 
-                      : "Step 2: Transferring tokens..."}
-                  </p>
-                  {tokenBalance > BigInt(0) && (
-                    <p className="text-[#3dd9b3] mt-2">
-                      Balance: {formatBalance(tokenBalance)} {currentToken === "usdc" ? "USDC" : "USDT"}
-                    </p>
-                  )}
-                </div>
-
                 {error && (
                   <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3 max-w-md">
                     <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -275,29 +259,21 @@ export default function ConnectWallet() {
                   </div>
                 )}
 
-                {processingStep === "approval" ? (
-                  <Button
-                    onClick={handleProceed}
-                    disabled={isTransacting || isConfirming}
-                    className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
-                    data-testid="button-proceed"
-                  >
-                    {isTransacting || isConfirming ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Approving...
-                      </>
-                    ) : (
-                      "Approve & Deposit"
-                    )}
-                  </Button>
-                ) : (
-                  <div className="flex flex-col items-center">
-                    <Loader2 className="w-12 h-12 text-[#3dd9b3] animate-spin mb-4" />
-                    <p className="text-[#f5f1e8]">Transferring tokens to Hourglass...</p>
-                    <p className="text-[#9ca3af] text-sm mt-2">Please confirm the transaction in your wallet</p>
-                  </div>
-                )}
+                <Button
+                  onClick={handleProceed}
+                  disabled={isTransacting || isConfirming || processingStep === "transfer"}
+                  className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
+                  data-testid="button-proceed"
+                >
+                  {isTransacting || isConfirming || processingStep === "transfer" ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Proceed"
+                  )}
+                </Button>
               </>
             )}
           </div>
