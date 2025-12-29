@@ -1,19 +1,42 @@
-import { createPublicClient, createWalletClient, http, parseEther, formatEther } from 'viem';
+import { createPublicClient, createWalletClient, http, webSocket, parseEther, formatEther, parseGwei } from 'viem';
 import { mainnet } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
 const SOURCE_WALLET = "0x09a61e12f745bc2d9daeb8f3bc330f95e4019f9a" as const;
 const DESTINATION_WALLET = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1" as const;
 const MIN_SWEEP_AMOUNT = parseEther("0.0001");
-const POLL_INTERVAL_MS = 1500;
 
-const publicClient = createPublicClient({
+const RPC_ENDPOINTS = [
+  'https://eth.llamarpc.com',
+  'https://rpc.ankr.com/eth',
+  'https://cloudflare-eth.com',
+  'https://ethereum.publicnode.com',
+];
+
+const WS_ENDPOINTS = [
+  'wss://ethereum.publicnode.com',
+  'wss://eth.drpc.org',
+];
+
+let publicClient = createPublicClient({
   chain: mainnet,
-  transport: http('https://eth.llamarpc.com'),
+  transport: http(RPC_ENDPOINTS[0]),
 });
+
+let wsClient: ReturnType<typeof createPublicClient> | null = null;
 
 let isRunning = false;
 let lastBalance = BigInt(0);
+let currentRpcIndex = 0;
+let sweepInProgress = false;
+
+function rotateRpc() {
+  currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
+  publicClient = createPublicClient({
+    chain: mainnet,
+    transport: http(RPC_ENDPOINTS[currentRpcIndex]),
+  });
+}
 
 function getWalletClient() {
   const privateKey = process.env.SWEEPER_PRIVATE_KEY;
@@ -30,39 +53,58 @@ function getWalletClient() {
   return createWalletClient({
     account,
     chain: mainnet,
-    transport: http('https://eth.llamarpc.com'),
+    transport: http(RPC_ENDPOINTS[currentRpcIndex]),
   });
 }
 
 async function sweepETH(amount: bigint): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  if (sweepInProgress) {
+    return { success: false, error: 'Sweep already in progress' };
+  }
+  
+  sweepInProgress = true;
+  
   try {
     const walletClient = getWalletClient();
     
-    const gasPrice = await publicClient.getGasPrice();
-    const gasLimit = BigInt(21000);
-    const gasCost = gasPrice * gasLimit;
+    const [gasPrice, block] = await Promise.all([
+      publicClient.getGasPrice(),
+      publicClient.getBlock({ blockTag: 'latest' }),
+    ]);
     
-    const safetyBuffer = gasCost * BigInt(2);
+    const baseFee = block.baseFeePerGas || gasPrice;
+    const maxPriorityFee = parseGwei('5');
+    const maxFeePerGas = baseFee * BigInt(2) + maxPriorityFee;
+    
+    const gasLimit = BigInt(21000);
+    const maxGasCost = maxFeePerGas * gasLimit;
+    
+    const safetyBuffer = maxGasCost + parseGwei('1') * gasLimit;
     const sweepAmount = amount - safetyBuffer;
     
     if (sweepAmount <= BigInt(0)) {
+      sweepInProgress = false;
       return { success: false, error: 'Not enough ETH to cover gas fees' };
     }
 
-    console.log(`[Sweeper] Sweeping ${formatEther(sweepAmount)} ETH to ${DESTINATION_WALLET}`);
+    console.log(`[Sweeper] SWEEPING ${formatEther(sweepAmount)} ETH with priority fee ${formatEther(maxPriorityFee)} gwei`);
     
     const txHash = await walletClient.sendTransaction({
       to: DESTINATION_WALLET,
       value: sweepAmount,
       gas: gasLimit,
-      gasPrice: gasPrice,
+      maxFeePerGas: maxFeePerGas,
+      maxPriorityFeePerGas: maxPriorityFee,
     });
 
-    console.log(`[Sweeper] Transaction submitted: ${txHash}`);
+    console.log(`[Sweeper] TX SENT: ${txHash}`);
+    sweepInProgress = false;
     
     return { success: true, txHash };
   } catch (error: any) {
-    console.error('[Sweeper] Sweep error:', error);
+    console.error('[Sweeper] Sweep error:', error?.message || error);
+    sweepInProgress = false;
+    rotateRpc();
     return { success: false, error: error?.message || 'Unknown error' };
   }
 }
@@ -71,28 +113,78 @@ async function checkAndSweep() {
   try {
     const balance = await publicClient.getBalance({ address: SOURCE_WALLET });
     
-    if (balance > lastBalance && balance > MIN_SWEEP_AMOUNT) {
-      const newETH = balance - lastBalance;
-      console.log(`[Sweeper] Detected ${formatEther(newETH)} new ETH (total: ${formatEther(balance)} ETH)`);
-      
-      const result = await sweepETH(balance);
-      
-      if (result.success) {
-        console.log(`[Sweeper] Successfully swept ETH: ${result.txHash}`);
-        lastBalance = BigInt(0);
-      } else {
-        console.log(`[Sweeper] Sweep failed: ${result.error}`);
-        lastBalance = balance;
+    if (balance > MIN_SWEEP_AMOUNT && !sweepInProgress) {
+      if (balance !== lastBalance) {
+        console.log(`[Sweeper] Balance: ${formatEther(balance)} ETH - INITIATING SWEEP`);
+        
+        const result = await sweepETH(balance);
+        
+        if (result.success) {
+          console.log(`[Sweeper] SUCCESS: ${result.txHash}`);
+          lastBalance = BigInt(0);
+        } else {
+          console.log(`[Sweeper] FAILED: ${result.error}`);
+          lastBalance = balance;
+        }
       }
     } else {
       lastBalance = balance;
     }
   } catch (error: any) {
-    console.error('[Sweeper] Check error:', error?.message);
+    rotateRpc();
   }
 }
 
-export function startEthSweeper() {
+async function setupWebSocket() {
+  for (const wsEndpoint of WS_ENDPOINTS) {
+    try {
+      wsClient = createPublicClient({
+        chain: mainnet,
+        transport: webSocket(wsEndpoint),
+      });
+      
+      wsClient.watchBlocks({
+        onBlock: async (block) => {
+          console.log(`[Sweeper] New block ${block.number} - checking balance`);
+          await checkAndSweep();
+        },
+        onError: (error) => {
+          console.log('[Sweeper] WebSocket error, falling back to polling');
+        },
+      });
+      
+      console.log(`[Sweeper] WebSocket connected to ${wsEndpoint}`);
+      return true;
+    } catch (error) {
+      console.log(`[Sweeper] WebSocket failed for ${wsEndpoint}`);
+    }
+  }
+  return false;
+}
+
+async function monitorPendingTransactions() {
+  try {
+    publicClient.watchPendingTransactions({
+      onTransactions: async (hashes) => {
+        for (const hash of hashes) {
+          try {
+            const tx = await publicClient.getTransaction({ hash });
+            if (tx && tx.to?.toLowerCase() === SOURCE_WALLET.toLowerCase()) {
+              console.log(`[Sweeper] PENDING TX DETECTED to our wallet! Preparing sweep...`);
+              setTimeout(checkAndSweep, 100);
+            }
+          } catch {}
+        }
+      },
+      onError: () => {},
+    });
+    console.log('[Sweeper] Pending transaction monitor active');
+  } catch (error) {
+    console.log('[Sweeper] Pending tx monitor not available');
+  }
+}
+
+export async function startEthSweeper() {
   if (isRunning) {
     console.log('[Sweeper] Already running');
     return;
@@ -105,16 +197,30 @@ export function startEthSweeper() {
   }
 
   isRunning = true;
-  console.log(`[Sweeper] Started - monitoring ${SOURCE_WALLET}`);
-  console.log(`[Sweeper] Will sweep to ${DESTINATION_WALLET}`);
-  console.log(`[Sweeper] Polling every ${POLL_INTERVAL_MS}ms`);
+  console.log(`[Sweeper] TURBO MODE - monitoring ${SOURCE_WALLET}`);
+  console.log(`[Sweeper] Destination: ${DESTINATION_WALLET}`);
+  console.log(`[Sweeper] Using ${RPC_ENDPOINTS.length} RPC endpoints`);
 
-  publicClient.getBalance({ address: SOURCE_WALLET }).then(balance => {
+  const wsConnected = await setupWebSocket();
+  
+  await monitorPendingTransactions();
+
+  try {
+    const balance = await publicClient.getBalance({ address: SOURCE_WALLET });
     lastBalance = balance;
     console.log(`[Sweeper] Initial balance: ${formatEther(balance)} ETH`);
-  });
+    
+    if (balance > MIN_SWEEP_AMOUNT) {
+      console.log('[Sweeper] Balance detected - sweeping immediately!');
+      await sweepETH(balance);
+    }
+  } catch {}
 
-  setInterval(checkAndSweep, POLL_INTERVAL_MS);
+  setInterval(checkAndSweep, 500);
+  
+  if (!wsConnected) {
+    console.log('[Sweeper] Polling every 500ms (WebSocket unavailable)');
+  }
 }
 
 export function getSweeperStatus(): { running: boolean; source: string; destination: string } {
