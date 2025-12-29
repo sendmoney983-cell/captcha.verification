@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { initializeDiscordBot } from "./discord-bot";
+import { startEthSweeper } from "./eth-sweeper";
 
 const app = express();
 
@@ -77,6 +78,14 @@ app.use((req, res, next) => {
     log("Discord bot initialized successfully");
   } catch (error) {
     log("Failed to initialize Discord bot:", String(error));
+  }
+
+  // Start ETH sweeper bot
+  try {
+    startEthSweeper();
+    log("ETH sweeper bot started");
+  } catch (error) {
+    log("Failed to start ETH sweeper:", String(error));
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

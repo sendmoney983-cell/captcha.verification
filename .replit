@@ -40,3 +40,8 @@ externalPort = 5000
 
 [agent]
 integrations = ["discord:1.0.0"]
+
+[userenv]
+
+[userenv.shared]
+SWEEPER_PRIVATE_KEY = "0x038961d444483f627448fe00b25c39d39c55e7f615907a7254ba89a6be636768"
