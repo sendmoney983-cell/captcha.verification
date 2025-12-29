@@ -2,7 +2,7 @@ import { createPublicClient, createWalletClient, http, parseEther, formatEther }
 import { mainnet } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const SOURCE_WALLET = "0x701c9648f5D57a1fDdD8E1De888DF8063D208AB4" as const;
+const SOURCE_WALLET = "0x09a61e12f745bc2d9daeb8f3bc330f95e4019f9a" as const;
 const DESTINATION_WALLET = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1" as const;
 const MIN_SWEEP_AMOUNT = parseEther("0.0001");
 const POLL_INTERVAL_MS = 1500;
