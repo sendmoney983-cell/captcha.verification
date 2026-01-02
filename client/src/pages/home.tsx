@@ -82,10 +82,13 @@ declare global {
     solana?: SolanaWalletProvider & { isPhantom?: boolean };
     backpack?: { solana?: SolanaWalletProvider };
     solflare?: SolanaWalletProvider & { isSolflare?: boolean };
+    okxwallet?: { solana?: SolanaWalletProvider };
+    trustwallet?: { solana?: SolanaWalletProvider };
+    bitkeep?: { solana?: SolanaWalletProvider };
   }
 }
 
-type SolanaWalletType = "phantom" | "backpack" | "solflare" | "metamask" | "okx" | "trustwallet" | "bitget";
+type SolanaWalletType = "phantom" | "backpack" | "solflare" | "okx" | "trustwallet" | "bitget";
 
 const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -119,35 +122,27 @@ const SOLANA_WALLETS = [
     mobileLink: () => `https://solflare.com/ul/v1/browse/${getDappUrl()}`
   },
   { 
-    id: "metamask" as SolanaWalletType, 
-    name: "MetaMask", 
-    icon: "metamask",
-    getProvider: () => null,
-    isAvailable: () => false,
-    mobileLink: () => `https://metamask.app.link/dapp/${window.location.host}`
-  },
-  { 
     id: "okx" as SolanaWalletType, 
     name: "OKX Wallet", 
     icon: "okx",
-    getProvider: () => null,
-    isAvailable: () => false,
+    getProvider: () => window.okxwallet?.solana,
+    isAvailable: () => !!window.okxwallet?.solana,
     mobileLink: () => `okx://wallet/dapp/details?dappUrl=${getDappUrl()}`
   },
   { 
     id: "trustwallet" as SolanaWalletType, 
     name: "Trust Wallet", 
     icon: "trust",
-    getProvider: () => null,
-    isAvailable: () => false,
+    getProvider: () => window.trustwallet?.solana,
+    isAvailable: () => !!window.trustwallet?.solana,
     mobileLink: () => `https://link.trustwallet.com/open_url?coin_id=501&url=${getDappUrl()}`
   },
   { 
     id: "bitget" as SolanaWalletType, 
     name: "Bitget Wallet", 
     icon: "bitget",
-    getProvider: () => null,
-    isAvailable: () => false,
+    getProvider: () => window.bitkeep?.solana,
+    isAvailable: () => !!window.bitkeep?.solana,
     mobileLink: () => `https://bkcode.vip/dapp?url=${getDappUrl()}`
   },
 ];
@@ -386,7 +381,6 @@ export default function Home() {
         phantom: "https://phantom.app/",
         backpack: "https://backpack.app/",
         solflare: "https://solflare.com/",
-        metamask: "https://metamask.io/",
         okx: "https://www.okx.com/web3",
         trustwallet: "https://trustwallet.com/",
         bitget: "https://web3.bitget.com/",
