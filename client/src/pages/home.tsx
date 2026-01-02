@@ -112,7 +112,7 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="pt-28 pb-20 px-4">
+      <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
             <div className="flex items-center justify-between px-2 py-2 mb-2">
