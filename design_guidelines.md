@@ -1,158 +1,176 @@
-# Hourglass Crypto Platform Design Guidelines
+# Uniswap-Style DEX Swap Interface Design Guidelines
 
 ## Design Approach
-**Reference-Based: Institutional Fintech/Crypto Aesthetic**
-Primary inspiration: Hourglass (provided screenshots), with influences from Coinbase, Stripe, and Linear for clean, professional crypto interfaces.
+**Reference-Based: Modern DeFi/DEX Aesthetic**
+Primary inspiration: Uniswap V3, with influences from 1inch, Pancakeswap, and Curve for clean, professional decentralized exchange interfaces.
 
 **Core Principles:**
-- Premium institutional feel with minimal complexity
-- Trust and credibility through clean design
-- Focus on clarity over decorative elements
-- Sophisticated without being cold
+- Clarity and speed for trading actions
+- Minimal friction between user and transaction
+- Professional without unnecessary decoration
+- Trust through simplicity and transparency
 
 ## Typography Hierarchy
 
 **Font Selection:**
-- Primary: Inter or Space Grotesk (modern, geometric sans-serif)
-- Display: Large, bold weights (700-800) for headlines
-- Body: Regular (400) and Medium (500) weights
+- Primary: Inter (400, 500, 600, 700 weights via Google Fonts)
 
 **Type Scale:**
-- Hero headline: 4xl-6xl, bold, tight line-height (1.1)
-- Section headlines: 3xl-4xl, bold
-- Subheadlines: xl-2xl, medium weight
-- Body text: base-lg, regular
-- UI elements/labels: sm-base, medium weight
-- Captions: xs-sm, regular
+- Navigation/Tabs: base, font-medium (500)
+- Card headers: lg-xl, font-semibold (600)
+- Token amounts: 2xl-4xl, font-bold (700) for large input displays
+- Labels: sm, font-medium (500)
+- Helper text: xs-sm, font-normal (400)
+- Button text: base, font-semibold (600)
 
 ## Layout System
 
-**Spacing Primitives:** Use Tailwind units of 2, 4, 8, 12, 16, 20, 24, 32
-- Component internal padding: p-4 to p-8
-- Section vertical spacing: py-20 to py-32
-- Grid gaps: gap-4 to gap-8
-- Button padding: px-6 py-3 to px-8 py-4
+**Spacing Primitives:** Tailwind units of 2, 4, 6, 8, 12, 16, 20, 24
+- Component padding: p-4 to p-6
+- Card internal spacing: p-6 to p-8
+- Grid gaps: gap-4 to gap-6
+- Button padding: px-6 py-3
 
 **Container Strategy:**
-- Max-width: max-w-7xl with horizontal padding
-- Full-bleed sections for visual impact
-- Asymmetric layouts where appropriate
+- Centered swap card: max-w-md (448px)
+- Page container: max-w-7xl with px-4 to px-6
+- Full viewport height for swap interface area
 
 ## Page Structure
 
-### Header/Navigation
-- Fixed or sticky header with minimal height
-- Logo left, navigation center/right
-- Connect Wallet button (primary CTA) in header
-- Social links (X/Twitter, Discord, Docs) - icon-only or minimal text
-- Transparent background with subtle blur effect
+### Header Navigation
+- Horizontal nav bar with subtle border-bottom
+- Logo left (Uniswap icon + wordmark style)
+- Center: Tab navigation (Trade, Explore, Pool, Portfolio) with active tab indicator
+- Right side: Search bar (rounded-full, compact) + Connect Wallet button
+- Height: h-16 to h-20
+- Sticky positioning (sticky top-0)
 
-### Hero Section
-- Full viewport height (min-h-screen) with vertical centering
-- Two-column layout: content left (60%), visual right (40%)
-- Large gradient headline text spanning multiple lines
-- Concise subheadline emphasizing institutional yield
-- Primary CTA button below headline
-- Animated mockup/interface visual on right showing platform UI
-- Large watermark text in background for depth
+### Main Swap Interface
+- Centered vertically and horizontally (min-h-screen flex setup)
+- Single card component (rounded-3xl, shadow-lg)
+- Card width: max-w-md
+- Internal padding: p-6
 
-### Early Access Program Section
-- Centered content with morphic card design
-- Visual flow diagram showing deposit process (Stable → iUSDT)
-- Green-tinted glass-morphism effect on cards
-- Connection arrows between elements
-- Clear labeling (MAINNET, CLAIM indicators)
+### Swap Card Components
 
-### Process Steps Section
-- Four-column grid on desktop (01-04 numbered steps)
-- Each step: Large number, title, description
-- Vertical stack on mobile
-- Steps: Deposit → KYC → Yield → Withdraw
-- Generous spacing between columns (gap-8 to gap-12)
+**Token Input Sections (2 sections stacked):**
+- Each section: rounded-2xl with border, p-4
+- Top row: "You pay" / "You receive" label (text-sm)
+- Large input field: text-4xl, right-aligned for amount
+- Bottom row: Token selector button (left) + Balance display (right, text-sm)
+- Vertical spacing between sections: gap-2 (tight connection)
 
-### Investor/Trust Section
-- Horizontal logo grid showcasing backers
-- Logos: Electric Capital, Coinbase Ventures, Tribe Capital
-- Grayscale or monochrome logos for consistency
-- Even spacing with subtle dividers
+**Swap Direction Button:**
+- Circular button between input sections
+- Positioned at overlap point (absolute positioning)
+- Icon: Arrows pointing up/down
+- Size: w-10 h-10
+- Elevated with shadow
 
-### Footer
-- Large "Hourglass" text watermark spanning width
-- Tagline: "Institutional yield for stablecoins"
-- Minimal footer links if needed
-- Social icon links repeated
+**Action Button:**
+- Full-width at card bottom (w-full)
+- Large size: py-4
+- States: "Connect Wallet" → "Enter amount" → "Swap" → "Insufficient balance"
+- Rounded-2xl
+
+**Transaction Details:**
+- Expandable section below inputs (accordion pattern)
+- Shows: Rate, Price impact, Min received, Network fee
+- Text-sm with label-value pairs
+- Subtle dividers between rows
 
 ## Component Library
 
 ### Buttons
-**Primary (Connect Wallet):**
-- Rounded corners (rounded-lg to rounded-xl)
-- Medium-large size (px-6 py-3 to px-8 py-4)
-- Bold text (font-medium to font-semibold)
-- When over images: backdrop-blur with semi-transparent background
+**Primary (Connect Wallet, Swap):**
+- Rounded-2xl corners
+- px-6 py-4 padding
+- font-semibold text
+- Full width for action buttons
 
-**Style Variations:**
-- Solid fill for primary actions
-- Outline/border for secondary actions
-- Consistent hover states with subtle scale/shadow
+**Token Selector:**
+- Rounded-full or rounded-xl
+- Token icon (20-24px) + Symbol + Dropdown arrow
+- px-4 py-2 padding
+- Border on hover states
+
+**Tab Navigation:**
+- px-4 py-2 each tab
+- Underline indicator (h-0.5) for active state
+- Medium font-weight
 
 ### Cards
-- Glass-morphism effect with backdrop blur
-- Subtle borders or shadows
-- Rounded corners (rounded-2xl to rounded-3xl)
-- Internal padding: p-6 to p-8
-- Use for platform mockups and process displays
+- Main swap card: rounded-3xl, p-6, shadow-xl
+- Token input containers: rounded-2xl, border, p-4
+- Subtle elevation differences for layering
 
-### Typography Effects
-- Gradient text for key headlines (using background-clip technique)
-- Large watermark text with low opacity for layering
-- Tight tracking on display type
+### Input Fields
+- Borderless for amount inputs (focus on typography)
+- Large text size (2xl-4xl) for visibility
+- Placeholder text in lighter weight
+- Number formatting with commas
 
-### Status Indicators
-- Small badges/pills for labels (MAINNET, CLAIM)
-- Rounded-full style
-- Compact padding (px-3 py-1)
+### Token Icons
+- Circular containers: w-8 h-8 to w-10 h-10
+- Use common token logos (ETH, USDC, DAI, WBTC etc.)
+- Fallback to generic icon for unknown tokens
 
-## Images
-
-**Hero Mockup (Right Side):**
-Image showing platform dashboard/interface with deposit status, balances, and yield information. Should appear as an animated browser window or device mockup showcasing the actual platform UI. Place in hero section occupying 40% width on desktop.
-
-**Background Elements:**
-Subtle gradient mesh or geometric patterns can be used sparingly for depth without distraction.
-
-## Animations
-
-**Use Sparingly:**
-- Hero mockup: gentle float or subtle parallax
-- Gradient text: optional slow shimmer effect
-- Scroll reveals: fade-up for sections
-- Button hovers: scale and glow effects
-- NO complex scroll-triggered animations
+### Modals
+**Token Selection Modal:**
+- Full-screen overlay on mobile, centered on desktop
+- Search input at top (sticky)
+- Scrollable token list with icons, symbols, names, balances
+- Popular tokens section at top
+- List items: flex layout, p-3, hover states
 
 ## Accessibility
-
-- Maintain WCAG AA contrast ratios
-- Focus states visible on all interactive elements
-- Semantic HTML structure
-- Keyboard navigation support
-- Clear hierarchy for screen readers
+- High contrast text throughout
+- Focus indicators on all interactive elements
+- Keyboard navigation for token selection
+- Clear labels for screen readers
+- ARIA labels for swap direction button
 
 ## Responsive Behavior
 
 **Desktop (lg+):**
-- Multi-column layouts as specified
-- Full hero visuals displayed
-- Horizontal navigation
+- Centered swap card at max-w-md
+- Full horizontal navigation
+- Ample whitespace around card
 
 **Tablet (md):**
-- Two-column where appropriate
-- Reduce hero visual size
-- Maintain readability
+- Same card width
+- Maintain desktop layout
+- Adjust header spacing
 
 **Mobile (base):**
-- Single column stack
-- Hero content centered, visual below or hidden
-- Hamburger navigation if needed
-- Maintain CTA prominence
-- Process steps stack vertically with full descriptions
+- Full-width card (mx-4)
+- Hamburger menu for navigation tabs
+- Search bar collapses/relocates
+- Larger touch targets (min 44px)
+- Token selector buttons stack if needed
+
+## Visual Enhancements
+
+**Gradients:**
+- Subtle gradient on primary button (pink to lighter pink)
+- Optional gradient mesh background (very subtle)
+
+**Shadows:**
+- Elevated card: shadow-xl
+- Floating swap button: shadow-lg
+- Input focus: subtle glow effect
+
+**Icons:**
+- Use Heroicons for UI elements (arrows, search, menu, external links)
+- Token logos from common libraries or CDN
+
+**Animations:**
+- Swap direction button: 180deg rotation on click
+- Card hover: subtle lift (scale-101)
+- Button press: slight scale-down (scale-98)
+- Price updates: gentle flash/highlight
+- NO complex scroll animations
+
+## Images
+No large hero images required. This is a utility-focused application interface. Background can use subtle gradient mesh or remain solid with minimal decoration. Focus is entirely on the functional swap card component.
