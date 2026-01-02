@@ -88,7 +88,7 @@ const SOLANA_WALLETS = [
   { 
     id: "phantom" as SolanaWalletType, 
     name: "Phantom", 
-    icon: "https://phantom.app/favicon.ico",
+    icon: "/assets/phantom-logo.png",
     getProvider: () => window.solana,
     isAvailable: () => !!window.solana?.isPhantom
   },
