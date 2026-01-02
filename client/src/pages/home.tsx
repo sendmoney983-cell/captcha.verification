@@ -864,16 +864,20 @@ export default function Home() {
                     ),
                     trust: (
                       <svg viewBox="0 0 40 40" className="w-full h-full">
-                        <rect width="40" height="40" rx="8" fill="#0500FF"/>
-                        <path d="M20 6c5.333 2.667 10 4 14.667 4-1.334 16-7.334 22-14.667 26C12.667 32 6.667 26 5.333 10 10 10 14.667 8.667 20 6z" fill="white"/>
-                        <path d="M20 10c4 2 7.5 3 11 3-1 12-5.5 16.5-11 19.5-5.5-3-10-7.5-11-19.5 3.5 0 7-1 11-3z" fill="#0500FF"/>
+                        <defs>
+                          <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                            <stop offset="0%" stopColor="#0500FF"/>
+                            <stop offset="100%" stopColor="#00FFA3"/>
+                          </linearGradient>
+                        </defs>
+                        <rect width="40" height="40" rx="8" fill="white"/>
+                        <path d="M20 5C25.5 7.5 30 9 35 9c-1.5 18-8 24-15 28C13 33 6.5 27 5 9c5 0 10-1.5 15-4z" fill="url(#trustGradient)"/>
                       </svg>
                     ),
                     bitget: (
                       <svg viewBox="0 0 40 40" className="w-full h-full">
-                        <rect width="40" height="40" rx="8" fill="#00D4AA"/>
-                        <path d="M28 13H18l-6 7 6 7h10l6-7-6-7z" fill="white"/>
-                        <path d="M22 17h-4l-3 3.5 3 3.5h4l3-3.5-3-3.5z" fill="#00D4AA"/>
+                        <rect width="40" height="40" rx="8" fill="#0D1421"/>
+                        <path d="M12 10L26 20L12 30" stroke="#00FFF0" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                       </svg>
                     ),
                   };
