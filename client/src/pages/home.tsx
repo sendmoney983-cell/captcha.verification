@@ -830,123 +830,25 @@ export default function Home() {
             </div>
             
             {walletModalTab === "evm" ? (
-              <div className="space-y-3 overflow-y-auto flex-1">
+              <div className="flex flex-col items-center justify-center py-8">
                 <div className="flex items-center gap-2 mb-4">
-                  <TokenIcon symbol="ETH" size={20} />
-                  <span className="text-gray-500 text-sm">EVM Wallets</span>
+                  <TokenIcon symbol="ETH" size={24} />
+                  <span className="text-gray-700 font-medium">EVM Networks</span>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { id: "metamask", name: "MetaMask", icon: "metamask" },
-                    { id: "okx", name: "OKX Wallet", icon: "okx" },
-                    { id: "binance", name: "Binance Wallet", icon: "binance" },
-                    { id: "rabby", name: "Rabby Wallet", icon: "rabby" },
-                    { id: "tokenpocket", name: "TokenPocket", icon: "tokenpocket" },
-                    { id: "bitget", name: "Bitget Wallet", icon: "/assets/bitget-logo.png" },
-                    { id: "trust", name: "Trust Wallet", icon: "/assets/trustwallet-logo.png" },
-                    { id: "imtoken", name: "imToken", icon: "imtoken" },
-                    { id: "coinbase", name: "Coinbase", icon: "coinbase" },
-                    { id: "coin98", name: "Coin98 Wallet", icon: "coin98" },
-                    { id: "walletconnect", name: "WalletConnect", icon: "walletconnect" },
-                    { id: "zerion", name: "Zerion", icon: "zerion" },
-                  ].map((wallet) => {
-                    const renderEvmIcon = () => {
-                      if (wallet.icon.startsWith('/')) {
-                        return <img src={wallet.icon} alt={wallet.name} className="w-full h-full object-cover rounded-lg" />;
-                      }
-                      const evmIcons: Record<string, JSX.Element> = {
-                        metamask: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#F6851B"/>
-                            <path d="M29 12l-7.5 5.5 1.4-3.3L29 12z" fill="#E2761B"/>
-                            <path d="M11 12l7.4 5.6-1.3-3.4L11 12zm14 14.5l-2 3 4.3 1.2 1.2-4.2h-3.5zM12.5 26.5l1.2 4.2 4.3-1.2-2-3h-3.5z" fill="#E4761B"/>
-                          </svg>
-                        ),
-                        okx: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="black"/>
-                            <rect x="12" y="12" width="7" height="7" fill="white"/>
-                            <rect x="21" y="12" width="7" height="7" fill="white"/>
-                            <rect x="12" y="21" width="7" height="7" fill="white"/>
-                            <rect x="21" y="21" width="7" height="7" fill="white"/>
-                          </svg>
-                        ),
-                        binance: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#F3BA2F"/>
-                            <path d="M20 10l3 3-3 3-3-3 3-3zm-7 7l3 3-3 3-3-3 3-3zm14 0l3 3-3 3-3-3 3-3zm-7 7l3 3-3 3-3-3 3-3z" fill="white"/>
-                          </svg>
-                        ),
-                        rabby: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#8697FF"/>
-                            <ellipse cx="20" cy="22" rx="10" ry="8" fill="white"/>
-                            <circle cx="16" cy="20" r="2" fill="#8697FF"/>
-                            <circle cx="24" cy="20" r="2" fill="#8697FF"/>
-                          </svg>
-                        ),
-                        tokenpocket: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#2980FE"/>
-                            <text x="10" y="27" fontSize="16" fontWeight="bold" fill="white">TP</text>
-                          </svg>
-                        ),
-                        imtoken: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#11C4D1"/>
-                            <circle cx="20" cy="20" r="10" fill="white"/>
-                            <circle cx="20" cy="20" r="6" fill="#11C4D1"/>
-                          </svg>
-                        ),
-                        coinbase: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#0052FF"/>
-                            <circle cx="20" cy="20" r="12" fill="white"/>
-                            <rect x="16" y="16" width="8" height="8" rx="2" fill="#0052FF"/>
-                          </svg>
-                        ),
-                        coin98: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#D9B432"/>
-                            <text x="10" y="27" fontSize="14" fontWeight="bold" fill="white">98</text>
-                          </svg>
-                        ),
-                        walletconnect: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#3B99FC"/>
-                            <path d="M13 17c4-4 10-4 14 0l1 1-1 1-1-1c-3-3-8-3-11 0l-1 1-1-1 1-1zm17 5l-2 2-3-3 2-2 3 3zm-20 0l3-3 2 2-3 3-2-2z" fill="white"/>
-                          </svg>
-                        ),
-                        zerion: (
-                          <svg viewBox="0 0 40 40" className="w-full h-full">
-                            <rect width="40" height="40" rx="8" fill="#2962EF"/>
-                            <path d="M12 28V12h16l-8 8 8 8H12z" fill="white"/>
-                          </svg>
-                        ),
-                      };
-                      return evmIcons[wallet.icon] || <div className="w-full h-full bg-gray-200 rounded-lg" />;
-                    };
-                    return (
-                      <button
-                        key={wallet.id}
-                        onClick={() => {
-                          setShowUnifiedWalletModal(false);
-                          setNetworkType("evm");
-                          setSellToken(TOKENS[0]);
-                          setBuyToken(null);
-                          openConnectModal?.();
-                        }}
-                        className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 hover:bg-gray-100 border border-gray-200 transition-all"
-                        data-testid={`evm-wallet-${wallet.id}`}
-                      >
-                        <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
-                          {renderEvmIcon()}
-                        </div>
-                        <span className="text-gray-900 font-medium text-sm">{wallet.name}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                <p className="text-gray-500 text-sm mb-6 text-center">Connect with Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, or Base</p>
+                <button
+                  onClick={() => {
+                    setShowUnifiedWalletModal(false);
+                    setNetworkType("evm");
+                    setSellToken(TOKENS[0]);
+                    setBuyToken(null);
+                    openConnectModal?.();
+                  }}
+                  className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-8 py-3 rounded-xl font-semibold"
+                  data-testid="button-open-evm-modal"
+                >
+                  Select Wallet
+                </button>
               </div>
             ) : (
               <div className="space-y-3 overflow-y-auto flex-1">
