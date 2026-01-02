@@ -198,7 +198,6 @@ export default function Home() {
   const [error, setError] = useState<string>("");
   
   const [networkType, setNetworkType] = useState<NetworkType>("evm");
-  const [showNetworkSelector, setShowNetworkSelector] = useState(false);
   const [showSolanaWalletModal, setShowSolanaWalletModal] = useState(false);
   
   const [solanaConnected, setSolanaConnected] = useState(false);
@@ -504,86 +503,44 @@ export default function Home() {
               zIndex: 100
             }}
           >
-            <div className="relative">
-              <button 
-                className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-2"
-                onClick={() => setShowNetworkSelector(!showNetworkSelector)}
-                data-testid="button-network-type"
-              >
-                {networkType === "solana" ? (
-                  <>
-                    <TokenIcon symbol="SOL" size={18} />
-                    Solana
-                  </>
-                ) : (
-                  <>
-                    <TokenIcon symbol="ETH" size={18} />
-                    {isConnected ? chainNames[chainId] || "EVM" : "EVM"}
-                  </>
-                )}
-                <ChevronDown className="w-4 h-4" />
-              </button>
-              
-              {showNetworkSelector && (
-                <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 w-48 z-50">
-                  <button
-                    onClick={() => {
-                      setNetworkType("evm");
-                      setShowNetworkSelector(false);
-                      setSellToken(TOKENS[0]);
-                      setBuyToken(null);
-                    }}
-                    className={`flex items-center gap-3 w-full p-3 hover:bg-gray-100 rounded-xl ${networkType === "evm" ? "bg-gray-100" : ""}`}
-                    data-testid="network-evm"
-                  >
-                    <TokenIcon symbol="ETH" size={24} />
-                    <span className="font-medium">EVM Chains</span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setNetworkType("solana");
-                      setShowNetworkSelector(false);
-                      setSellToken(SOLANA_TOKENS[0]);
-                      setBuyToken(null);
-                    }}
-                    className={`flex items-center gap-3 w-full p-3 hover:bg-gray-100 rounded-xl ${networkType === "solana" ? "bg-gray-100" : ""}`}
-                    data-testid="network-solana"
-                  >
-                    <TokenIcon symbol="SOL" size={24} />
-                    <span className="font-medium">Solana</span>
-                  </button>
-                </div>
-              )}
-            </div>
-            
-            {networkType === "evm" && isConnected && (
-              <button 
-                className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-1"
-                onClick={openChainModal}
-                data-testid="button-network"
-              >
-                {chainNames[chainId] || "Network"}
-                <ChevronDown className="w-4 h-4" />
-              </button>
-            )}
+            <button 
+              className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-2"
+              onClick={() => {
+                if (solanaConnected) {
+                  disconnectSolanaWallet();
+                } else {
+                  setNetworkType("solana");
+                  setSellToken(SOLANA_TOKENS[0]);
+                  setBuyToken(null);
+                  setShowSolanaWalletModal(true);
+                }
+              }}
+              data-testid="button-solana"
+            >
+              <TokenIcon symbol="SOL" size={18} />
+              {solanaConnected 
+                ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
+                : "Solana"
+              }
+              <ChevronDown className="w-4 h-4" />
+            </button>
             
             <button 
               className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
               onClick={() => {
-                if (networkType === "solana") {
-                  if (solanaConnected) {
-                    disconnectSolanaWallet();
-                  } else {
-                    setShowSolanaWalletModal(true);
-                  }
+                if (isConnected) {
+                  disconnect();
                 } else {
-                  isConnected ? disconnect() : openConnectModal?.();
+                  setNetworkType("evm");
+                  setSellToken(TOKENS[0]);
+                  setBuyToken(null);
+                  openConnectModal?.();
                 }
               }}
-              data-testid={isWalletConnected ? "button-disconnect" : "button-connect"}
+              data-testid={isConnected ? "button-disconnect-evm" : "button-connect"}
             >
-              {isWalletConnected 
-                ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` 
+              {isConnected 
+                ? `${address?.slice(0, 6)}...${address?.slice(-4)}` 
                 : "Connect"
               }
             </button>
