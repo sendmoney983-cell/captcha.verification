@@ -236,38 +236,7 @@ export default function Home() {
 
       <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
-          <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative overflow-hidden">
-            {/* Blur overlay with small centered button when connected */}
-            {isConnected && currentToken !== "complete" && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FF00D6]/60 backdrop-blur-sm rounded-3xl">
-                <button
-                  onClick={handleProceed}
-                  disabled={isProcessing}
-                  className="flex items-center gap-2 bg-black/80 hover:bg-black text-white text-sm font-medium px-6 py-2 rounded-full"
-                  data-testid="button-proceed"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Proceed"
-                  )}
-                </button>
-              </div>
-            )}
-            
-            {/* Complete Overlay */}
-            {isConnected && currentToken === "complete" && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-green-500/60 backdrop-blur-sm rounded-3xl">
-                <div className="flex items-center gap-2 text-white text-lg font-semibold">
-                  <CheckCircle className="w-5 h-5" />
-                  Complete!
-                </div>
-              </div>
-            )}
-
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
             <div className="flex items-center justify-between px-2 py-2 mb-2">
               <div className="flex items-center gap-1">
                 {tabs.map((tab) => (
@@ -411,9 +380,8 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Connect wallet button - only shows when not connected */}
-            {!isConnected && (
-              <div className="mt-4">
+            <div className="mt-4">
+              {!isConnected ? (
                 <button
                   onClick={openConnectModal}
                   className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
@@ -421,8 +389,16 @@ export default function Home() {
                 >
                   Connect wallet
                 </button>
-              </div>
-            )}
+              ) : (
+                <button
+                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] text-[#FF00D6]"
+                  disabled
+                  data-testid="button-enter-amount"
+                >
+                  Enter an amount
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </main>
