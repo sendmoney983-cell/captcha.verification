@@ -3,7 +3,7 @@ import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'wagm
 
 export const config = getDefaultConfig({
   appName: 'Uniswap',
-  projectId: 'e567c2ad31ee5e65d8ed972b0b289b76',
+  projectId: '926c47d6160390596708a71dff368a42',
   chains: [mainnet, bsc, polygon, arbitrum, optimism, avalanche, base],
   ssr: false,
 });
