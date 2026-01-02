@@ -90,6 +90,16 @@ export default function Home() {
             className="w-full h-auto"
             data-testid="img-header"
           />
+          <div 
+            className="absolute bg-white"
+            style={{ 
+              top: '50%', 
+              right: '0',
+              width: '120px',
+              height: '50%',
+              zIndex: 99
+            }}
+          />
           <button 
             className="absolute cursor-pointer border-0 outline-none bg-[#FC72FF] hover:bg-[#e865e8] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
             style={{ 
