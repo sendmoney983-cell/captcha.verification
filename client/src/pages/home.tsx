@@ -112,7 +112,7 @@ export default function Home() {
         </div>
       </div>
 
-      <main className="pt-24 pb-20 px-4">
+      <main className="pt-28 pb-20 px-4">
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
             <div className="flex items-center justify-between px-2 py-2 mb-2">
@@ -282,8 +282,8 @@ export default function Home() {
       </main>
 
       <div className="fixed bottom-4 left-4">
-        <button className="p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted" data-testid="button-help">
-          <span className="text-lg">?</span>
+        <button className="w-8 h-8 bg-black rounded-full flex items-center justify-center hover:bg-gray-800" data-testid="button-help">
+          <span className="text-white text-sm font-medium">?</span>
         </button>
       </div>
     </div>
