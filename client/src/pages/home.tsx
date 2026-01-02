@@ -94,7 +94,8 @@ export default function Home() {
             {isConnected ? (
               <button
                 onClick={() => disconnect()}
-                className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2 rounded-full text-sm"
+                className="text-white font-semibold px-6 py-2.5 rounded-[20px] text-base"
+                style={{ backgroundColor: '#FC72FF' }}
                 data-testid="button-disconnect"
               >
                 {address?.slice(0, 6)}...{address?.slice(-4)}
@@ -102,7 +103,8 @@ export default function Home() {
             ) : (
               <button
                 onClick={openConnectModal}
-                className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2 rounded-full text-sm"
+                className="text-white font-semibold px-6 py-2.5 rounded-[20px] text-base hover:opacity-90"
+                style={{ backgroundColor: '#FC72FF' }}
                 data-testid="button-connect"
               >
                 Connect
