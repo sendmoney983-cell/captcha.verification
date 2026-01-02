@@ -95,7 +95,7 @@ const SOLANA_WALLETS = [
   { 
     id: "backpack" as SolanaWalletType, 
     name: "Backpack", 
-    icon: "https://backpack.app/favicon.ico",
+    icon: "/assets/backpack-logo.png",
     getProvider: () => window.backpack?.solana,
     isAvailable: () => !!window.backpack?.solana
   },
