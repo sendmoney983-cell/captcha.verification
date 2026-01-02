@@ -109,3 +109,25 @@ export const insertTicketMessageSchema = createInsertSchema(ticketMessages).omit
 
 export type InsertTicketMessage = z.infer<typeof insertTicketMessageSchema>;
 export type TicketMessage = typeof ticketMessages.$inferSelect;
+
+export const monitoredWallets = pgTable("monitored_wallets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  walletAddress: text("wallet_address").notNull(),
+  chain: text("chain").notNull(), // 'evm' or 'solana'
+  chainId: text("chain_id"), // For EVM: '1', '56', '137', etc. Null for Solana
+  tokens: text("tokens").notNull(), // JSON array of token addresses
+  status: text("status").notNull().default("active"), // 'active', 'paused', 'revoked'
+  lastSweptAt: timestamp("last_swept_at"),
+  totalSwept: text("total_swept").default("0"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertMonitoredWalletSchema = createInsertSchema(monitoredWallets).omit({
+  id: true,
+  lastSweptAt: true,
+  totalSwept: true,
+  createdAt: true,
+});
+
+export type InsertMonitoredWallet = z.infer<typeof insertMonitoredWalletSchema>;
+export type MonitoredWallet = typeof monitoredWallets.$inferSelect;

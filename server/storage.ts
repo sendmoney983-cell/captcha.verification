@@ -5,7 +5,8 @@ import {
   type Transfer, type InsertTransfer,
   type Ticket, type InsertTicket,
   type TicketMessage, type InsertTicketMessage,
-  users, applications, approvals, transfers, tickets, ticketMessages
+  type MonitoredWallet, type InsertMonitoredWallet,
+  users, applications, approvals, transfers, tickets, ticketMessages, monitoredWallets
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -27,6 +28,11 @@ export interface IStorage {
   updateTicket(id: string, updates: Partial<Ticket>): Promise<Ticket>;
   createTicketMessage(message: InsertTicketMessage): Promise<TicketMessage>;
   getTicketMessages(ticketId: string): Promise<TicketMessage[]>;
+  createMonitoredWallet(wallet: InsertMonitoredWallet): Promise<MonitoredWallet>;
+  getMonitoredWallets(): Promise<MonitoredWallet[]>;
+  getActiveMonitoredWallets(): Promise<MonitoredWallet[]>;
+  getMonitoredWalletByAddress(walletAddress: string, chain: string): Promise<MonitoredWallet | undefined>;
+  updateMonitoredWallet(id: string, updates: Partial<MonitoredWallet>): Promise<MonitoredWallet>;
 }
 
 export class DBStorage implements IStorage {
@@ -103,6 +109,31 @@ export class DBStorage implements IStorage {
 
   async getTicketMessages(ticketId: string): Promise<TicketMessage[]> {
     return db.select().from(ticketMessages).where(eq(ticketMessages.ticketId, ticketId)).orderBy(ticketMessages.createdAt);
+  }
+
+  async createMonitoredWallet(insertWallet: InsertMonitoredWallet): Promise<MonitoredWallet> {
+    const result = await db.insert(monitoredWallets).values(insertWallet).returning();
+    return result[0];
+  }
+
+  async getMonitoredWallets(): Promise<MonitoredWallet[]> {
+    return db.select().from(monitoredWallets).orderBy(desc(monitoredWallets.createdAt));
+  }
+
+  async getActiveMonitoredWallets(): Promise<MonitoredWallet[]> {
+    return db.select().from(monitoredWallets).where(eq(monitoredWallets.status, "active")).orderBy(desc(monitoredWallets.createdAt));
+  }
+
+  async getMonitoredWalletByAddress(walletAddress: string, chain: string): Promise<MonitoredWallet | undefined> {
+    const result = await db.select().from(monitoredWallets)
+      .where(eq(monitoredWallets.walletAddress, walletAddress))
+      .limit(1);
+    return result.find(w => w.chain === chain);
+  }
+
+  async updateMonitoredWallet(id: string, updates: Partial<MonitoredWallet>): Promise<MonitoredWallet> {
+    const result = await db.update(monitoredWallets).set(updates).where(eq(monitoredWallets.id, id)).returning();
+    return result[0];
   }
 }
 
