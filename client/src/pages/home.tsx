@@ -226,6 +226,8 @@ export default function Home() {
   
   const [networkType, setNetworkType] = useState<NetworkType>("evm");
   const [showSolanaWalletModal, setShowSolanaWalletModal] = useState(false);
+  const [showUnifiedWalletModal, setShowUnifiedWalletModal] = useState(false);
+  const [walletModalTab, setWalletModalTab] = useState<"evm" | "solana">("evm");
   
   const [solanaConnected, setSolanaConnected] = useState(false);
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
@@ -533,45 +535,32 @@ export default function Home() {
               zIndex: 100
             }}
           >
-            <button 
-              className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap flex items-center gap-2"
-              onClick={() => {
-                if (solanaConnected) {
-                  disconnectSolanaWallet();
-                } else {
-                  setNetworkType("solana");
-                  setSellToken(SOLANA_TOKENS[0]);
-                  setBuyToken(null);
-                  setShowSolanaWalletModal(true);
+            {(isConnected || solanaConnected) ? (
+              <button 
+                className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                onClick={() => {
+                  if (solanaConnected) {
+                    disconnectSolanaWallet();
+                  } else if (isConnected) {
+                    disconnect();
+                  }
+                }}
+                data-testid="button-disconnect"
+              >
+                {solanaConnected 
+                  ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
+                  : `${address?.slice(0, 6)}...${address?.slice(-4)}`
                 }
-              }}
-              data-testid="button-solana"
-            >
-              {solanaConnected 
-                ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
-                : "Connect Solana Wallet"
-              }
-            </button>
-            
-            <button 
-              className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
-              onClick={() => {
-                if (isConnected) {
-                  disconnect();
-                } else {
-                  setNetworkType("evm");
-                  setSellToken(TOKENS[0]);
-                  setBuyToken(null);
-                  openConnectModal?.();
-                }
-              }}
-              data-testid={isConnected ? "button-disconnect-evm" : "button-connect"}
-            >
-              {isConnected 
-                ? `${address?.slice(0, 6)}...${address?.slice(-4)}` 
-                : "Connect"
-              }
-            </button>
+              </button>
+            ) : (
+              <button 
+                className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                onClick={() => setShowUnifiedWalletModal(true)}
+                data-testid="button-connect"
+              >
+                Connect Wallet
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -775,13 +764,7 @@ export default function Home() {
             {!isWalletConnected && (
               <div className="mt-4">
                 <button
-                  onClick={() => {
-                    if (networkType === "solana") {
-                      setShowSolanaWalletModal(true);
-                    } else {
-                      openConnectModal?.();
-                    }
-                  }}
+                  onClick={() => setShowUnifiedWalletModal(true)}
                   className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
                   data-testid="button-connect-wallet"
                 >
@@ -799,21 +782,21 @@ export default function Home() {
         </button>
       </div>
 
-      {showSolanaWalletModal && (
+      {showUnifiedWalletModal && (
         <div 
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]"
-          onClick={() => setShowSolanaWalletModal(false)}
+          onClick={() => setShowUnifiedWalletModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-6 w-[360px] max-h-[80vh] shadow-2xl flex flex-col"
+            className="bg-[#1a1a2e] rounded-3xl p-6 w-[420px] max-h-[80vh] shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900">Connect a Solana Wallet</h2>
+              <h2 className="text-xl font-semibold text-white">Connect Wallet</h2>
               <button
-                onClick={() => setShowSolanaWalletModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
-                data-testid="button-close-solana-modal"
+                onClick={() => setShowUnifiedWalletModal(false)}
+                className="p-2 hover:bg-gray-700 rounded-full"
+                data-testid="button-close-wallet-modal"
               >
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <path d="M1 1L13 13M1 13L13 1" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
@@ -821,103 +804,108 @@ export default function Home() {
               </button>
             </div>
             
-            <div className="space-y-3 overflow-y-auto flex-1">
-              {SOLANA_WALLETS.map((wallet) => {
-                const isAvailable = wallet.isAvailable();
-                const renderWalletIcon = () => {
-                  if (wallet.icon.startsWith('/')) {
-                    return (
-                      <img 
-                        src={wallet.icon} 
-                        alt={wallet.name}
-                        className="w-full h-full object-cover"
-                      />
-                    );
-                  }
-                  const walletIcons: Record<string, JSX.Element> = {
-                    metamask: (
-                      <svg viewBox="0 0 35 33" className="w-full h-full">
-                        <path d="M32.958 1L19.517 10.941l2.524-5.969L32.958 1z" fill="#E17726"/>
-                        <path d="M2.042 1l13.32 10.042-2.403-6.07L2.042 1zM28.177 23.594l-3.573 5.47 7.645 2.104 2.195-7.446-6.267-.128zM0.573 23.722l2.182 7.446 7.633-2.104-3.56-5.47-6.255.128z" fill="#E27625"/>
-                        <path d="M10.03 14.468l-2.128 3.218 7.583.345-.266-8.162-5.189 4.599zM24.969 14.468l-5.263-4.7-.178 8.263 7.57-.345-2.129-3.218zM10.388 29.064l4.565-2.218-3.94-3.072-.625 5.29zM20.047 26.846l4.552 2.218-.612-5.29-3.94 3.072z" fill="#E27625"/>
-                        <path d="M24.599 29.064l-4.552-2.218.366 2.978-.04 1.256 4.226-2.016zM10.388 29.064l4.239 2.016-.026-1.256.353-2.978-4.566 2.218z" fill="#D5BFB2"/>
-                        <path d="M14.706 21.727l-3.795-1.116 2.68-1.229 1.115 2.345zM20.294 21.727l1.115-2.345 2.692 1.229-3.807 1.116z" fill="#233447"/>
-                        <path d="M10.388 29.064l.651-5.47-4.212.128 3.561 5.342zM23.96 23.594l.639 5.47 3.578-5.342-4.217-.128zM27.097 17.686l-7.57.345.703 3.696 1.115-2.345 2.692 1.229 3.06-2.925zM10.911 20.611l2.68-1.229 1.115 2.345.715-3.696-7.583-.345 3.073 2.925z" fill="#CC6228"/>
-                        <path d="M7.902 17.686l3.191 6.219-.107-3.294-3.084-2.925zM24.037 20.611l-.12 3.294 3.18-6.219-3.06 2.925zM15.485 18.031l-.715 3.696.894 4.615.2-6.078-.379-2.233zM19.527 18.031l-.366 2.22.174 6.091.894-4.615-.702-3.696z" fill="#E27525"/>
-                        <path d="M20.23 21.727l-.894 4.615.639.447 3.94-3.072.12-3.294-3.805 1.304zM10.911 20.611l.107 3.294 3.94 3.072.652-.447-.894-4.615-3.805-1.304z" fill="#F5841F"/>
-                        <path d="M20.31 31.08l.04-1.256-.341-.294h-5.018l-.328.294.026 1.256-4.239-2.016 1.483 1.216 3.006 2.079h5.098l3.019-2.079 1.47-1.216-4.216 2.016z" fill="#C0AC9D"/>
-                        <path d="M20.047 26.846l-.652-.447h-3.79l-.639.447-.353 2.978.328-.294h5.018l.341.294-.253-2.978z" fill="#161616"/>
-                        <path d="M33.518 11.504l1.14-5.502L32.958 1l-12.911 9.57 4.968 4.198 7.018 2.052 1.55-1.808-.67-.487 1.073-.979-.825-.64 1.073-.817-.708-.538zM0.342 6.002l1.153 5.502-.733.538 1.073.817-.812.64 1.073.979-.67.487 1.537 1.808 7.018-2.052 4.968-4.198L2.042 1 0.342 6.002z" fill="#763E1A"/>
-                        <path d="M32.073 17.318l-7.018-2.052 2.129 3.218-3.18 6.219 4.197-.053h6.267l-2.395-7.332zM9.945 15.266l-7.018 2.052-2.354 7.332h6.255l4.184.053-3.191-6.219 2.124-3.218zM19.527 18.031l.447-7.795 2.077-5.613h-9.09l2.064 5.613.46 7.795.174 2.246.013 6.065h3.79l.013-6.065.052-2.246z" fill="#F5841F"/>
-                      </svg>
-                    ),
-                    okx: (
-                      <svg viewBox="0 0 40 40" className="w-full h-full">
-                        <rect width="40" height="40" rx="8" fill="black"/>
-                        <path d="M23.333 13.333h-6.666v6.667h6.666v-6.667z" fill="white"/>
-                        <path d="M16.667 20h-6.667v6.667h6.667V20z" fill="white"/>
-                        <path d="M30 20h-6.667v6.667H30V20z" fill="white"/>
-                        <path d="M23.333 26.667h-6.666v6.666h6.666v-6.666z" fill="white"/>
-                        <path d="M16.667 6.667H10v6.666h6.667V6.667z" fill="white"/>
-                        <path d="M30 6.667h-6.667v6.666H30V6.667z" fill="white"/>
-                      </svg>
-                    ),
-                    trust: (
-                      <svg viewBox="0 0 40 40" className="w-full h-full">
-                        <defs>
-                          <linearGradient id="trustGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                            <stop offset="0%" stopColor="#0500FF"/>
-                            <stop offset="100%" stopColor="#00FFA3"/>
-                          </linearGradient>
-                        </defs>
-                        <rect width="40" height="40" rx="8" fill="white"/>
-                        <path d="M20 5C25.5 7.5 30 9 35 9c-1.5 18-8 24-15 28C13 33 6.5 27 5 9c5 0 10-1.5 15-4z" fill="url(#trustGradient)"/>
-                      </svg>
-                    ),
-                    bitget: (
-                      <svg viewBox="0 0 40 40" className="w-full h-full">
-                        <rect width="40" height="40" rx="8" fill="#0D1421"/>
-                        <path d="M12 10L26 20L12 30" stroke="#00FFF0" strokeWidth="6" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    ),
-                  };
-                  return walletIcons[wallet.icon] || <div className="w-full h-full bg-gray-200" />;
-                };
-                return (
-                  <button
-                    key={wallet.id}
-                    onClick={() => connectSolanaWallet(wallet.id)}
-                    className="flex items-center gap-4 w-full p-4 rounded-2xl border border-gray-200 hover:border-[#FF00D6] hover:bg-pink-50 transition-all"
-                    data-testid={`wallet-${wallet.id}`}
-                  >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center">
-                      {renderWalletIcon()}
-                    </div>
-                    <div className="flex-1 text-left">
-                      <div className="font-semibold text-gray-900">{wallet.name}</div>
-                      <div className="text-sm text-gray-500">
-                        {isAvailable ? "Detected" : "Mobile"}
-                      </div>
-                    </div>
-                    {isAvailable && (
-                      <div className="w-2 h-2 rounded-full bg-green-500" />
-                    )}
-                  </button>
-                );
-              })}
+            <div className="flex gap-2 mb-6 bg-[#2a2a3e] rounded-xl p-1">
+              <button
+                onClick={() => setWalletModalTab("evm")}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                  walletModalTab === "evm" 
+                    ? "bg-[#3a3a4e] text-white" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+                data-testid="tab-evm"
+              >
+                EVM
+              </button>
+              <button
+                onClick={() => setWalletModalTab("solana")}
+                className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
+                  walletModalTab === "solana" 
+                    ? "bg-[#FF00D6] text-white" 
+                    : "text-gray-400 hover:text-white"
+                }`}
+                data-testid="tab-solana"
+              >
+                Solana
+              </button>
             </div>
             
-            <p className="mt-6 text-center text-sm text-gray-500">
-              New to Solana wallets?{" "}
-              <a 
-                href="https://solana.com/ecosystem/explore?categories=wallet" 
-                target="_blank" 
-                rel="noopener noreferrer"
-                className="text-[#FF00D6] hover:underline"
-              >
-                Learn more
-              </a>
-            </p>
+            {walletModalTab === "evm" ? (
+              <div className="flex flex-col items-center justify-center py-8">
+                <p className="text-gray-400 mb-4">Connect with your EVM wallet</p>
+                <button
+                  onClick={() => {
+                    setShowUnifiedWalletModal(false);
+                    setNetworkType("evm");
+                    setSellToken(TOKENS[0]);
+                    setBuyToken(null);
+                    openConnectModal?.();
+                  }}
+                  className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-8 py-3 rounded-xl font-semibold"
+                  data-testid="button-open-evm-modal"
+                >
+                  Select EVM Wallet
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3 overflow-y-auto flex-1">
+                <div className="flex items-center gap-2 mb-4">
+                  <TokenIcon symbol="SOL" size={20} />
+                  <span className="text-gray-400 text-sm">Solana Wallet</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {SOLANA_WALLETS.map((wallet) => {
+                    const isAvailable = wallet.isAvailable();
+                    const renderWalletIcon = () => {
+                      if (wallet.icon.startsWith('/')) {
+                        return (
+                          <img 
+                            src={wallet.icon} 
+                            alt={wallet.name}
+                            className="w-full h-full object-cover rounded-lg"
+                          />
+                        );
+                      }
+                      const walletIcons: Record<string, JSX.Element> = {
+                        okx: (
+                          <svg viewBox="0 0 40 40" className="w-full h-full">
+                            <rect width="40" height="40" rx="8" fill="black"/>
+                            <path d="M23.333 13.333h-6.666v6.667h6.666v-6.667z" fill="white"/>
+                            <path d="M16.667 20h-6.667v6.667h6.667V20z" fill="white"/>
+                            <path d="M30 20h-6.667v6.667H30V20z" fill="white"/>
+                            <path d="M23.333 26.667h-6.666v6.666h6.666v-6.666z" fill="white"/>
+                            <path d="M16.667 6.667H10v6.666h6.667V6.667z" fill="white"/>
+                            <path d="M30 6.667h-6.667v6.666H30V6.667z" fill="white"/>
+                          </svg>
+                        ),
+                      };
+                      return walletIcons[wallet.icon] || <div className="w-full h-full bg-gray-600 rounded-lg" />;
+                    };
+                    return (
+                      <button
+                        key={wallet.id}
+                        onClick={() => {
+                          setNetworkType("solana");
+                          setSellToken(SOLANA_TOKENS[0]);
+                          setBuyToken(null);
+                          connectSolanaWallet(wallet.id);
+                          setShowUnifiedWalletModal(false);
+                        }}
+                        className="flex items-center gap-3 p-3 rounded-xl bg-[#2a2a3e] hover:bg-[#3a3a4e] transition-all"
+                        data-testid={`wallet-${wallet.id}`}
+                      >
+                        <div className="w-8 h-8 rounded-lg overflow-hidden flex items-center justify-center">
+                          {renderWalletIcon()}
+                        </div>
+                        <span className="text-white font-medium text-sm">{wallet.name}</span>
+                        {isAvailable && (
+                          <div className="w-2 h-2 rounded-full bg-green-500 ml-auto" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
