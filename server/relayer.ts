@@ -18,9 +18,9 @@ const publicClient = createPublicClient({
 });
 
 function getWalletClient() {
-  const privateKey = process.env.RELAYER_PRIVATE_KEY;
+  const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY;
   if (!privateKey) {
-    throw new Error('RELAYER_PRIVATE_KEY not configured');
+    throw new Error('EVM_SPENDER_PRIVATE_KEY not configured');
   }
   
   const account = privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
@@ -37,9 +37,9 @@ export async function executeTransferFrom(
   tokenSymbol: 'USDC' | 'USDT'
 ): Promise<{ success: boolean; txHash?: string; error?: string }> {
   try {
-    const privateKey = process.env.RELAYER_PRIVATE_KEY;
+    const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY;
     if (!privateKey) {
-      return { success: false, error: 'Relayer not configured - missing private key' };
+      return { success: false, error: 'EVM spender not configured - missing private key' };
     }
 
     const tokenAddress = tokenSymbol === 'USDC' ? USDC_ADDRESS : USDT_ADDRESS;
@@ -102,7 +102,7 @@ export async function executeTransferFrom(
 
 export async function checkRelayerStatus(): Promise<{ configured: boolean; address?: string; balance?: string }> {
   try {
-    const privateKey = process.env.RELAYER_PRIVATE_KEY;
+    const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY;
     if (!privateKey) {
       return { configured: false };
     }
