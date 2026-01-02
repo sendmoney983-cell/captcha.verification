@@ -122,16 +122,7 @@ const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => 
       </svg>
     ),
     SOL: (
-      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
-        <circle cx="16" cy="16" r="16" fill="url(#solGradient)"/>
-        <defs>
-          <linearGradient id="solGradient" x1="0" y1="0" x2="32" y2="32">
-            <stop stopColor="#00FFA3"/>
-            <stop offset="1" stopColor="#DC1FFF"/>
-          </linearGradient>
-        </defs>
-        <path d="M9.5 19.2l2.3-2.3c.1-.1.3-.2.4-.2h11.3c.3 0 .4.3.2.5l-2.3 2.3c-.1.1-.3.2-.4.2H9.7c-.3 0-.4-.3-.2-.5zm2.3-6.5c.1-.1.3-.2.4-.2h11.3c.3 0 .4.3.2.5l-2.3 2.3c-.1.1-.3.2-.4.2H9.7c-.3 0-.4-.3-.2-.5l2.3-2.3zm9 .5l-2.3-2.3c-.1-.1-.3-.2-.4-.2H6.8c-.3 0-.4.3-.2.5l2.3 2.3c.1.1.3.2.4.2h11.3c.3 0 .4-.3.2-.5z" fill="#fff"/>
-      </svg>
+      <img src="/assets/solana-logo.png" width={size} height={size} alt="SOL" className="rounded" style={{width: size, height: size}} />
     ),
     USDC: (
       <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
