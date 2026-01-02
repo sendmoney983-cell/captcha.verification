@@ -102,7 +102,7 @@ const SOLANA_WALLETS = [
   { 
     id: "solflare" as SolanaWalletType, 
     name: "Solflare", 
-    icon: "https://solflare.com/favicon.ico",
+    icon: "/assets/solflare-logo.png",
     getProvider: () => window.solflare,
     isAvailable: () => !!window.solflare?.isSolflare
   },
