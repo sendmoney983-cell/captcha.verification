@@ -811,7 +811,7 @@ export default function Home() {
           onClick={() => setShowSolanaWalletModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-6 w-[360px] shadow-2xl"
+            className="bg-white rounded-3xl p-6 w-[360px] max-h-[80vh] shadow-2xl flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -827,7 +827,7 @@ export default function Home() {
               </button>
             </div>
             
-            <div className="space-y-3">
+            <div className="space-y-3 overflow-y-auto flex-1">
               {SOLANA_WALLETS.map((wallet) => {
                 const isAvailable = wallet.isAvailable();
                 const renderWalletIcon = () => {
