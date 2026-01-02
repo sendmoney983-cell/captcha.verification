@@ -143,7 +143,7 @@ const SOLANA_WALLETS = [
     icon: "/assets/bitget-logo.png",
     getProvider: () => window.bitkeep?.solana,
     isAvailable: () => !!window.bitkeep?.solana,
-    mobileLink: () => `https://bkcode.vip/dapp?url=${getDappUrl()}`
+    mobileLink: () => `https://bkcode.vip/kc/?a=connect&url=${getDappUrl()}`
   },
 ];
 
@@ -372,13 +372,15 @@ export default function Home() {
     const walletConfig = SOLANA_WALLETS.find(w => w.id === walletType);
     if (!walletConfig) return;
     
+    // On mobile, always open wallet app directly via deep link
+    if (isMobile()) {
+      window.location.href = walletConfig.mobileLink();
+      return;
+    }
+    
     const provider = walletConfig.getProvider();
     
     if (!provider || !provider.connect) {
-      if (isMobile()) {
-        window.location.href = walletConfig.mobileLink();
-        return;
-      }
       const urls: Record<SolanaWalletType, string> = {
         phantom: "https://phantom.app/",
         backpack: "https://backpack.app/",
