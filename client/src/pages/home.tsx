@@ -91,19 +91,20 @@ export default function Home() {
             data-testid="img-header"
           />
           <button 
-            className="absolute cursor-pointer bg-transparent border-0"
+            className="absolute cursor-pointer bg-transparent border-0 outline-none"
             style={{ 
-              top: '48px', 
-              right: '8px',
-              width: '100px',
-              height: '40px',
+              top: '55%', 
+              right: '1%',
+              width: '8%',
+              minWidth: '80px',
+              height: '35%',
               zIndex: 100
             }}
             onClick={isConnected ? () => disconnect() : openConnectModal}
             data-testid={isConnected ? "button-disconnect" : "button-connect"}
           >
             {isConnected && (
-              <span className="text-white font-semibold text-sm bg-[#FC72FF] px-4 py-2 rounded-[20px]">
+              <span className="text-white font-semibold text-sm bg-[#FC72FF] px-4 py-2 rounded-[20px] whitespace-nowrap">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </span>
             )}
