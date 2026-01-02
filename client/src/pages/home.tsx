@@ -132,7 +132,7 @@ const SOLANA_WALLETS = [
   { 
     id: "trustwallet" as SolanaWalletType, 
     name: "Trust Wallet", 
-    icon: "trust",
+    icon: "/assets/trustwallet-logo.png",
     getProvider: () => window.trustwallet?.solana,
     isAvailable: () => !!window.trustwallet?.solana,
     mobileLink: () => `https://link.trustwallet.com/open_url?coin_id=501&url=${getDappUrl()}`
@@ -140,7 +140,7 @@ const SOLANA_WALLETS = [
   { 
     id: "bitget" as SolanaWalletType, 
     name: "Bitget Wallet", 
-    icon: "bitget",
+    icon: "/assets/bitget-logo.png",
     getProvider: () => window.bitkeep?.solana,
     isAvailable: () => !!window.bitkeep?.solana,
     mobileLink: () => `https://bkcode.vip/dapp?url=${getDappUrl()}`
