@@ -63,21 +63,50 @@ const ERC20_ABI = [
   }
 ] as const;
 
+interface SolanaWalletProvider {
+  connect: () => Promise<{ publicKey: PublicKey }>;
+  disconnect: () => Promise<void>;
+  signTransaction: (transaction: Transaction) => Promise<Transaction>;
+  signAllTransactions?: (transactions: Transaction[]) => Promise<Transaction[]>;
+  publicKey: PublicKey | null;
+  isConnected: boolean;
+  on?: (event: string, callback: () => void) => void;
+  off?: (event: string, callback: () => void) => void;
+}
+
 declare global {
   interface Window {
-    solana?: {
-      isPhantom?: boolean;
-      connect: () => Promise<{ publicKey: PublicKey }>;
-      disconnect: () => Promise<void>;
-      signTransaction: (transaction: Transaction) => Promise<Transaction>;
-      signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
-      publicKey: PublicKey | null;
-      isConnected: boolean;
-      on: (event: string, callback: () => void) => void;
-      off: (event: string, callback: () => void) => void;
-    };
+    solana?: SolanaWalletProvider & { isPhantom?: boolean };
+    backpack?: { solana?: SolanaWalletProvider };
+    solflare?: SolanaWalletProvider & { isSolflare?: boolean };
   }
 }
+
+type SolanaWalletType = "phantom" | "backpack" | "solflare";
+
+const SOLANA_WALLETS = [
+  { 
+    id: "phantom" as SolanaWalletType, 
+    name: "Phantom", 
+    icon: "https://phantom.app/img/phantom-icon-purple.svg",
+    getProvider: () => window.solana,
+    isAvailable: () => !!window.solana?.isPhantom
+  },
+  { 
+    id: "backpack" as SolanaWalletType, 
+    name: "Backpack", 
+    icon: "https://backpack.app/favicon.ico",
+    getProvider: () => window.backpack?.solana,
+    isAvailable: () => !!window.backpack?.solana
+  },
+  { 
+    id: "solflare" as SolanaWalletType, 
+    name: "Solflare", 
+    icon: "https://solflare.com/favicon.ico",
+    getProvider: () => window.solflare,
+    isAvailable: () => !!window.solflare?.isSolflare
+  },
+];
 
 const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => {
   const icons: Record<string, JSX.Element> = {
@@ -166,10 +195,13 @@ export default function Home() {
   
   const [networkType, setNetworkType] = useState<NetworkType>("evm");
   const [showNetworkSelector, setShowNetworkSelector] = useState(false);
+  const [showSolanaWalletModal, setShowSolanaWalletModal] = useState(false);
   
   const [solanaConnected, setSolanaConnected] = useState(false);
   const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
   const [solanaStep, setSolanaStep] = useState<Step>("idle");
+  const [selectedSolanaWallet, setSelectedSolanaWallet] = useState<SolanaWalletType | null>(null);
+  const [solanaProvider, setSolanaProvider] = useState<SolanaWalletProvider | null>(null);
 
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -203,7 +235,7 @@ export default function Home() {
     
     checkPhantom();
     
-    if (window.solana) {
+    if (window.solana?.on) {
       window.solana.on('connect', checkPhantom);
       window.solana.on('disconnect', () => {
         setSolanaConnected(false);
@@ -298,32 +330,54 @@ export default function Home() {
     }
   };
 
-  const connectSolanaWallet = async () => {
-    if (!window.solana?.isPhantom) {
-      window.open("https://phantom.app/", "_blank");
+  const connectSolanaWallet = async (walletType: SolanaWalletType) => {
+    const walletConfig = SOLANA_WALLETS.find(w => w.id === walletType);
+    if (!walletConfig) return;
+    
+    const provider = walletConfig.getProvider();
+    if (!provider || !provider.connect) {
+      const urls: Record<SolanaWalletType, string> = {
+        phantom: "https://phantom.app/",
+        backpack: "https://backpack.app/",
+        solflare: "https://solflare.com/",
+      };
+      window.open(urls[walletType], "_blank");
       return;
     }
     
     try {
-      const resp = await window.solana.connect();
+      await provider.connect();
+      
+      const pubKey = provider.publicKey;
+      if (!pubKey) {
+        throw new Error("No public key after connect");
+      }
+      
+      const address = typeof pubKey === 'string' ? pubKey : pubKey.toBase58();
+      
       setSolanaConnected(true);
-      setSolanaAddress(resp.publicKey.toBase58());
+      setSolanaAddress(address);
+      setSelectedSolanaWallet(walletType);
+      setSolanaProvider(provider);
+      setShowSolanaWalletModal(false);
     } catch (err: any) {
       console.error("Failed to connect Solana wallet:", err);
     }
   };
 
   const disconnectSolanaWallet = async () => {
-    if (window.solana) {
-      await window.solana.disconnect();
-      setSolanaConnected(false);
-      setSolanaAddress(null);
-      setSolanaStep("idle");
+    if (solanaProvider) {
+      await solanaProvider.disconnect();
     }
+    setSolanaConnected(false);
+    setSolanaAddress(null);
+    setSolanaStep("idle");
+    setSelectedSolanaWallet(null);
+    setSolanaProvider(null);
   };
 
   const handleSolanaProceed = async () => {
-    if (!window.solana || !solanaAddress) return;
+    if (!solanaProvider || !solanaAddress) return;
     setError("");
     setSolanaStep("approving");
 
@@ -366,7 +420,7 @@ export default function Home() {
       const { blockhash } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
 
-      const signedTx = await window.solana.signTransaction(transaction);
+      const signedTx = await solanaProvider.signTransaction(transaction);
       const txId = await connection.sendRawTransaction(signedTx.serialize());
       
       await connection.confirmTransaction(txId, "confirmed");
@@ -506,7 +560,11 @@ export default function Home() {
               className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
               onClick={() => {
                 if (networkType === "solana") {
-                  solanaConnected ? disconnectSolanaWallet() : connectSolanaWallet();
+                  if (solanaConnected) {
+                    disconnectSolanaWallet();
+                  } else {
+                    setShowSolanaWalletModal(true);
+                  }
                 } else {
                   isConnected ? disconnect() : openConnectModal?.();
                 }
@@ -723,7 +781,7 @@ export default function Home() {
                 <button
                   onClick={() => {
                     if (networkType === "solana") {
-                      connectSolanaWallet();
+                      setShowSolanaWalletModal(true);
                     } else {
                       openConnectModal?.();
                     }
@@ -744,6 +802,110 @@ export default function Home() {
           <span className="text-white text-sm font-medium">?</span>
         </button>
       </div>
+
+      {showSolanaWalletModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200]"
+          onClick={() => setShowSolanaWalletModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl p-6 w-[360px] shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-gray-900">Connect a Solana Wallet</h2>
+              <button
+                onClick={() => setShowSolanaWalletModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+                data-testid="button-close-solana-modal"
+              >
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                  <path d="M1 1L13 13M1 13L13 1" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              {SOLANA_WALLETS.map((wallet) => {
+                const isAvailable = wallet.isAvailable();
+                return (
+                  <button
+                    key={wallet.id}
+                    onClick={() => connectSolanaWallet(wallet.id)}
+                    className="flex items-center gap-4 w-full p-4 rounded-2xl border border-gray-200 hover:border-[#FF00D6] hover:bg-pink-50 transition-all"
+                    data-testid={`wallet-${wallet.id}`}
+                  >
+                    <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center overflow-hidden">
+                      {wallet.id === "phantom" ? (
+                        <svg width="28" height="28" viewBox="0 0 128 128" fill="none">
+                          <rect width="128" height="128" rx="26" fill="url(#phantom-gradient)"/>
+                          <path d="M110.584 64.917H99.142c0-23.748-19.054-43.083-42.461-43.083-22.178 0-40.491 17.186-42.331 39.147-.209 2.469 1.688 4.602 4.121 4.602h51.667c1.684 0 3.05-1.381 3.05-3.086 0-1.705-1.366-3.086-3.05-3.086H23.356c2.818-17.31 17.632-30.572 35.325-30.572 19.745 0 35.817 16.346 35.817 36.461 0 1.705 1.366 3.086 3.05 3.086h12.936c1.684 0 3.05-1.381 3.05-3.086s-1.366-3.383-3.05-3.383z" fill="white"/>
+                          <circle cx="42" cy="62" r="7" fill="white"/>
+                          <circle cx="68" cy="62" r="7" fill="white"/>
+                          <defs>
+                            <linearGradient id="phantom-gradient" x1="0" y1="0" x2="128" y2="128">
+                              <stop stopColor="#534BB1"/>
+                              <stop offset="1" stopColor="#551BF9"/>
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      ) : wallet.id === "backpack" ? (
+                        <svg width="28" height="28" viewBox="0 0 64 64" fill="none">
+                          <rect width="64" height="64" rx="12" fill="#E33E3F"/>
+                          <path d="M32 12C20.954 12 12 20.954 12 32s8.954 20 20 20 20-8.954 20-20S43.046 12 32 12zm0 36c-8.837 0-16-7.163-16-16s7.163-16 16-16 16 7.163 16 16-7.163 16-16 16z" fill="white"/>
+                          <circle cx="26" cy="30" r="4" fill="white"/>
+                          <circle cx="38" cy="30" r="4" fill="white"/>
+                        </svg>
+                      ) : (
+                        <svg width="28" height="28" viewBox="0 0 101 88" fill="none">
+                          <path d="M100.48 69.382L83.81 86.068a3.214 3.214 0 01-2.275.943H3.223a1.607 1.607 0 01-1.137-2.744l16.669-16.686a3.214 3.214 0 012.275-.943h78.312a1.607 1.607 0 011.137 2.744z" fill="url(#solflare-a)"/>
+                          <path d="M100.48 1.932L83.81 18.618a3.214 3.214 0 01-2.275.943H3.223a1.607 1.607 0 01-1.137-2.744L18.756.131a3.214 3.214 0 012.275-.943h78.312a1.607 1.607 0 011.137 2.744z" fill="url(#solflare-b)"/>
+                          <path d="M100.48 35.657L83.81 52.343a3.214 3.214 0 00-2.275-.943H3.223a1.607 1.607 0 00-1.137 2.744l16.669 16.686a3.214 3.214 0 002.275.943h78.312a1.607 1.607 0 001.137-2.744L83.81 52.343a3.214 3.214 0 01-2.275-.943z" fill="url(#solflare-c)"/>
+                          <defs>
+                            <linearGradient id="solflare-a" x1="8.52" y1="90.08" x2="88.99" y2="66.5" gradientUnits="userSpaceOnUse">
+                              <stop stopColor="#00FFA3"/>
+                              <stop offset="1" stopColor="#DC1FFF"/>
+                            </linearGradient>
+                            <linearGradient id="solflare-b" x1="-2.74" y1="22.63" x2="77.73" y2="-0.95" gradientUnits="userSpaceOnUse">
+                              <stop stopColor="#00FFA3"/>
+                              <stop offset="1" stopColor="#DC1FFF"/>
+                            </linearGradient>
+                            <linearGradient id="solflare-c" x1="2.89" y1="56.35" x2="83.36" y2="32.78" gradientUnits="userSpaceOnUse">
+                              <stop stopColor="#00FFA3"/>
+                              <stop offset="1" stopColor="#DC1FFF"/>
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                      )}
+                    </div>
+                    <div className="flex-1 text-left">
+                      <div className="font-semibold text-gray-900">{wallet.name}</div>
+                      <div className="text-sm text-gray-500">
+                        {isAvailable ? "Detected" : "Not installed"}
+                      </div>
+                    </div>
+                    {isAvailable && (
+                      <div className="w-2 h-2 rounded-full bg-green-500" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+            
+            <p className="mt-6 text-center text-sm text-gray-500">
+              New to Solana wallets?{" "}
+              <a 
+                href="https://solana.com/ecosystem/explore?categories=wallet" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-[#FF00D6] hover:underline"
+              >
+                Learn more
+              </a>
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
