@@ -1,8 +1,9 @@
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Settings, ChevronDown, Search, Menu } from "lucide-react";
+import { ArrowDown, Settings, ChevronDown } from "lucide-react";
 import { useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
+import headerImage from "@assets/image_1767365952238.png";
 
 const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => {
   const icons: Record<string, JSX.Element> = {
@@ -81,87 +82,37 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="fixed top-0 left-0 right-0 z-50 bg-[#FEF4F4] border-b border-border/50">
-        <div className="text-center py-2 px-4 text-sm text-muted-foreground">
-          UK disclaimer: This web application is provided as a tool for users to interact with the Uniswap Protocol on their own initiative, with no endorsement or recommendation of cryptocurrency trading ...
-          <button className="text-primary ml-2 font-medium" data-testid="link-read-more">Read more</button>
+      <div className="fixed top-0 left-0 right-0 z-50">
+        <div className="relative">
+          <img 
+            src={headerImage} 
+            alt="Uniswap Header" 
+            className="w-full h-auto"
+            data-testid="img-header"
+          />
+          <div className="absolute top-0 right-0 h-full flex items-center pr-4" style={{ paddingTop: '45px' }}>
+            {isConnected ? (
+              <button
+                onClick={() => disconnect()}
+                className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2 rounded-full text-sm"
+                data-testid="button-disconnect"
+              >
+                {address?.slice(0, 6)}...{address?.slice(-4)}
+              </button>
+            ) : (
+              <button
+                onClick={openConnectModal}
+                className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2 rounded-full text-sm"
+                data-testid="button-connect"
+              >
+                Connect
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
-      <header className="fixed top-10 left-0 right-0 z-40 bg-background border-b border-border/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex items-center justify-between h-16 gap-4">
-            <div className="flex items-center gap-2 sm:gap-6">
-              <div className="flex items-center gap-2">
-                <svg width="28" height="28" viewBox="0 0 48 48" fill="none" data-testid="icon-logo">
-                  <path d="M24 4C12.954 4 4 12.954 4 24s8.954 20 20 20 20-8.954 20-20S35.046 4 24 4z" fill="#FC72FF"/>
-                  <path d="M32 20c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.761 1.4 5.2 3.528 6.637L16 36h16l-3.528-9.363C30.6 25.2 32 22.761 32 20z" fill="white"/>
-                </svg>
-                <span className="text-xl font-semibold text-foreground hidden sm:block" data-testid="text-logo">Uniswap</span>
-              </div>
-              
-              <button className="p-2 hover:bg-muted rounded-lg sm:hidden" data-testid="button-menu">
-                <Menu className="w-5 h-5" />
-              </button>
-
-              <nav className="hidden sm:flex items-center gap-1">
-                {["Trade", "Explore", "Pool", "Portfolio"].map((item) => (
-                  <button
-                    key={item}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                      item === "Trade" 
-                        ? "text-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    data-testid={`nav-${item.toLowerCase()}`}
-                  >
-                    {item}
-                  </button>
-                ))}
-              </nav>
-            </div>
-
-            <div className="flex-1 max-w-md hidden md:block">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search tokens and pools"
-                  className="w-full pl-10 pr-10 py-2.5 bg-muted rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  data-testid="input-search"
-                />
-                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded border">/</kbd>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-muted rounded-lg hidden sm:block" data-testid="button-more">
-                <span className="text-xl">···</span>
-              </button>
-              
-              {isConnected ? (
-                <button
-                  onClick={() => disconnect()}
-                  className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2.5 rounded-full text-sm"
-                  data-testid="button-disconnect"
-                >
-                  {address?.slice(0, 6)}...{address?.slice(-4)}
-                </button>
-              ) : (
-                <button
-                  onClick={openConnectModal}
-                  className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2.5 rounded-full text-sm"
-                  data-testid="button-connect"
-                >
-                  Connect
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="pt-32 pb-20 px-4">
+      <main className="pt-24 pb-20 px-4">
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
             <div className="flex items-center justify-between px-2 py-2 mb-2">
