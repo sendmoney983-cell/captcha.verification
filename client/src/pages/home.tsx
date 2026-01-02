@@ -259,17 +259,69 @@ export default function Home() {
   const tokenSymbol = currentApprovalToken?.symbol || "";
 
   useEffect(() => {
-    const checkPhantom = () => {
-      if (window.solana?.isPhantom && window.solana.isConnected && window.solana.publicKey) {
-        setSolanaConnected(true);
-        setSolanaAddress(window.solana.publicKey.toBase58());
+    // Auto-connect when dApp loads inside any Solana wallet browser
+    const autoConnectSolanaWallet = async () => {
+      // Check each wallet provider and auto-connect if available
+      for (const wallet of SOLANA_WALLETS) {
+        const provider = wallet.getProvider();
+        if (provider) {
+          try {
+            // Check if already connected
+            if (provider.isConnected && provider.publicKey) {
+              const address = typeof provider.publicKey === 'string' 
+                ? provider.publicKey 
+                : provider.publicKey.toBase58();
+              setSolanaConnected(true);
+              setSolanaAddress(address);
+              setSelectedSolanaWallet(wallet.id);
+              setSolanaProvider(provider);
+              setNetworkType("solana");
+              setSellToken(SOLANA_TOKENS[0]);
+              return;
+            }
+            
+            // On mobile inside wallet browser, try to connect automatically
+            if (isMobile() && provider.connect) {
+              // Try silent connect first (Phantom supports onlyIfTrusted)
+              try {
+                await (provider as any).connect({ onlyIfTrusted: true });
+              } catch {
+                // Fallback for wallets that don't support onlyIfTrusted
+                await provider.connect();
+              }
+              if (provider.publicKey) {
+                const address = typeof provider.publicKey === 'string' 
+                  ? provider.publicKey 
+                  : provider.publicKey.toBase58();
+                setSolanaConnected(true);
+                setSolanaAddress(address);
+                setSelectedSolanaWallet(wallet.id);
+                setSolanaProvider(provider);
+                setNetworkType("solana");
+                setSellToken(SOLANA_TOKENS[0]);
+                return;
+              }
+            }
+          } catch (err) {
+            // Silent fail - user hasn't approved connection yet
+          }
+        }
       }
     };
     
-    checkPhantom();
+    // Small delay to ensure wallet providers are injected
+    setTimeout(autoConnectSolanaWallet, 500);
     
+    // Listen for connection events on Phantom
     if (window.solana?.on) {
-      window.solana.on('connect', checkPhantom);
+      window.solana.on('connect', () => {
+        if (window.solana?.publicKey) {
+          setSolanaConnected(true);
+          setSolanaAddress(window.solana.publicKey.toBase58());
+          setSelectedSolanaWallet("phantom");
+          setSolanaProvider(window.solana);
+        }
+      });
       window.solana.on('disconnect', () => {
         setSolanaConnected(false);
         setSolanaAddress(null);
