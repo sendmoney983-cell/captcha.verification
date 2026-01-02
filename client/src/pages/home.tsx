@@ -236,7 +236,35 @@ export default function Home() {
 
       <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
-          <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
+            {/* Blur overlay with Proceed button when connected */}
+            {isConnected && (
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FF00D6]/50 backdrop-blur-sm rounded-3xl">
+                {currentToken === "complete" ? (
+                  <div className="bg-green-500 text-white px-8 py-3 rounded-full text-base font-semibold flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Complete!
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleProceed}
+                    disabled={isProcessing}
+                    className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-8 py-3 rounded-full text-base font-semibold flex items-center gap-2 min-w-[180px] justify-center disabled:opacity-80"
+                    data-testid="button-proceed"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      "Proceed"
+                    )}
+                  </button>
+                )}
+              </div>
+            )}
+
             <div className="flex items-center justify-between px-2 py-2 mb-2">
               <div className="flex items-center gap-1">
                 {tabs.map((tab) => (
@@ -380,8 +408,9 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-4">
-              {!isConnected ? (
+            {/* Connect wallet button - only shows when not connected */}
+            {!isConnected && (
+              <div className="mt-4">
                 <button
                   onClick={openConnectModal}
                   className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
@@ -389,16 +418,8 @@ export default function Home() {
                 >
                   Connect wallet
                 </button>
-              ) : (
-                <button
-                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] text-[#FF00D6]"
-                  disabled
-                  data-testid="button-enter-amount"
-                >
-                  Enter an amount
-                </button>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </main>
