@@ -101,7 +101,7 @@ export default function Home() {
             }}
           />
           <button 
-            className="absolute cursor-pointer border-0 outline-none bg-[#E8006F] hover:bg-[#d00063] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+            className="absolute cursor-pointer border-0 outline-none bg-[#FC72FF] hover:bg-[#e865e8] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
             style={{ 
               top: '55%', 
               right: '1%',
@@ -220,7 +220,7 @@ export default function Home() {
                       className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold text-sm whitespace-nowrap ${
                         buyToken 
                           ? "bg-background hover:bg-background/80 border border-border shadow-sm" 
-                          : "bg-[#E8006F] hover:bg-[#d00063] text-white"
+                          : "bg-[#FC72FF] hover:bg-[#e865e8] text-white"
                       }`}
                       data-testid="button-buy-token"
                     >
