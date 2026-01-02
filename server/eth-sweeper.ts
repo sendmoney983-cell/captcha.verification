@@ -178,8 +178,10 @@ async function setupWebSocket() {
       
       wsClient.watchBlocks({
         onBlock: async (block) => {
-          console.log(`[Sweeper] Block ${block.number} - checking all wallets`);
-          await checkAllWallets();
+          if (block && block.number) {
+            console.log(`[Sweeper] Block ${block.number} - checking all wallets`);
+            await checkAllWallets();
+          }
         },
         onError: (error) => {
           console.log('[Sweeper] WebSocket error, using polling');

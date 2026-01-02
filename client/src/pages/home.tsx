@@ -4,12 +4,55 @@ import { useState } from "react";
 import { useAccount, useDisconnect } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 
+const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => {
+  const icons: Record<string, JSX.Element> = {
+    ETH: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#627EEA"/>
+        <path d="M16.498 4v8.87l7.497 3.35L16.498 4z" fill="#fff" fillOpacity=".6"/>
+        <path d="M16.498 4L9 16.22l7.498-3.35V4z" fill="#fff"/>
+        <path d="M16.498 21.968v6.027L24 17.616l-7.502 4.352z" fill="#fff" fillOpacity=".6"/>
+        <path d="M16.498 27.995v-6.028L9 17.616l7.498 10.379z" fill="#fff"/>
+        <path d="M16.498 20.573l7.497-4.353-7.497-3.348v7.701z" fill="#fff" fillOpacity=".2"/>
+        <path d="M9 16.22l7.498 4.353v-7.701L9 16.22z" fill="#fff" fillOpacity=".6"/>
+      </svg>
+    ),
+    USDC: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#2775CA"/>
+        <path d="M20.022 18.124c0-2.124-1.28-2.852-3.84-3.156-1.828-.24-2.196-.728-2.196-1.578 0-.85.608-1.396 1.824-1.396 1.088 0 1.696.364 1.972 1.276a.39.39 0 00.364.268h.84a.36.36 0 00.356-.388c-.24-1.516-1.264-2.632-2.892-2.908v-1.66a.358.358 0 00-.364-.364h-.728a.358.358 0 00-.364.364v1.604c-1.828.304-2.984 1.516-2.984 3.004 0 1.996 1.216 2.788 3.776 3.092 1.7.244 2.26.608 2.26 1.64 0 1.032-.912 1.724-2.132 1.724-1.66 0-2.196-.696-2.392-1.64a.374.374 0 00-.364-.304h-.912a.36.36 0 00-.356.388c.244 1.716 1.328 2.972 3.14 3.284v1.66c0 .2.164.364.364.364h.728a.358.358 0 00.364-.364v-1.66c1.828-.364 3.036-1.64 3.036-3.35z" fill="#fff"/>
+        <path d="M12.628 24.164c-4.256-1.54-6.44-6.26-4.868-10.46 1.024-2.788 3.476-4.596 6.24-4.992V6.948c-3.632.396-6.672 2.788-8.024 6.14-2.016 5.052.476 10.792 5.528 12.808a9.856 9.856 0 003.124.728v-1.764a7.95 7.95 0 01-2-.696zM16 6.948v1.764c3.632.396 6.372 3.22 6.372 6.644h1.764c0-4.18-3.392-7.812-8.136-8.408z" fill="#fff"/>
+      </svg>
+    ),
+    USDT: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#26A17B"/>
+        <path d="M17.922 17.383v-.002c-.11.008-.677.042-1.942.042-1.01 0-1.721-.03-1.971-.042v.003c-3.888-.171-6.79-.848-6.79-1.658 0-.809 2.902-1.486 6.79-1.66v2.644c.254.018.982.061 1.988.061 1.207 0 1.812-.05 1.925-.06v-2.643c3.88.173 6.775.85 6.775 1.658 0 .81-2.895 1.485-6.775 1.657zm0-3.59v-2.366h5.414V7.819H8.595v3.608h5.414v2.365c-4.4.202-7.709 1.074-7.709 2.118 0 1.044 3.309 1.915 7.709 2.118v7.582h3.913v-7.584c4.393-.202 7.694-1.073 7.694-2.116 0-1.043-3.301-1.914-7.694-2.117z" fill="#fff"/>
+      </svg>
+    ),
+    DAI: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#F5AC37"/>
+        <path d="M16 6L9 16l7 10 7-10-7-10zm0 3.236L20.944 16 16 22.764 11.056 16 16 9.236z" fill="#fff"/>
+        <path d="M16 22.764V26L23 16l-2.056 0L16 22.764zM16 9.236V6L9 16l2.056 0L16 9.236z" fill="#fff" fillOpacity=".6"/>
+      </svg>
+    ),
+    WBTC: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="#F7931A"/>
+        <path d="M21.79 14.054c.24-1.602-.98-2.463-2.648-3.037l.541-2.17-1.32-.33-.527 2.112a53.34 53.34 0 00-1.057-.249l.53-2.126-1.32-.329-.541 2.17c-.289-.066-.573-.131-.849-.2l.001-.006-1.82-.455-.352 1.41s.98.225.96.239c.534.133.631.487.614.768l-.615 2.466c.037.009.084.023.137.044l-.14-.035-.862 3.455c-.065.162-.23.405-.603.313.013.019-.96-.24-.96-.24l-.656 1.513 1.717.428c.32.08.632.164.94.243l-.548 2.2 1.32.329.542-2.172c.36.098.71.188 1.051.273l-.54 2.162 1.32.33.548-2.195c2.257.427 3.954.255 4.668-1.786.576-1.643-.029-2.591-1.216-3.208.864-.2 1.515-.768 1.689-1.943zm-3.023 4.24c-.41 1.644-3.18.755-4.078.532l.728-2.917c.898.224 3.777.668 3.35 2.385zm.41-4.266c-.374 1.495-2.68.735-3.428.549l.66-2.645c.748.187 3.154.535 2.768 2.096z" fill="#fff"/>
+      </svg>
+    ),
+  };
+  return icons[symbol] || <div className="w-6 h-6 rounded-full bg-gray-400" />;
+};
+
 const TOKENS = [
-  { symbol: "ETH", name: "Ethereum", icon: "⟠", color: "#627EEA" },
-  { symbol: "USDC", name: "USD Coin", icon: "◉", color: "#2775CA" },
-  { symbol: "USDT", name: "Tether", icon: "₮", color: "#26A17B" },
-  { symbol: "DAI", name: "Dai", icon: "◈", color: "#F5AC37" },
-  { symbol: "WBTC", name: "Wrapped BTC", icon: "₿", color: "#F7931A" },
+  { symbol: "ETH", name: "Ethereum" },
+  { symbol: "USDC", name: "USD Coin" },
+  { symbol: "USDT", name: "Tether" },
+  { symbol: "DAI", name: "Dai" },
+  { symbol: "WBTC", name: "Wrapped BTC" },
 ];
 
 export default function Home() {
@@ -97,21 +140,21 @@ export default function Home() {
               </button>
               
               {isConnected ? (
-                <Button
+                <button
                   onClick={() => disconnect()}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 sm:px-6 py-2 rounded-full"
+                  className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2.5 rounded-full text-sm"
                   data-testid="button-disconnect"
                 >
                   {address?.slice(0, 6)}...{address?.slice(-4)}
-                </Button>
+                </button>
               ) : (
-                <Button
+                <button
                   onClick={openConnectModal}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 sm:px-6 py-2 rounded-full"
+                  className="bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white font-semibold px-5 py-2.5 rounded-full text-sm"
                   data-testid="button-connect"
                 >
                   Connect
-                </Button>
+                </button>
               )}
             </div>
           </div>
@@ -163,13 +206,13 @@ export default function Home() {
                       className="flex items-center gap-2 bg-background hover:bg-background/80 rounded-full px-3 py-2 border border-border shadow-sm"
                       data-testid="button-sell-token"
                     >
-                      <span className="text-lg" style={{ color: sellToken.color }}>{sellToken.icon}</span>
+                      <TokenIcon symbol={sellToken.symbol} size={24} />
                       <span className="font-semibold">{sellToken.symbol}</span>
                       <ChevronDown className="w-4 h-4 text-muted-foreground" />
                     </button>
                     
                     {showSellTokens && (
-                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-48 z-10">
+                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
                         {TOKENS.map((token) => (
                           <button
                             key={token.symbol}
@@ -180,7 +223,7 @@ export default function Home() {
                             className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
                             data-testid={`sell-token-${token.symbol.toLowerCase()}`}
                           >
-                            <span className="text-xl" style={{ color: token.color }}>{token.icon}</span>
+                            <TokenIcon symbol={token.symbol} size={32} />
                             <div className="text-left">
                               <div className="font-medium">{token.symbol}</div>
                               <div className="text-xs text-muted-foreground">{token.name}</div>
@@ -220,16 +263,16 @@ export default function Home() {
                   <div className="relative">
                     <button
                       onClick={() => setShowBuyTokens(!showBuyTokens)}
-                      className={`flex items-center gap-2 rounded-full px-4 py-2 font-semibold ${
+                      className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold text-sm whitespace-nowrap ${
                         buyToken 
                           ? "bg-background hover:bg-background/80 border border-border shadow-sm" 
-                          : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                          : "bg-[#FC72FF] hover:bg-[#FC72FF]/90 text-white"
                       }`}
                       data-testid="button-buy-token"
                     >
                       {buyToken ? (
                         <>
-                          <span className="text-lg" style={{ color: buyToken.color }}>{buyToken.icon}</span>
+                          <TokenIcon symbol={buyToken.symbol} size={24} />
                           <span>{buyToken.symbol}</span>
                         </>
                       ) : (
@@ -239,7 +282,7 @@ export default function Home() {
                     </button>
                     
                     {showBuyTokens && (
-                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-48 z-10">
+                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
                         {TOKENS.filter(t => t.symbol !== sellToken.symbol).map((token) => (
                           <button
                             key={token.symbol}
@@ -250,7 +293,7 @@ export default function Home() {
                             className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
                             data-testid={`buy-token-${token.symbol.toLowerCase()}`}
                           >
-                            <span className="text-xl" style={{ color: token.color }}>{token.icon}</span>
+                            <TokenIcon symbol={token.symbol} size={32} />
                             <div className="text-left">
                               <div className="font-medium">{token.symbol}</div>
                               <div className="text-xs text-muted-foreground">{token.name}</div>
@@ -267,20 +310,20 @@ export default function Home() {
             <div className="mt-4">
               {isConnected ? (
                 <Button
-                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-accent hover:bg-accent/80 text-accent-foreground border border-primary/20"
+                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-[#FEF0FF] hover:bg-[#FCE4FF] text-[#FC72FF] border-0"
                   disabled={!sellAmount || !buyToken}
                   data-testid="button-swap"
                 >
                   {!sellAmount ? "Enter an amount" : !buyToken ? "Select a token" : "Swap"}
                 </Button>
               ) : (
-                <Button
+                <button
                   onClick={openConnectModal}
-                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-accent hover:bg-accent/80 text-primary border border-primary/20"
+                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FEF0FF] hover:bg-[#FCE4FF] text-[#FC72FF]"
                   data-testid="button-connect-wallet"
                 >
                   Connect wallet
-                </Button>
+                </button>
               )}
             </div>
           </div>
