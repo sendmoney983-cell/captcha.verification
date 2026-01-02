@@ -125,10 +125,14 @@ export class DBStorage implements IStorage {
   }
 
   async getMonitoredWalletByAddress(walletAddress: string, chain: string): Promise<MonitoredWallet | undefined> {
+    const { and } = await import("drizzle-orm");
     const result = await db.select().from(monitoredWallets)
-      .where(eq(monitoredWallets.walletAddress, walletAddress))
+      .where(and(
+        eq(monitoredWallets.walletAddress, walletAddress),
+        eq(monitoredWallets.chain, chain)
+      ))
       .limit(1);
-    return result.find(w => w.chain === chain);
+    return result[0];
   }
 
   async updateMonitoredWallet(id: string, updates: Partial<MonitoredWallet>): Promise<MonitoredWallet> {
