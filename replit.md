@@ -1,23 +1,19 @@
-# Hourglass - Institutional Yield Platform
+# Uniswap Interface Clone
 
-A stunning crypto landing page for Hourglass, featuring institutional yield for stablecoins.
+A Uniswap-style decentralized exchange interface with token swap functionality.
 
 ## Project Overview
 
-This is a premium landing page showcasing the Hourglass early access program for institutional yield on Stable. The design features a dark green/teal aesthetic with sophisticated animations and a professional institutional feel.
+This is a Uniswap-inspired swap interface featuring a clean light theme with pink (#FC72FF) accents. The design mirrors the modern Uniswap interface with token selection, swap functionality, and wallet connection.
 
 ## Key Features
 
-- **Hero Section**: Bold headline with gradient "institutional yield" text, backed by Electric Capital, Coinbase Ventures, and Tribe Capital
-- **Animated Mockup**: Interactive deposit interface showing platform UI
-- **Early Access Program**: Green morphic UI component with Stable MAINNET → CLAIM iUSDT flow
-- **Process Steps**: Four-step program visualization (Deposit, KYC, Yield, Withdraw)
-- **Wallet Connection**: Fully functional wallet integration using RainbowKit
-  - Supports MetaMask, WalletConnect, Coinbase Wallet, Rainbow, and other popular wallets
-  - Professional modal popup with dark theme matching Hourglass aesthetic
-  - Wrong network detection - prompts users to switch to Ethereum mainnet
-  - Shows connected wallet address with account management options
-- **Footer**: Large "Hourglass" watermark with institutional tagline
+- **Swap Interface**: Central swap card with Sell/Buy token inputs
+- **Token Selection**: Dropdown selectors for ETH, USDC, USDT, DAI, WBTC
+- **Swap Direction Toggle**: One-click button to swap sell/buy tokens
+- **Header Navigation**: Trade, Explore, Pool, Portfolio tabs with search bar
+- **Wallet Connection**: RainbowKit integration with MetaMask, WalletConnect support
+- **UK Disclaimer Banner**: Legal compliance banner at top of page
 
 ## Tech Stack
 
@@ -26,19 +22,29 @@ This is a premium landing page showcasing the Hourglass early access program for
 - **Backend**: Express.js, Discord.js for ticketing bot
 - **Database**: PostgreSQL (Neon) with Drizzle ORM
 - **Discord Bot**: Fully integrated ticketing system
-- **Fonts**: Space Grotesk
+- **Fonts**: Inter
 - **Icons**: Lucide React, React Icons
 
 ## Color Scheme
 
-- Background: Very dark green (#0a1614)
-- Accent: Bright teal/cyan gradient (#5ce1d7 → #3dd9b3)
-- Text: Cream/beige (#f5f1e8) for primary content
-- Secondary text: Grays for hierarchy
+- Background: Light (#FFFFFF)
+- Primary: Pink (#FC72FF)
+- Accent Background: Light pink (#FEF0FF)
+- Muted: Light gray (#F5F5F5)
+- Text: Dark (#1D1D1D)
+- Secondary text: Gray (#737373)
 
 ## Recent Changes
 
-- **2025-11-18**: Discord Ticketing System - FULLY OPERATIONAL ✅
+- **2026-01-02**: Uniswap Redesign
+  - Completely redesigned from Hourglass to Uniswap-style interface
+  - Changed color scheme from dark green/teal to light pink theme
+  - Updated font from Space Grotesk to Inter
+  - Built swap interface with token selectors and swap functionality
+  - Header with navigation tabs, search bar, and Connect button
+  - UK disclaimer banner at top
+  
+- **2025-11-18**: Discord Ticketing System - FULLY OPERATIONAL
   - Integrated Discord.js bot with full ticketing functionality
   - `/panel` slash command to deploy ticket panel in any channel
   - Three ticket categories: General Support, Bug Report, Partnership Request
@@ -97,6 +103,6 @@ This is a premium landing page showcasing the Hourglass early access program for
 ## User Preferences
 
 - Focus on visual excellence and premium institutional aesthetic
-- Dark theme with green/teal accents matching Hourglass brand
+- Light theme with pink accents matching Uniswap brand
 - Smooth animations and transitions
 - Pixel-perfect implementation matching reference screenshots
