@@ -101,7 +101,7 @@ export default function Home() {
             }}
           />
           <button 
-            className="absolute cursor-pointer border-0 outline-none bg-[#FC72FF] hover:bg-[#e865e8] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+            className="absolute cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
             style={{ 
               top: '55%', 
               right: '1%',
@@ -220,7 +220,7 @@ export default function Home() {
                       className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold text-sm whitespace-nowrap ${
                         buyToken 
                           ? "bg-background hover:bg-background/80 border border-border shadow-sm" 
-                          : "bg-[#FC72FF] hover:bg-[#e865e8] text-white"
+                          : "bg-[#FF00D6] hover:bg-[#e800c0] text-white"
                       }`}
                       data-testid="button-buy-token"
                     >
@@ -264,7 +264,7 @@ export default function Home() {
             <div className="mt-4">
               {isConnected ? (
                 <Button
-                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#FF007A] border-0"
+                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6] border-0"
                   disabled={!sellAmount || !buyToken}
                   data-testid="button-swap"
                 >
@@ -273,7 +273,7 @@ export default function Home() {
               ) : (
                 <button
                   onClick={openConnectModal}
-                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0F6] hover:bg-[#FFE4EF] text-[#FF007A]"
+                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
                   data-testid="button-connect-wallet"
                 >
                   Connect wallet
