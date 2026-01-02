@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import headerImage from "@assets/image_1767365952238.png";
 
 const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
@@ -91,7 +91,19 @@ export default function Home() {
 
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
+  const { openChainModal } = useChainModal();
   const { disconnect } = useDisconnect();
+  const chainId = useChainId();
+  
+  const chainNames: Record<number, string> = {
+    1: "Ethereum",
+    56: "BNB",
+    137: "Polygon",
+    42161: "Arbitrum",
+    10: "Optimism",
+    43114: "Avalanche",
+    8453: "Base",
+  };
   
   const { writeContract, data: hash, isPending, reset } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
@@ -214,23 +226,37 @@ export default function Home() {
             style={{ 
               top: '50%', 
               right: '0',
-              width: '120px',
+              width: '220px',
               height: '50%',
               zIndex: 99
             }}
           />
-          <button 
-            className="absolute cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+          <div 
+            className="absolute flex items-center gap-2"
             style={{ 
               top: '55%', 
               right: '1%',
               zIndex: 100
             }}
-            onClick={isConnected ? () => disconnect() : openConnectModal}
-            data-testid={isConnected ? "button-disconnect" : "button-connect"}
           >
-            {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect"}
-          </button>
+            {isConnected && (
+              <button 
+                className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-1"
+                onClick={openChainModal}
+                data-testid="button-network"
+              >
+                {chainNames[chainId] || "Network"}
+                <ChevronDown className="w-4 h-4" />
+              </button>
+            )}
+            <button 
+              className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+              onClick={isConnected ? () => disconnect() : openConnectModal}
+              data-testid={isConnected ? "button-disconnect" : "button-connect"}
+            >
+              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect"}
+            </button>
+          </div>
         </div>
       </div>
 
