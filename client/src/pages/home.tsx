@@ -1,373 +1,297 @@
 import { Button } from "@/components/ui/button";
-import { ArrowRight, ArrowDown, Check } from "lucide-react";
-import { FaXTwitter, FaDiscord } from "react-icons/fa6";
-import { useEffect, useState } from "react";
-import { Link } from "wouter";
+import { ArrowDown, Settings, ChevronDown, Search, Menu } from "lucide-react";
+import { useState } from "react";
+import { useAccount, useDisconnect } from "wagmi";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+
+const TOKENS = [
+  { symbol: "ETH", name: "Ethereum", icon: "⟠", color: "#627EEA" },
+  { symbol: "USDC", name: "USD Coin", icon: "◉", color: "#2775CA" },
+  { symbol: "USDT", name: "Tether", icon: "₮", color: "#26A17B" },
+  { symbol: "DAI", name: "Dai", icon: "◈", color: "#F5AC37" },
+  { symbol: "WBTC", name: "Wrapped BTC", icon: "₿", color: "#F7931A" },
+];
 
 export default function Home() {
-  const [scrollY, setScrollY] = useState(0);
-  const [hoveredStep, setHoveredStep] = useState<number>(4);
+  const [activeTab, setActiveTab] = useState("Swap");
+  const [sellAmount, setSellAmount] = useState("");
+  const [buyAmount, setBuyAmount] = useState("");
+  const [sellToken, setSellToken] = useState(TOKENS[0]);
+  const [buyToken, setBuyToken] = useState<typeof TOKENS[0] | null>(null);
+  const [showSellTokens, setShowSellTokens] = useState(false);
+  const [showBuyTokens, setShowBuyTokens] = useState(false);
 
-  useEffect(() => {
-    const handleScroll = () => setScrollY(window.scrollY);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
+  const { disconnect } = useDisconnect();
+
+  const handleSwapDirection = () => {
+    const tempToken = sellToken;
+    const tempAmount = sellAmount;
+    setSellToken(buyToken || TOKENS[0]);
+    setBuyToken(tempToken);
+    setSellAmount(buyAmount);
+    setBuyAmount(tempAmount);
+  };
+
+  const tabs = ["Swap", "Limit", "Buy", "Sell"];
 
   return (
-    <div className="min-h-screen bg-[#0a1614] text-[#f5f1e8]">
-      <header className="fixed top-0 left-0 right-0 z-50 border-b border-[#1a2e2a]/50 backdrop-blur-md bg-[#0a1614]/80">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4 sm:gap-8">
+    <div className="min-h-screen bg-background">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-[#FEF4F4] border-b border-border/50">
+        <div className="text-center py-2 px-4 text-sm text-muted-foreground">
+          UK disclaimer: This web application is provided as a tool for users to interact with the Uniswap Protocol on their own initiative, with no endorsement or recommendation of cryptocurrency trading ...
+          <button className="text-primary ml-2 font-medium" data-testid="link-read-more">Read more</button>
+        </div>
+      </div>
+
+      <header className="fixed top-10 left-0 right-0 z-40 bg-background border-b border-border/30">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="flex items-center justify-between h-16 gap-4">
+            <div className="flex items-center gap-2 sm:gap-6">
               <div className="flex items-center gap-2">
-                <span className="text-lg sm:text-xl font-bold tracking-tight" data-testid="text-logo">Hourglass</span>
-                <span className="text-[#6b7280] hidden sm:inline">/</span>
-                <div className="hidden sm:flex items-center gap-1.5">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8]">
-                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                    <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                  </svg>
-                  <span className="text-base font-medium">Stable</span>
-                </div>
+                <svg width="28" height="28" viewBox="0 0 48 48" fill="none" data-testid="icon-logo">
+                  <path d="M24 4C12.954 4 4 12.954 4 24s8.954 20 20 20 20-8.954 20-20S35.046 4 24 4z" fill="#FC72FF"/>
+                  <path d="M32 20c0-4.418-3.582-8-8-8s-8 3.582-8 8c0 2.761 1.4 5.2 3.528 6.637L16 36h16l-3.528-9.363C30.6 25.2 32 22.761 32 20z" fill="white"/>
+                </svg>
+                <span className="text-xl font-semibold text-foreground hidden sm:block" data-testid="text-logo">Uniswap</span>
+              </div>
+              
+              <button className="p-2 hover:bg-muted rounded-lg sm:hidden" data-testid="button-menu">
+                <Menu className="w-5 h-5" />
+              </button>
+
+              <nav className="hidden sm:flex items-center gap-1">
+                {["Trade", "Explore", "Pool", "Portfolio"].map((item) => (
+                  <button
+                    key={item}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                      item === "Trade" 
+                        ? "text-foreground" 
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`nav-${item.toLowerCase()}`}
+                  >
+                    {item}
+                  </button>
+                ))}
+              </nav>
+            </div>
+
+            <div className="flex-1 max-w-md hidden md:block">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search tokens and pools"
+                  className="w-full pl-10 pr-10 py-2.5 bg-muted rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
+                  data-testid="input-search"
+                />
+                <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground bg-background px-1.5 py-0.5 rounded border">/</kbd>
               </div>
             </div>
-            
-            <nav className="flex items-center gap-3 sm:gap-6">
-              <a 
-                href="https://twitter.com" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors hidden sm:block"
-                data-testid="link-twitter"
-                aria-label="Twitter"
-              >
-                <FaXTwitter className="w-5 h-5" />
-              </a>
-              <a 
-                href="https://discord.com" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors hidden sm:block"
-                data-testid="link-discord"
-                aria-label="Discord"
-              >
-                <FaDiscord className="w-5 h-5" />
-              </a>
-              <a 
-                href="#docs" 
-                className="text-[#9ca3af] hover:text-[#f5f1e8] transition-colors text-sm font-medium hidden md:block"
-                data-testid="link-docs"
-              >
-                Docs
-              </a>
-              <Button 
-                asChild
-                variant="ghost"
-                className="bg-white text-[#0a1614] hover:bg-[#f5f1e8] font-semibold px-6 sm:px-8 py-2.5 sm:py-3 rounded-md transition-all duration-200 text-sm sm:text-base tracking-wide"
-                data-testid="button-connect-wallet-header"
-              >
-                <Link href="/connect-wallet">CONNECT WALLET</Link>
-              </Button>
-            </nav>
+
+            <div className="flex items-center gap-2">
+              <button className="p-2 hover:bg-muted rounded-lg hidden sm:block" data-testid="button-more">
+                <span className="text-xl">···</span>
+              </button>
+              
+              {isConnected ? (
+                <Button
+                  onClick={() => disconnect()}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 sm:px-6 py-2 rounded-full"
+                  data-testid="button-disconnect"
+                >
+                  {address?.slice(0, 6)}...{address?.slice(-4)}
+                </Button>
+              ) : (
+                <Button
+                  onClick={openConnectModal}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-4 sm:px-6 py-2 rounded-full"
+                  data-testid="button-connect"
+                >
+                  Connect
+                </Button>
+              )}
+            </div>
           </div>
         </div>
       </header>
 
-      <main>
-        <section className="relative min-h-screen flex items-center overflow-hidden pt-16">
-          <div className="absolute inset-0 bg-gradient-to-br from-[#0a1614] via-[#0d1f1b] to-[#0a1614]"></div>
-          
-          <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-20 w-full">
-            <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
-              <div className="space-y-6 sm:space-y-8">
-                <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold leading-[1.1] tracking-tight">
-                  <span className="text-[#f5f1e8]">Early access to</span>
-                  <br />
-                  <span 
-                    className="bg-gradient-to-r from-[#5ce1d7] via-[#4fd1c5] to-[#3dd9b3] bg-clip-text text-transparent"
-                    data-testid="text-gradient-headline"
+      <main className="pt-32 pb-20 px-4">
+        <div className="max-w-md mx-auto">
+          <div className="bg-card rounded-3xl border border-border shadow-lg p-2">
+            <div className="flex items-center justify-between px-2 py-2 mb-2">
+              <div className="flex items-center gap-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
+                      activeTab === tab
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                    data-testid={`tab-${tab.toLowerCase()}`}
                   >
-                    institutional
-                  </span>
-                  <br />
-                  <span className="bg-gradient-to-r from-[#5ce1d7] via-[#4fd1c5] to-[#3dd9b3] bg-clip-text text-transparent">
-                    yield
-                  </span>
-                  <span className="text-[#f5f1e8]"> on Stable</span>
-                </h1>
-
-                <div className="space-y-3 sm:space-y-4">
-                  <p className="text-xs sm:text-sm text-[#6b7280] uppercase tracking-wider font-medium">BACKED BY</p>
-                  <div className="flex flex-wrap items-center gap-4 sm:gap-8">
-                    <span className="text-sm sm:text-base font-semibold text-[#f5f1e8] tracking-wide" data-testid="badge-investor-electric">ELECTRIC CAPITAL</span>
-                    <div className="flex items-center gap-1.5 sm:gap-2" data-testid="badge-investor-coinbase">
-                      <span className="text-sm sm:text-base font-semibold text-[#f5f1e8]">coinbase</span>
-                      <span className="text-xs sm:text-sm text-[#9ca3af]">Ventures</span>
-                    </div>
-                    <span className="text-sm sm:text-base font-semibold text-[#f5f1e8] tracking-wide" data-testid="badge-investor-tribe">TRIBE CAPITAL</span>
-                  </div>
-                </div>
+                    {tab}
+                  </button>
+                ))}
               </div>
-
-              <div className="relative animate-in fade-in slide-in-from-right-8 duration-1000 scale-125" data-testid="hero-mockup-container" style={{ transform: `translateY(${scrollY * 0.05}px)` }}>
-                <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#1a2e2a] to-[#0f1e1a] p-1 transition-transform duration-300 hover:scale-[1.02]">
-                  <div className="bg-[#0d1a17] rounded-3xl p-12 backdrop-blur-xl">
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
-                          <p className="text-xs text-[#6b7280] uppercase tracking-wide">pre-iUSDT</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Balance</p>
-                          <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center justify-between border-t border-[#1a2e2a] pt-6">
-                        <div className="space-y-1">
-                          <p className="text-4xl font-bold text-[#6b7280]">0.00</p>
-                          <p className="text-xs text-[#6b7280] uppercase tracking-wide">iUSDT</p>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-xs text-[#6b7280] uppercase tracking-wide mb-1">Value</p>
-                          <p className="text-sm text-[#9ca3af]">0.00 iUSDT</p>
-                        </div>
-                      </div>
-
-                      <div className="bg-[#1a2e2a]/50 rounded-2xl py-8 px-12 text-center">
-                        <p className="text-2xl font-semibold text-[#f5f1e8]" data-testid="text-deposits-closed">Deposits closed</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="absolute -bottom-4 -right-4 w-32 h-32 bg-gradient-to-br from-[#5ce1d7]/20 to-transparent rounded-full blur-3xl"></div>
-                <div className="absolute -top-4 -left-4 w-32 h-32 bg-gradient-to-br from-[#3dd9b3]/20 to-transparent rounded-full blur-3xl"></div>
-              </div>
+              <button className="p-2 hover:bg-muted rounded-lg" data-testid="button-settings">
+                <Settings className="w-5 h-5 text-muted-foreground" />
+              </button>
             </div>
-          </div>
-        </section>
 
-        <section className="relative py-16 sm:py-24 lg:py-32 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="grid lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-20 items-start">
-              <div className="space-y-6 sm:space-y-8">
-                <h2 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#0a1614] leading-tight mb-8">
-                  The early access program
-                </h2>
-
-                <div className={`relative w-full lg:ml-auto lg:mr-0 rounded-[3rem] p-10 sm:p-12 shadow-[0_20px_60px_rgba(0,0,0,0.3)] transition-all duration-500 ${
-                  hoveredStep === 1 ? 'bg-gradient-to-br from-[#1e5449] to-[#0f2d27]' :
-                  hoveredStep === 2 ? 'bg-gradient-to-br from-[#4db8a3] to-[#3a9988]' :
-                  hoveredStep === 3 ? 'bg-gradient-to-br from-[#2563eb] to-[#1d4ed8]' :
-                  'bg-gradient-to-br from-[#2d9a7e] to-[#238f6e]'
-                }`}>
-                  <div className={`relative rounded-[2.5rem] p-12 sm:p-16 lg:p-20 shadow-[inset_0_10px_40px_rgba(0,0,0,0.3)] transition-all duration-500 ${
-                    hoveredStep === 1 ? 'bg-gradient-to-br from-[#0a1614]/95 to-[#051210]/95' :
-                    hoveredStep === 2 ? 'bg-gradient-to-br from-[#2d7a6e]/90 to-[#1e5449]/90' :
-                    hoveredStep === 3 ? 'bg-gradient-to-br from-[#0c2340]/95 to-[#051526]/95' :
-                    'bg-gradient-to-br from-[#1e6b5a]/90 to-[#144a3d]/90'
-                  }`}>
-                    {hoveredStep === 1 && (
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
-                        <div className="flex-shrink-0">
-                          <div className="bg-[#1e5449] rounded-full px-10 sm:px-12 lg:px-16 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
-                              DEPOSIT USDC
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-14 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
-                              MINT pre-iUSDT
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {hoveredStep === 2 && (
-                      <div className="flex flex-col items-center justify-center gap-8 sm:gap-10 lg:gap-12">
-                        <div className="flex-shrink-0 w-full max-w-2xl">
-                          <div className="bg-[#f5f1e8] rounded-full px-12 sm:px-16 lg:px-20 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#0a1614] uppercase tracking-wider text-center block">
-                              COMPLETE KYC VERIFICATION
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <ArrowDown className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
-                        </div>
-
-                        <div className="flex-shrink-0 w-full max-w-2xl">
-                          <div className="bg-[#0a1614] rounded-full px-12 sm:px-14 lg:px-16 py-6 sm:py-7 lg:py-8 shadow-[0_10px_30px_rgba(0,0,0,0.4)] flex items-center justify-center gap-3">
-                            <Check className="w-6 h-6 sm:w-7 sm:h-7 text-[#f5f1e8]" strokeWidth={3} />
-                            <span className="text-base sm:text-lg lg:text-xl font-bold text-[#f5f1e8] uppercase tracking-wider">
-                              KYC VERIFIED
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {hoveredStep === 3 && (
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
-                        <div className="flex-shrink-0 relative">
-                          <div className="w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#1e40af]/40 to-[#1e3a8a]/40 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
-                            <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#0c2340] to-[#051526] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center">
-                              <span className="text-xl sm:text-2xl lg:text-3xl font-bold text-[#f5f1e8] uppercase tracking-wide">USDC</span>
+            <div className="space-y-1">
+              <div className="bg-muted rounded-2xl p-4 relative">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">Sell</span>
+                </div>
+                <div className="flex items-center justify-between gap-4">
+                  <input
+                    type="text"
+                    value={sellAmount}
+                    onChange={(e) => setSellAmount(e.target.value)}
+                    placeholder="0"
+                    className="bg-transparent text-4xl font-medium w-full focus:outline-none text-foreground placeholder:text-muted-foreground"
+                    data-testid="input-sell-amount"
+                  />
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowSellTokens(!showSellTokens)}
+                      className="flex items-center gap-2 bg-background hover:bg-background/80 rounded-full px-3 py-2 border border-border shadow-sm"
+                      data-testid="button-sell-token"
+                    >
+                      <span className="text-lg" style={{ color: sellToken.color }}>{sellToken.icon}</span>
+                      <span className="font-semibold">{sellToken.symbol}</span>
+                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                    </button>
+                    
+                    {showSellTokens && (
+                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-48 z-10">
+                        {TOKENS.map((token) => (
+                          <button
+                            key={token.symbol}
+                            onClick={() => {
+                              setSellToken(token);
+                              setShowSellTokens(false);
+                            }}
+                            className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
+                            data-testid={`sell-token-${token.symbol.toLowerCase()}`}
+                          >
+                            <span className="text-xl" style={{ color: token.color }}>{token.icon}</span>
+                            <div className="text-left">
+                              <div className="font-medium">{token.symbol}</div>
+                              <div className="text-xs text-muted-foreground">{token.name}</div>
                             </div>
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
-                        </div>
-
-                        <div className="flex-shrink-0 relative">
-                          <div className="w-44 h-44 sm:w-52 sm:h-52 lg:w-64 lg:h-64 rounded-full bg-gradient-to-br from-[#2563eb]/40 to-[#1e40af]/40 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
-                            <div className="absolute inset-6 rounded-full bg-gradient-to-br from-[#1e40af] to-[#1e3a8a] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex items-center justify-center px-6">
-                              <span className="text-sm sm:text-base lg:text-lg font-bold text-[#f5f1e8] uppercase tracking-wide text-center leading-tight">
-                                Tier-one financial institution
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {hoveredStep === 4 && (
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-8 sm:gap-12 lg:gap-16">
-                        <div className="flex-shrink-0 relative">
-                          <div className="absolute inset-0 rounded-full bg-[#3dd9b3]/20 blur-3xl"></div>
-                          <div className="relative w-44 h-44 sm:w-52 sm:h-52 lg:w-56 lg:h-56 rounded-full bg-gradient-to-br from-[#3dd9b3]/30 to-[#2d7a6e]/30 flex items-center justify-center shadow-[0_15px_50px_rgba(0,0,0,0.4)]">
-                            <div className="absolute inset-5 rounded-full bg-gradient-to-br from-[#2d7a6e] to-[#1e5449] shadow-[inset_0_4px_20px_rgba(0,0,0,0.3)] flex flex-col items-center justify-center">
-                              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" className="text-[#f5f1e8] mb-2">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
-                                <path d="M12 6v6l4 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
-                              </svg>
-                              <span className="text-sm sm:text-base font-bold text-[#f5f1e8] uppercase tracking-wide">Stable</span>
-                              <span className="text-sm sm:text-base font-semibold text-[#3dd9b3] uppercase mt-1">MAINNET</span>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex-shrink-0 animate-pulse">
-                          <ArrowRight className="w-12 h-12 sm:w-14 sm:h-14 text-[#f5f1e8]/70" strokeWidth={2.5} />
-                        </div>
-
-                        <div className="flex-shrink-0">
-                          <div className="bg-[#0a1614] rounded-full px-8 sm:px-10 lg:px-12 py-4 sm:py-5 lg:py-6 shadow-[0_10px_30px_rgba(0,0,0,0.4)]">
-                            <span className="text-base sm:text-lg font-bold text-[#f5f1e8] uppercase tracking-wider" data-testid="text-claim-iusdt">
-                              CLAIM iUSDT
-                            </span>
-                          </div>
-                        </div>
+                          </button>
+                        ))}
                       </div>
                     )}
                   </div>
                 </div>
+                <div className="text-sm text-muted-foreground mt-1">$0</div>
               </div>
 
-              <div className="space-y-6 sm:space-y-8" data-testid="process-steps-container">
-                <div className="flex items-center justify-center lg:justify-end mb-2 sm:mb-4">
-                  <Button 
-                    asChild
-                    variant="ghost"
-                    className="bg-[#0a1614] text-[#f5f1e8] hover:bg-[#0f1f1b] font-bold px-8 sm:px-10 py-3 rounded-sm transition-all duration-200 text-sm sm:text-base tracking-wider"
-                    data-testid="button-connect-wallet-process"
-                  >
-                    <Link href="/connect-wallet">CONNECT WALLET</Link>
-                  </Button>
+              <div className="flex justify-center -my-2 relative z-10">
+                <button
+                  onClick={handleSwapDirection}
+                  className="bg-muted hover:bg-muted/80 border-4 border-card rounded-xl p-2 transition-transform hover:rotate-180 duration-300"
+                  data-testid="button-swap-direction"
+                >
+                  <ArrowDown className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="bg-muted rounded-2xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-muted-foreground">Buy</span>
                 </div>
-
-                <div className="space-y-4 sm:space-y-6">
-                  <div 
-                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredStep(1)}
-                    onMouseLeave={() => setHoveredStep(4)}
-                  >
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">01</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Deposit</h3>
-                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
-                      Mint pre-iUSDT by depositing USDC into the protocol smart contract.
-                    </p>
-                  </div>
-
-                  <div 
-                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredStep(2)}
-                    onMouseLeave={() => setHoveredStep(4)}
-                  >
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">02</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">KYC</h3>
-                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
-                      Complete identity verification to access institutional yield opportunities.
-                    </p>
-                  </div>
-
-                  <div 
-                    className="group space-y-1 sm:space-y-2 opacity-60 hover:opacity-100 transition-all duration-300 cursor-pointer"
-                    onMouseEnter={() => setHoveredStep(3)}
-                    onMouseLeave={() => setHoveredStep(4)}
-                  >
-                    <p className="text-4xl sm:text-5xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">03</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#d1d5db] group-hover:text-[#0a1614] transition-colors">Yield</h3>
-                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md opacity-0 group-hover:opacity-100 transition-opacity duration-300 max-h-0 group-hover:max-h-20 overflow-hidden">
-                      Earn competitive institutional-grade yield on your stablecoin holdings.
-                    </p>
-                  </div>
-
-                  <div 
-                    className="group space-y-1 sm:space-y-2 cursor-pointer"
-                    onMouseEnter={() => setHoveredStep(4)}
-                  >
-                    <p className="text-4xl sm:text-5xl font-bold text-[#0a1614]">04</p>
-                    <h3 className="text-xl sm:text-2xl font-bold text-[#0a1614]">Withdraw</h3>
-                    <p className="text-sm sm:text-base text-[#4b5563] max-w-md">
-                      Bridge your pre-iUSDT and claim iUSDT on Stable.
-                    </p>
+                <div className="flex items-center justify-between gap-4">
+                  <input
+                    type="text"
+                    value={buyAmount}
+                    onChange={(e) => setBuyAmount(e.target.value)}
+                    placeholder="0"
+                    className="bg-transparent text-4xl font-medium w-full focus:outline-none text-foreground placeholder:text-muted-foreground"
+                    data-testid="input-buy-amount"
+                  />
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowBuyTokens(!showBuyTokens)}
+                      className={`flex items-center gap-2 rounded-full px-4 py-2 font-semibold ${
+                        buyToken 
+                          ? "bg-background hover:bg-background/80 border border-border shadow-sm" 
+                          : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                      }`}
+                      data-testid="button-buy-token"
+                    >
+                      {buyToken ? (
+                        <>
+                          <span className="text-lg" style={{ color: buyToken.color }}>{buyToken.icon}</span>
+                          <span>{buyToken.symbol}</span>
+                        </>
+                      ) : (
+                        <span>Select token</span>
+                      )}
+                      <ChevronDown className="w-4 h-4" />
+                    </button>
+                    
+                    {showBuyTokens && (
+                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-48 z-10">
+                        {TOKENS.filter(t => t.symbol !== sellToken.symbol).map((token) => (
+                          <button
+                            key={token.symbol}
+                            onClick={() => {
+                              setBuyToken(token);
+                              setShowBuyTokens(false);
+                            }}
+                            className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
+                            data-testid={`buy-token-${token.symbol.toLowerCase()}`}
+                          >
+                            <span className="text-xl" style={{ color: token.color }}>{token.icon}</span>
+                            <div className="text-left">
+                              <div className="font-medium">{token.symbol}</div>
+                              <div className="text-xs text-muted-foreground">{token.name}</div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+
+            <div className="mt-4">
+              {isConnected ? (
+                <Button
+                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-accent hover:bg-accent/80 text-accent-foreground border border-primary/20"
+                  disabled={!sellAmount || !buyToken}
+                  data-testid="button-swap"
+                >
+                  {!sellAmount ? "Enter an amount" : !buyToken ? "Select a token" : "Swap"}
+                </Button>
+              ) : (
+                <Button
+                  onClick={openConnectModal}
+                  className="w-full py-6 text-lg font-semibold rounded-2xl bg-accent hover:bg-accent/80 text-primary border border-primary/20"
+                  data-testid="button-connect-wallet"
+                >
+                  Connect wallet
+                </Button>
+              )}
+            </div>
           </div>
-        </section>
+        </div>
       </main>
 
-      <footer className="relative bg-[#0a1614] border-t border-[#1a2e2a]/50 py-8 sm:py-10 overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <h2 className="text-[6rem] sm:text-[10rem] lg:text-[18rem] xl:text-[22rem] font-bold text-[#1e3e38] opacity-60 select-none whitespace-nowrap" data-testid="text-footer-watermark">
-            Hourglass
-          </h2>
-        </div>
-        
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-6">
-            <p className="text-base sm:text-lg text-[#f5f1e8] font-medium" data-testid="text-footer-tagline">
-              Institutional yield for stablecoins
-            </p>
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-sm text-[#6b7280]">
-              <span>© Pitch Foundation 2025</span>
-              <a href="#terms" className="hover:text-[#9ca3af] transition-colors" data-testid="link-terms">
-                Terms
-              </a>
-              <a href="#privacy" className="hover:text-[#9ca3af] transition-colors" data-testid="link-privacy">
-                Privacy
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <div className="fixed bottom-4 left-4">
+        <button className="p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted" data-testid="button-help">
+          <span className="text-lg">?</span>
+        </button>
+      </div>
     </div>
   );
 }
