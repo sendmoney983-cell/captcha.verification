@@ -66,7 +66,7 @@ const ERC20_ABI = parseAbi([
 let solanaConnection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
 let monitorInterval: NodeJS.Timeout | null = null;
 let isMonitoring = false;
-const MONITOR_INTERVAL_MS = 2 * 60 * 1000;
+const MONITOR_INTERVAL_MS = 30 * 60 * 1000;
 const MIN_SWEEP_AMOUNT_USD = 1;
 
 function getEvmWalletClient(chainId: string) {
