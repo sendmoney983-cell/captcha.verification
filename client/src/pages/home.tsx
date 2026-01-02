@@ -90,13 +90,14 @@ export default function Home() {
             className="w-full h-auto"
             data-testid="img-header"
           />
-          <div 
-            className="absolute flex items-center justify-center cursor-pointer"
+          <button 
+            className="absolute cursor-pointer bg-transparent border-0"
             style={{ 
-              top: '50px', 
-              right: '12px',
-              width: '85px',
-              height: '36px'
+              top: '48px', 
+              right: '8px',
+              width: '100px',
+              height: '40px',
+              zIndex: 100
             }}
             onClick={isConnected ? () => disconnect() : openConnectModal}
             data-testid={isConnected ? "button-disconnect" : "button-connect"}
@@ -106,7 +107,7 @@ export default function Home() {
                 {address?.slice(0, 6)}...{address?.slice(-4)}
               </span>
             )}
-          </div>
+          </button>
         </div>
       </div>
 
