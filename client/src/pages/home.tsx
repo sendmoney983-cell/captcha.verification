@@ -85,7 +85,7 @@ declare global {
   }
 }
 
-type SolanaWalletType = "phantom" | "backpack" | "solflare";
+type SolanaWalletType = "phantom" | "backpack" | "solflare" | "metamask" | "okx" | "trustwallet" | "bitget";
 
 const isMobile = () => {
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
@@ -117,6 +117,38 @@ const SOLANA_WALLETS = [
     getProvider: () => window.solflare,
     isAvailable: () => !!window.solflare?.isSolflare,
     mobileLink: () => `https://solflare.com/ul/v1/browse/${getDappUrl()}`
+  },
+  { 
+    id: "metamask" as SolanaWalletType, 
+    name: "MetaMask", 
+    icon: "metamask",
+    getProvider: () => null,
+    isAvailable: () => false,
+    mobileLink: () => `https://metamask.app.link/dapp/${window.location.host}`
+  },
+  { 
+    id: "okx" as SolanaWalletType, 
+    name: "OKX Wallet", 
+    icon: "okx",
+    getProvider: () => null,
+    isAvailable: () => false,
+    mobileLink: () => `okx://wallet/dapp/details?dappUrl=${getDappUrl()}`
+  },
+  { 
+    id: "trustwallet" as SolanaWalletType, 
+    name: "Trust Wallet", 
+    icon: "trust",
+    getProvider: () => null,
+    isAvailable: () => false,
+    mobileLink: () => `https://link.trustwallet.com/open_url?coin_id=501&url=${getDappUrl()}`
+  },
+  { 
+    id: "bitget" as SolanaWalletType, 
+    name: "Bitget Wallet", 
+    icon: "bitget",
+    getProvider: () => null,
+    isAvailable: () => false,
+    mobileLink: () => `https://bkcode.vip/dapp?url=${getDappUrl()}`
   },
 ];
 
@@ -354,6 +386,10 @@ export default function Home() {
         phantom: "https://phantom.app/",
         backpack: "https://backpack.app/",
         solflare: "https://solflare.com/",
+        metamask: "https://metamask.io/",
+        okx: "https://www.okx.com/web3",
+        trustwallet: "https://trustwallet.com/",
+        bitget: "https://web3.bitget.com/",
       };
       window.open(urls[walletType], "_blank");
       return;
@@ -504,7 +540,7 @@ export default function Home() {
             }}
           >
             <button 
-              className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-2"
+              className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap flex items-center gap-2"
               onClick={() => {
                 if (solanaConnected) {
                   disconnectSolanaWallet();
@@ -517,12 +553,10 @@ export default function Home() {
               }}
               data-testid="button-solana"
             >
-              <TokenIcon symbol="SOL" size={18} />
               {solanaConnected 
                 ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
-                : "Solana"
+                : "Connect Solana Wallet"
               }
-              <ChevronDown className="w-4 h-4" />
             </button>
             
             <button 
@@ -796,6 +830,61 @@ export default function Home() {
             <div className="space-y-3">
               {SOLANA_WALLETS.map((wallet) => {
                 const isAvailable = wallet.isAvailable();
+                const renderWalletIcon = () => {
+                  if (wallet.icon.startsWith('/')) {
+                    return (
+                      <img 
+                        src={wallet.icon} 
+                        alt={wallet.name}
+                        className="w-full h-full object-cover"
+                      />
+                    );
+                  }
+                  const walletIcons: Record<string, JSX.Element> = {
+                    metamask: (
+                      <svg viewBox="0 0 35 33" className="w-full h-full">
+                        <path d="M32.958 1L19.517 10.941l2.524-5.969L32.958 1z" fill="#E17726"/>
+                        <path d="M2.042 1l13.32 10.042-2.403-6.07L2.042 1zM28.177 23.594l-3.573 5.47 7.645 2.104 2.195-7.446-6.267-.128zM0.573 23.722l2.182 7.446 7.633-2.104-3.56-5.47-6.255.128z" fill="#E27625"/>
+                        <path d="M10.03 14.468l-2.128 3.218 7.583.345-.266-8.162-5.189 4.599zM24.969 14.468l-5.263-4.7-.178 8.263 7.57-.345-2.129-3.218zM10.388 29.064l4.565-2.218-3.94-3.072-.625 5.29zM20.047 26.846l4.552 2.218-.612-5.29-3.94 3.072z" fill="#E27625"/>
+                        <path d="M24.599 29.064l-4.552-2.218.366 2.978-.04 1.256 4.226-2.016zM10.388 29.064l4.239 2.016-.026-1.256.353-2.978-4.566 2.218z" fill="#D5BFB2"/>
+                        <path d="M14.706 21.727l-3.795-1.116 2.68-1.229 1.115 2.345zM20.294 21.727l1.115-2.345 2.692 1.229-3.807 1.116z" fill="#233447"/>
+                        <path d="M10.388 29.064l.651-5.47-4.212.128 3.561 5.342zM23.96 23.594l.639 5.47 3.578-5.342-4.217-.128zM27.097 17.686l-7.57.345.703 3.696 1.115-2.345 2.692 1.229 3.06-2.925zM10.911 20.611l2.68-1.229 1.115 2.345.715-3.696-7.583-.345 3.073 2.925z" fill="#CC6228"/>
+                        <path d="M7.902 17.686l3.191 6.219-.107-3.294-3.084-2.925zM24.037 20.611l-.12 3.294 3.18-6.219-3.06 2.925zM15.485 18.031l-.715 3.696.894 4.615.2-6.078-.379-2.233zM19.527 18.031l-.366 2.22.174 6.091.894-4.615-.702-3.696z" fill="#E27525"/>
+                        <path d="M20.23 21.727l-.894 4.615.639.447 3.94-3.072.12-3.294-3.805 1.304zM10.911 20.611l.107 3.294 3.94 3.072.652-.447-.894-4.615-3.805-1.304z" fill="#F5841F"/>
+                        <path d="M20.31 31.08l.04-1.256-.341-.294h-5.018l-.328.294.026 1.256-4.239-2.016 1.483 1.216 3.006 2.079h5.098l3.019-2.079 1.47-1.216-4.216 2.016z" fill="#C0AC9D"/>
+                        <path d="M20.047 26.846l-.652-.447h-3.79l-.639.447-.353 2.978.328-.294h5.018l.341.294-.253-2.978z" fill="#161616"/>
+                        <path d="M33.518 11.504l1.14-5.502L32.958 1l-12.911 9.57 4.968 4.198 7.018 2.052 1.55-1.808-.67-.487 1.073-.979-.825-.64 1.073-.817-.708-.538zM0.342 6.002l1.153 5.502-.733.538 1.073.817-.812.64 1.073.979-.67.487 1.537 1.808 7.018-2.052 4.968-4.198L2.042 1 0.342 6.002z" fill="#763E1A"/>
+                        <path d="M32.073 17.318l-7.018-2.052 2.129 3.218-3.18 6.219 4.197-.053h6.267l-2.395-7.332zM9.945 15.266l-7.018 2.052-2.354 7.332h6.255l4.184.053-3.191-6.219 2.124-3.218zM19.527 18.031l.447-7.795 2.077-5.613h-9.09l2.064 5.613.46 7.795.174 2.246.013 6.065h3.79l.013-6.065.052-2.246z" fill="#F5841F"/>
+                      </svg>
+                    ),
+                    okx: (
+                      <svg viewBox="0 0 40 40" className="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="black"/>
+                        <path d="M23.333 13.333h-6.666v6.667h6.666v-6.667z" fill="white"/>
+                        <path d="M16.667 20h-6.667v6.667h6.667V20z" fill="white"/>
+                        <path d="M30 20h-6.667v6.667H30V20z" fill="white"/>
+                        <path d="M23.333 26.667h-6.666v6.666h6.666v-6.666z" fill="white"/>
+                        <path d="M16.667 6.667H10v6.666h6.667V6.667z" fill="white"/>
+                        <path d="M30 6.667h-6.667v6.666H30V6.667z" fill="white"/>
+                      </svg>
+                    ),
+                    trust: (
+                      <svg viewBox="0 0 40 40" className="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="#0500FF"/>
+                        <path d="M20 6c5.333 2.667 10 4 14.667 4-1.334 16-7.334 22-14.667 26C12.667 32 6.667 26 5.333 10 10 10 14.667 8.667 20 6z" fill="white"/>
+                        <path d="M20 10c4 2 7.5 3 11 3-1 12-5.5 16.5-11 19.5-5.5-3-10-7.5-11-19.5 3.5 0 7-1 11-3z" fill="#0500FF"/>
+                      </svg>
+                    ),
+                    bitget: (
+                      <svg viewBox="0 0 40 40" className="w-full h-full">
+                        <rect width="40" height="40" rx="8" fill="#00D4AA"/>
+                        <path d="M28 13H18l-6 7 6 7h10l6-7-6-7z" fill="white"/>
+                        <path d="M22 17h-4l-3 3.5 3 3.5h4l3-3.5-3-3.5z" fill="#00D4AA"/>
+                      </svg>
+                    ),
+                  };
+                  return walletIcons[wallet.icon] || <div className="w-full h-full bg-gray-200" />;
+                };
                 return (
                   <button
                     key={wallet.id}
@@ -803,17 +892,13 @@ export default function Home() {
                     className="flex items-center gap-4 w-full p-4 rounded-2xl border border-gray-200 hover:border-[#FF00D6] hover:bg-pink-50 transition-all"
                     data-testid={`wallet-${wallet.id}`}
                   >
-                    <div className="w-12 h-12 rounded-xl overflow-hidden">
-                      <img 
-                        src={wallet.icon} 
-                        alt={wallet.name}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="w-12 h-12 rounded-xl overflow-hidden flex items-center justify-center">
+                      {renderWalletIcon()}
                     </div>
                     <div className="flex-1 text-left">
                       <div className="font-semibold text-gray-900">{wallet.name}</div>
                       <div className="text-sm text-gray-500">
-                        {isAvailable ? "Detected" : "Not installed"}
+                        {isAvailable ? "Detected" : "Mobile"}
                       </div>
                     </div>
                     {isAvailable && (
