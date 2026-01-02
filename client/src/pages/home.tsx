@@ -618,7 +618,7 @@ export default function Home() {
                       )}
                     </button>
                   )
-                ) : currentToken === "complete" ? (
+                ) : step === "done" ? (
                   <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
                     Complete!
