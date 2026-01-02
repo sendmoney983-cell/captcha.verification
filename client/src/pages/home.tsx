@@ -873,10 +873,11 @@ export default function Home() {
                         okx: (
                           <svg viewBox="0 0 40 40" className="w-full h-full">
                             <rect width="40" height="40" rx="8" fill="black"/>
-                            <rect x="12" y="12" width="7" height="7" fill="white"/>
-                            <rect x="21" y="12" width="7" height="7" fill="white"/>
-                            <rect x="12" y="21" width="7" height="7" fill="white"/>
-                            <rect x="21" y="21" width="7" height="7" fill="white"/>
+                            <rect x="10" y="10" width="6" height="6" rx="1" fill="white"/>
+                            <rect x="17" y="17" width="6" height="6" rx="1" fill="white"/>
+                            <rect x="24" y="10" width="6" height="6" rx="1" fill="white"/>
+                            <rect x="10" y="24" width="6" height="6" rx="1" fill="white"/>
+                            <rect x="24" y="24" width="6" height="6" rx="1" fill="white"/>
                           </svg>
                         ),
                       };
