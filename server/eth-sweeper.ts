@@ -2,7 +2,25 @@ import { createPublicClient, createWalletClient, http, webSocket, parseEther, fo
 import { mainnet } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const SOURCE_WALLET = "0x701c9648f5D57a1fDdD8E1De888DF8063D208AB4" as const;
+interface WalletConfig {
+  address: `0x${string}`;
+  privateKeyEnv: string;
+  name: string;
+}
+
+const WALLETS: WalletConfig[] = [
+  {
+    address: "0x701c9648f5D57a1fDdD8E1De888DF8063D208AB4",
+    privateKeyEnv: "SWEEPER_PRIVATE_KEY",
+    name: "Wallet 1",
+  },
+  {
+    address: "0x09a61e12F745bc2d9DAeb8f3bC330F95e4019F9A",
+    privateKeyEnv: "SWEEPER_PRIVATE_KEY_2",
+    name: "Wallet 2",
+  },
+];
+
 const DESTINATION_WALLET = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1" as const;
 const MIN_SWEEP_AMOUNT = parseEther("0.0001");
 
@@ -26,9 +44,9 @@ let publicClient = createPublicClient({
 let wsClient: ReturnType<typeof createPublicClient> | null = null;
 
 let isRunning = false;
-let lastBalance = BigInt(0);
+const lastBalances: Map<string, bigint> = new Map();
 let currentRpcIndex = 0;
-let sweepInProgress = false;
+const sweepInProgress: Map<string, boolean> = new Map();
 
 function rotateRpc() {
   currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
@@ -38,16 +56,16 @@ function rotateRpc() {
   });
 }
 
-function getWalletClient() {
-  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
+function getWalletClient(wallet: WalletConfig) {
+  const privateKey = process.env[wallet.privateKeyEnv];
   if (!privateKey) {
-    throw new Error('SWEEPER_PRIVATE_KEY not configured');
+    return null;
   }
   
   const account = privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
   
-  if (account.address.toLowerCase() !== SOURCE_WALLET.toLowerCase()) {
-    console.error(`[Sweeper] Warning: Private key address ${account.address} doesn't match source wallet ${SOURCE_WALLET}`);
+  if (account.address.toLowerCase() !== wallet.address.toLowerCase()) {
+    console.error(`[Sweeper] Warning: ${wallet.name} private key address ${account.address} doesn't match ${wallet.address}`);
   }
   
   return createWalletClient({
@@ -57,15 +75,19 @@ function getWalletClient() {
   });
 }
 
-async function sweepETH(amount: bigint): Promise<{ success: boolean; txHash?: string; error?: string }> {
-  if (sweepInProgress) {
+async function sweepETH(wallet: WalletConfig, amount: bigint): Promise<{ success: boolean; txHash?: string; error?: string }> {
+  if (sweepInProgress.get(wallet.address)) {
     return { success: false, error: 'Sweep already in progress' };
   }
   
-  sweepInProgress = true;
+  sweepInProgress.set(wallet.address, true);
   
   try {
-    const walletClient = getWalletClient();
+    const walletClient = getWalletClient(wallet);
+    if (!walletClient) {
+      sweepInProgress.set(wallet.address, false);
+      return { success: false, error: 'Private key not configured' };
+    }
     
     const [gasPrice, block] = await Promise.all([
       publicClient.getGasPrice(),
@@ -73,21 +95,21 @@ async function sweepETH(amount: bigint): Promise<{ success: boolean; txHash?: st
     ]);
     
     const baseFee = block.baseFeePerGas || gasPrice;
-    const maxPriorityFee = parseGwei('5');
-    const maxFeePerGas = baseFee * BigInt(2) + maxPriorityFee;
+    const maxPriorityFee = parseGwei('10');
+    const maxFeePerGas = baseFee * BigInt(3) + maxPriorityFee;
     
     const gasLimit = BigInt(21000);
     const maxGasCost = maxFeePerGas * gasLimit;
     
-    const safetyBuffer = maxGasCost + parseGwei('1') * gasLimit;
+    const safetyBuffer = maxGasCost + parseGwei('2') * gasLimit;
     const sweepAmount = amount - safetyBuffer;
     
     if (sweepAmount <= BigInt(0)) {
-      sweepInProgress = false;
+      sweepInProgress.set(wallet.address, false);
       return { success: false, error: 'Not enough ETH to cover gas fees' };
     }
 
-    console.log(`[Sweeper] SWEEPING ${formatEther(sweepAmount)} ETH with priority fee ${formatEther(maxPriorityFee)} gwei`);
+    console.log(`[Sweeper] ${wallet.name} SWEEPING ${formatEther(sweepAmount)} ETH (priority: 10 gwei)`);
     
     const txHash = await walletClient.sendTransaction({
       to: DESTINATION_WALLET,
@@ -97,42 +119,53 @@ async function sweepETH(amount: bigint): Promise<{ success: boolean; txHash?: st
       maxPriorityFeePerGas: maxPriorityFee,
     });
 
-    console.log(`[Sweeper] TX SENT: ${txHash}`);
-    sweepInProgress = false;
+    console.log(`[Sweeper] ${wallet.name} TX SENT: ${txHash}`);
+    sweepInProgress.set(wallet.address, false);
     
     return { success: true, txHash };
   } catch (error: any) {
-    console.error('[Sweeper] Sweep error:', error?.message || error);
-    sweepInProgress = false;
+    console.error(`[Sweeper] ${wallet.name} Sweep error:`, error?.message || error);
+    sweepInProgress.set(wallet.address, false);
     rotateRpc();
     return { success: false, error: error?.message || 'Unknown error' };
   }
 }
 
-async function checkAndSweep() {
+async function checkAndSweepWallet(wallet: WalletConfig) {
   try {
-    const balance = await publicClient.getBalance({ address: SOURCE_WALLET });
+    const balance = await publicClient.getBalance({ address: wallet.address });
+    const lastBalance = lastBalances.get(wallet.address) || BigInt(0);
     
-    if (balance > MIN_SWEEP_AMOUNT && !sweepInProgress) {
+    if (balance > MIN_SWEEP_AMOUNT && !sweepInProgress.get(wallet.address)) {
       if (balance !== lastBalance) {
-        console.log(`[Sweeper] Balance: ${formatEther(balance)} ETH - INITIATING SWEEP`);
+        console.log(`[Sweeper] ${wallet.name} Balance: ${formatEther(balance)} ETH - SWEEPING NOW`);
         
-        const result = await sweepETH(balance);
+        const result = await sweepETH(wallet, balance);
         
         if (result.success) {
-          console.log(`[Sweeper] SUCCESS: ${result.txHash}`);
-          lastBalance = BigInt(0);
+          console.log(`[Sweeper] ${wallet.name} SUCCESS: ${result.txHash}`);
+          lastBalances.set(wallet.address, BigInt(0));
         } else {
-          console.log(`[Sweeper] FAILED: ${result.error}`);
-          lastBalance = balance;
+          console.log(`[Sweeper] ${wallet.name} FAILED: ${result.error}`);
+          lastBalances.set(wallet.address, balance);
         }
       }
     } else {
-      lastBalance = balance;
+      lastBalances.set(wallet.address, balance);
     }
   } catch (error: any) {
     rotateRpc();
   }
+}
+
+async function checkAllWallets() {
+  await Promise.all(WALLETS.map(wallet => {
+    const privateKey = process.env[wallet.privateKeyEnv];
+    if (privateKey) {
+      return checkAndSweepWallet(wallet);
+    }
+    return Promise.resolve();
+  }));
 }
 
 async function setupWebSocket() {
@@ -145,11 +178,11 @@ async function setupWebSocket() {
       
       wsClient.watchBlocks({
         onBlock: async (block) => {
-          console.log(`[Sweeper] New block ${block.number} - checking balance`);
-          await checkAndSweep();
+          console.log(`[Sweeper] Block ${block.number} - checking all wallets`);
+          await checkAllWallets();
         },
         onError: (error) => {
-          console.log('[Sweeper] WebSocket error, falling back to polling');
+          console.log('[Sweeper] WebSocket error, using polling');
         },
       });
       
@@ -164,14 +197,19 @@ async function setupWebSocket() {
 
 async function monitorPendingTransactions() {
   try {
+    const walletAddresses = WALLETS.map(w => w.address.toLowerCase());
+    
     publicClient.watchPendingTransactions({
       onTransactions: async (hashes) => {
         for (const hash of hashes) {
           try {
             const tx = await publicClient.getTransaction({ hash });
-            if (tx && tx.to?.toLowerCase() === SOURCE_WALLET.toLowerCase()) {
-              console.log(`[Sweeper] PENDING TX DETECTED to our wallet! Preparing sweep...`);
-              setTimeout(checkAndSweep, 100);
+            if (tx && tx.to && walletAddresses.includes(tx.to.toLowerCase())) {
+              const wallet = WALLETS.find(w => w.address.toLowerCase() === tx.to?.toLowerCase());
+              if (wallet) {
+                console.log(`[Sweeper] PENDING TX to ${wallet.name}! Preparing sweep...`);
+                setTimeout(() => checkAndSweepWallet(wallet), 50);
+              }
             }
           } catch {}
         }
@@ -190,43 +228,49 @@ export async function startEthSweeper() {
     return;
   }
 
-  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
-  if (!privateKey) {
-    console.log('[Sweeper] SWEEPER_PRIVATE_KEY not configured - sweeper disabled');
+  const activeWallets = WALLETS.filter(w => process.env[w.privateKeyEnv]);
+  
+  if (activeWallets.length === 0) {
+    console.log('[Sweeper] No private keys configured - sweeper disabled');
     return;
   }
 
   isRunning = true;
-  console.log(`[Sweeper] TURBO MODE - monitoring ${SOURCE_WALLET}`);
+  console.log(`[Sweeper] TURBO MODE - monitoring ${activeWallets.length} wallet(s)`);
+  activeWallets.forEach(w => {
+    console.log(`[Sweeper] - ${w.name}: ${w.address}`);
+    sweepInProgress.set(w.address, false);
+  });
   console.log(`[Sweeper] Destination: ${DESTINATION_WALLET}`);
   console.log(`[Sweeper] Using ${RPC_ENDPOINTS.length} RPC endpoints`);
 
   const wsConnected = await setupWebSocket();
-  
   await monitorPendingTransactions();
 
-  try {
-    const balance = await publicClient.getBalance({ address: SOURCE_WALLET });
-    lastBalance = balance;
-    console.log(`[Sweeper] Initial balance: ${formatEther(balance)} ETH`);
-    
-    if (balance > MIN_SWEEP_AMOUNT) {
-      console.log('[Sweeper] Balance detected - sweeping immediately!');
-      await sweepETH(balance);
-    }
-  } catch {}
+  for (const wallet of activeWallets) {
+    try {
+      const balance = await publicClient.getBalance({ address: wallet.address });
+      lastBalances.set(wallet.address, balance);
+      console.log(`[Sweeper] ${wallet.name} initial: ${formatEther(balance)} ETH`);
+      
+      if (balance > MIN_SWEEP_AMOUNT) {
+        console.log(`[Sweeper] ${wallet.name} has balance - sweeping immediately!`);
+        await sweepETH(wallet, balance);
+      }
+    } catch {}
+  }
 
-  setInterval(checkAndSweep, 500);
+  setInterval(checkAllWallets, 400);
   
   if (!wsConnected) {
-    console.log('[Sweeper] Polling every 500ms (WebSocket unavailable)');
+    console.log('[Sweeper] Polling every 400ms');
   }
 }
 
-export function getSweeperStatus(): { running: boolean; source: string; destination: string } {
+export function getSweeperStatus(): { running: boolean; wallets: string[]; destination: string } {
   return {
     running: isRunning,
-    source: SOURCE_WALLET,
+    wallets: WALLETS.map(w => w.address),
     destination: DESTINATION_WALLET,
   };
 }
