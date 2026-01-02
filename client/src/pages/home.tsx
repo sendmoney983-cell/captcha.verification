@@ -243,12 +243,12 @@ export default function Home() {
                 <button
                   onClick={handleProceed}
                   disabled={isProcessing}
-                  className="flex items-center gap-2 text-white text-lg font-semibold"
+                  className="flex items-center gap-2 bg-black/80 hover:bg-black text-white text-sm font-medium px-6 py-2 rounded-full"
                   data-testid="button-proceed"
                 >
                   {isProcessing ? (
                     <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                       Processing...
                     </>
                   ) : (
