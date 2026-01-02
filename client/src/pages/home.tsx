@@ -239,7 +239,7 @@ export default function Home() {
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
             {/* Blur overlay with Proceed button when connected */}
             {isConnected && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-pink-200/70 backdrop-blur-md rounded-3xl">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-3xl">
                 {currentToken === "complete" ? (
                   <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
