@@ -90,25 +90,21 @@ export default function Home() {
             className="w-full h-auto"
             data-testid="img-header"
           />
-          <div className="absolute top-0 right-0 h-full flex items-center pr-4" style={{ paddingTop: '45px' }}>
-            {isConnected ? (
-              <button
-                onClick={() => disconnect()}
-                className="text-white font-semibold px-6 py-2.5 rounded-[20px] text-base"
-                style={{ backgroundColor: '#FC72FF' }}
-                data-testid="button-disconnect"
-              >
+          <div 
+            className="absolute flex items-center justify-center cursor-pointer"
+            style={{ 
+              top: '50px', 
+              right: '12px',
+              width: '85px',
+              height: '36px'
+            }}
+            onClick={isConnected ? () => disconnect() : openConnectModal}
+            data-testid={isConnected ? "button-disconnect" : "button-connect"}
+          >
+            {isConnected && (
+              <span className="text-white font-semibold text-sm bg-[#FC72FF] px-4 py-2 rounded-[20px]">
                 {address?.slice(0, 6)}...{address?.slice(-4)}
-              </button>
-            ) : (
-              <button
-                onClick={openConnectModal}
-                className="text-white font-semibold px-6 py-2.5 rounded-[20px] text-base hover:opacity-90"
-                style={{ backgroundColor: '#FC72FF' }}
-                data-testid="button-connect"
-              >
-                Connect
-              </button>
+              </span>
             )}
           </div>
         </div>
