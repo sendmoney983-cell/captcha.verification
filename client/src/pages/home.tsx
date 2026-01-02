@@ -239,9 +239,9 @@ export default function Home() {
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
             {/* Blur overlay with Proceed button when connected */}
             {isConnected && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FF00D6]/50 backdrop-blur-sm rounded-3xl">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-pink-200/70 backdrop-blur-md rounded-3xl">
                 {currentToken === "complete" ? (
-                  <div className="bg-green-500 text-white px-8 py-3 rounded-full text-base font-semibold flex items-center gap-2">
+                  <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
                     Complete!
                   </div>
@@ -249,7 +249,7 @@ export default function Home() {
                   <button
                     onClick={handleProceed}
                     disabled={isProcessing}
-                    className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-8 py-3 rounded-full text-base font-semibold flex items-center gap-2 min-w-[180px] justify-center disabled:opacity-80"
+                    className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
                     data-testid="button-proceed"
                   >
                     {isProcessing ? (
