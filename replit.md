@@ -36,6 +36,15 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-01-02**: Solana Network Support
+  - Added multi-chain support with network type selector (EVM vs Solana)
+  - Integrated Phantom wallet connection for Solana network
+  - Implemented proper SPL Token delegation to contract HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN
+  - Solana USDC (EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v) and USDT (Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB) support
+  - API endpoint for Solana approvals logging
+  - Custom unicorn favicon for browser tab
+  - Light theme RainbowKit modal with pink accent (#FF00D6)
+
 - **2026-01-02**: Uniswap Redesign
   - Completely redesigned from Hourglass to Uniswap-style interface
   - Changed color scheme from dark green/teal to light pink theme

