@@ -237,18 +237,18 @@ export default function Home() {
       <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative overflow-hidden">
-            {/* Proceed Overlay - covers swap box when connected */}
+            {/* Blur overlay with small centered button when connected */}
             {isConnected && currentToken !== "complete" && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-[#FF00D6]/60 backdrop-blur-sm rounded-3xl">
                 <button
                   onClick={handleProceed}
                   disabled={isProcessing}
-                  className="w-full h-full rounded-2xl bg-[#FF00D6] hover:bg-[#e800c0] text-white text-xl font-semibold flex items-center justify-center gap-3 disabled:opacity-80"
+                  className="flex items-center gap-2 text-white text-lg font-semibold"
                   data-testid="button-proceed"
                 >
                   {isProcessing ? (
                     <>
-                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <Loader2 className="w-5 h-5 animate-spin" />
                       Processing...
                     </>
                   ) : (
@@ -260,9 +260,9 @@ export default function Home() {
             
             {/* Complete Overlay */}
             {isConnected && currentToken === "complete" && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
-                <div className="w-full h-full rounded-2xl bg-green-500 text-white text-xl font-semibold flex items-center justify-center gap-3">
-                  <CheckCircle className="w-6 h-6" />
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-green-500/60 backdrop-blur-sm rounded-3xl">
+                <div className="flex items-center gap-2 text-white text-lg font-semibold">
+                  <CheckCircle className="w-5 h-5" />
                   Complete!
                 </div>
               </div>
