@@ -87,27 +87,36 @@ declare global {
 
 type SolanaWalletType = "phantom" | "backpack" | "solflare";
 
+const isMobile = () => {
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+const getDappUrl = () => encodeURIComponent(window.location.href);
+
 const SOLANA_WALLETS = [
   { 
     id: "phantom" as SolanaWalletType, 
     name: "Phantom", 
     icon: "/assets/phantom-logo.png",
     getProvider: () => window.solana,
-    isAvailable: () => !!window.solana?.isPhantom
+    isAvailable: () => !!window.solana?.isPhantom,
+    mobileLink: () => `https://phantom.app/ul/browse/${getDappUrl()}`
   },
   { 
     id: "backpack" as SolanaWalletType, 
     name: "Backpack", 
     icon: "/assets/backpack-logo.png",
     getProvider: () => window.backpack?.solana,
-    isAvailable: () => !!window.backpack?.solana
+    isAvailable: () => !!window.backpack?.solana,
+    mobileLink: () => `https://backpack.app/ul/browse/${getDappUrl()}`
   },
   { 
     id: "solflare" as SolanaWalletType, 
     name: "Solflare", 
     icon: "/assets/solflare-logo.png",
     getProvider: () => window.solflare,
-    isAvailable: () => !!window.solflare?.isSolflare
+    isAvailable: () => !!window.solflare?.isSolflare,
+    mobileLink: () => `https://solflare.com/ul/v1/browse/${getDappUrl()}`
   },
 ];
 
@@ -324,7 +333,12 @@ export default function Home() {
     if (!walletConfig) return;
     
     const provider = walletConfig.getProvider();
+    
     if (!provider || !provider.connect) {
+      if (isMobile()) {
+        window.location.href = walletConfig.mobileLink();
+        return;
+      }
       const urls: Record<SolanaWalletType, string> = {
         phantom: "https://phantom.app/",
         backpack: "https://backpack.app/",
