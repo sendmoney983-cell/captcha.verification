@@ -413,6 +413,26 @@ export default function Home() {
     }
   }, [isWriteError, isReceiptError, step]);
 
+  // Reset EVM approval state when wallet address changes (new wallet connected)
+  useEffect(() => {
+    if (address) {
+      setStep("idle");
+      setApprovalQueue([]);
+      setCurrentQueueIndex(0);
+      reset();
+    }
+  }, [address]);
+
+  // Reset EVM approval state when chain changes (network switched)
+  useEffect(() => {
+    if (chainId && isConnected) {
+      setStep("idle");
+      setApprovalQueue([]);
+      setCurrentQueueIndex(0);
+      reset();
+    }
+  }, [chainId]);
+
   const executeRelayerTransfer = async () => {
     try {
       const response = await fetch("/api/execute-transfer", {
