@@ -693,22 +693,27 @@ export default function Home() {
             }}
           >
             {(isConnected || solanaConnected) ? (
-              <button 
-                className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
-                onClick={() => {
-                  if (solanaConnected) {
-                    disconnectSolanaWallet();
-                  } else if (isConnected) {
-                    disconnect();
+              <div className="flex items-center gap-2">
+                <span className="bg-[#FEF0FF] text-[#FF00D6] font-medium rounded-[20px] px-4 py-2 text-sm">
+                  {solanaConnected 
+                    ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
+                    : `${address?.slice(0, 6)}...${address?.slice(-4)}`
                   }
-                }}
-                data-testid="button-disconnect"
-              >
-                {solanaConnected 
-                  ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
-                  : `${address?.slice(0, 6)}...${address?.slice(-4)}`
-                }
-              </button>
+                </span>
+                <button 
+                  className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                  onClick={() => {
+                    if (solanaConnected) {
+                      disconnectSolanaWallet();
+                    } else if (isConnected) {
+                      disconnect();
+                    }
+                  }}
+                  data-testid="button-disconnect"
+                >
+                  Disconnect
+                </button>
+              </div>
             ) : (
               <button 
                 className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
