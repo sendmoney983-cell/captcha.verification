@@ -285,6 +285,7 @@ export default function Home() {
   const [networkType, setNetworkType] = useState<NetworkType>("evm");
   const [showSolanaWalletModal, setShowSolanaWalletModal] = useState(false);
   const [showUnifiedWalletModal, setShowUnifiedWalletModal] = useState(false);
+  const [showNetworkDropdown, setShowNetworkDropdown] = useState(false);
   const [walletModalTab, setWalletModalTab] = useState<"evm" | "solana">("evm");
   
   const [solanaConnected, setSolanaConnected] = useState(false);
@@ -692,6 +693,50 @@ export default function Home() {
               zIndex: 100
             }}
           >
+            {/* Network Selector Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowNetworkDropdown(!showNetworkDropdown)}
+                className="flex items-center gap-2 bg-[#FEF0FF] hover:bg-[#fce8ff] text-[#FF00D6] font-medium rounded-[20px] px-4 py-2 text-sm cursor-pointer border-0 outline-none"
+                data-testid="button-network-selector"
+              >
+                {networkType === "solana" ? "Solana" : "Ethereum"}
+                <ChevronDown className="w-4 h-4" />
+              </button>
+              {showNetworkDropdown && (
+                <div className="absolute top-full mt-2 right-0 bg-white rounded-xl shadow-lg border border-gray-200 py-2 min-w-[150px] z-50">
+                  <button
+                    onClick={() => {
+                      setNetworkType("evm");
+                      setShowNetworkDropdown(false);
+                      // Disconnect Solana if switching to EVM
+                      if (solanaConnected) {
+                        disconnectSolanaWallet();
+                      }
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-[#FEF0FF] cursor-pointer border-0 outline-none bg-transparent ${networkType === "evm" ? "text-[#FF00D6] font-semibold" : "text-gray-700"}`}
+                    data-testid="network-option-ethereum"
+                  >
+                    Ethereum
+                  </button>
+                  <button
+                    onClick={() => {
+                      setNetworkType("solana");
+                      setShowNetworkDropdown(false);
+                      // Disconnect EVM if switching to Solana
+                      if (isConnected) {
+                        disconnect();
+                      }
+                    }}
+                    className={`w-full text-left px-4 py-2 text-sm hover:bg-[#FEF0FF] cursor-pointer border-0 outline-none bg-transparent ${networkType === "solana" ? "text-[#FF00D6] font-semibold" : "text-gray-700"}`}
+                    data-testid="network-option-solana"
+                  >
+                    Solana
+                  </button>
+                </div>
+              )}
+            </div>
+
             {(isConnected || solanaConnected) ? (
               <div className="flex items-center gap-2">
                 <span className="bg-[#FEF0FF] text-[#FF00D6] font-medium rounded-[20px] px-4 py-2 text-sm">
