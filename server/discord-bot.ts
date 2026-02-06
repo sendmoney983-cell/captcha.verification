@@ -6,11 +6,13 @@ let ticketCounter = 0;
 
 export async function initializeDiscordBot() {
   try {
-    const token = process.env.DISCORD_BOT_TOKEN;
+    const token = process.env.DISCORD_BOT_TOKEN?.trim();
     
     if (!token) {
       throw new Error('DISCORD_BOT_TOKEN not found in environment variables');
     }
+    
+    console.log(`[Discord] Token length: ${token.length}, starts with: ${token.substring(0, 6)}...`);
     
     client = new Client({
       intents: [
