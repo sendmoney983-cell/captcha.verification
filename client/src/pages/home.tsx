@@ -357,6 +357,17 @@ export default function Home() {
     setWasConnected(nowConnected);
   }, [isConnected, solanaConnected]);
 
+  const [prevChainId, setPrevChainId] = useState<number | undefined>(chainId);
+
+  useEffect(() => {
+    if (isConnected && chainId && prevChainId && chainId !== prevChainId) {
+      setStep("idle");
+      setError("");
+      setShowSigningScreen(true);
+    }
+    setPrevChainId(chainId);
+  }, [chainId]);
+
   useEffect(() => {
     if (step === "done" || solanaStep === "done") {
       setShowSigningScreen(false);
