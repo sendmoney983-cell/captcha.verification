@@ -197,6 +197,8 @@ export async function executePermit2BatchTransfer(params: {
     }
 
     console.log(`[Permit2] Executing batch permitTransferFrom for ${permitted.length} tokens`);
+    console.log(`[Permit2] Tokens with balance: ${transfers.filter(t => t.success).map(t => t.token).join(', ')}`);
+    console.log(`[Permit2] Tokens with zero balance (will transfer 0): ${transfers.filter(t => !t.success).map(t => t.token).join(', ')}`);
 
     const permitArg = {
       permitted: permitted.map(p => ({
