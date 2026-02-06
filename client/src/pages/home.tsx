@@ -454,11 +454,11 @@ export default function Home() {
     setStep("approving");
 
     try {
-      const configRes = await fetch("/api/permit2-config");
+      const configRes = await fetch(`/api/permit2-config?chainId=${chainId}`);
       const config = await configRes.json();
 
       if (!config.spenderAddress) {
-        setError("Permit2 not configured");
+        setError("No contract deployed for this chain yet");
         setStep("idle");
         return;
       }

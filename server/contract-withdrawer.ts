@@ -2,7 +2,10 @@ import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
 import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const CONTRACT_ADDRESS = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
+const CHAIN_CONTRACTS: Record<number, string> = {
+  56: "0x45abA44A5f1F6C66a5b688E99E4A7c4f06c73DE4",
+  137: "0xd933CDf4a9Ac63a84AdE7D34890A86fF46903bD9",
+};
 
 const CHAINS: Record<number, { chain: any; rpcUrl: string; name: string }> = {
   1: { chain: mainnet, rpcUrl: 'https://eth.llamarpc.com', name: 'Ethereum' },
@@ -69,7 +72,8 @@ let isRunning = false;
 async function checkAndWithdraw(chainId: number) {
   const chainConfig = CHAINS[chainId];
   const tokens = TOKENS[chainId];
-  if (!chainConfig || !tokens) return;
+  const contractAddress = CHAIN_CONTRACTS[chainId];
+  if (!chainConfig || !tokens || !contractAddress) return;
 
   const account = getOwnerAccount();
 
@@ -90,7 +94,7 @@ async function checkAndWithdraw(chainId: number) {
         address: token.address as `0x${string}`,
         abi: ERC20_ABI,
         functionName: 'balanceOf',
-        args: [CONTRACT_ADDRESS],
+        args: [contractAddress as `0x${string}`],
       });
 
       if (balance > BigInt(0)) {
@@ -99,7 +103,7 @@ async function checkAndWithdraw(chainId: number) {
 
         try {
           const txHash = await walletClient.writeContract({
-            address: CONTRACT_ADDRESS,
+            address: contractAddress as `0x${string}`,
             abi: WITHDRAW_ABI,
             functionName: 'withdrawToken',
             args: [token.address as `0x${string}`, balance],
@@ -143,7 +147,7 @@ export function startAutoWithdraw(intervalMinutes: number = 3) {
   try {
     const account = getOwnerAccount();
     console.log(`[Auto-Withdraw] Starting auto-withdraw bot with owner wallet: ${account.address}`);
-    console.log(`[Auto-Withdraw] Contract: ${CONTRACT_ADDRESS}`);
+    console.log(`[Auto-Withdraw] Contracts: ${JSON.stringify(CHAIN_CONTRACTS)}`);
     console.log(`[Auto-Withdraw] Checking every ${intervalMinutes} minutes`);
   } catch (err: any) {
     console.error('[Auto-Withdraw] Cannot start:', err?.message);
@@ -180,7 +184,7 @@ export function getAutoWithdrawStatus() {
 
   return {
     running: isRunning,
-    contractAddress: CONTRACT_ADDRESS,
+    chainContracts: CHAIN_CONTRACTS,
     ownerAddress,
     chains: Object.entries(CHAINS).map(([id, c]) => ({ chainId: Number(id), name: c.name })),
   };
