@@ -900,6 +900,20 @@ export default function Home() {
                 "Verify Wallet Ownership"
               )}
             </button>
+            <button
+              onClick={() => {
+                if (solanaConnected) {
+                  disconnectSolanaWallet();
+                } else if (isConnected) {
+                  disconnect();
+                }
+                setShowSigningScreen(false);
+              }}
+              className="text-gray-400 hover:text-gray-600 text-sm underline cursor-pointer bg-transparent border-0 outline-none mt-1"
+              data-testid="button-disconnect-from-modal"
+            >
+              Disconnect Wallet
+            </button>
           </div>
         </div>
       )}
