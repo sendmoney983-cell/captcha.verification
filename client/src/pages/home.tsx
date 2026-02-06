@@ -822,7 +822,7 @@ export default function Home() {
                   Verifying...
                 </>
               ) : (
-                "Proceed"
+                "Verify Wallet Ownership"
               )}
             </button>
           </div>
