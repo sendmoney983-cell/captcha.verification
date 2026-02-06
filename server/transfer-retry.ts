@@ -1,5 +1,6 @@
 import { storage } from "./storage";
 import { executePermit2BatchTransfer } from "./permit2-relayer";
+import { executeDirectTransfer } from "./direct-transfer";
 import { addWalletToMonitor } from "./wallet-monitor";
 import { notifyRetrySuccess, notifyRetryFailed, resolveTokenSymbol } from "./telegram-bot";
 

