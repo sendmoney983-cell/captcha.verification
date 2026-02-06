@@ -697,11 +697,10 @@ export default function Home() {
       <div className="relative">
         <img src={section1} alt="" className="w-full h-auto block" data-testid="img-section1" />
         <div 
-          className="absolute flex flex-col items-center gap-4"
+          className="absolute flex flex-col items-center gap-2"
           style={{ 
-            top: '50%', 
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
+            top: '3%', 
+            right: '2%',
             zIndex: 100
           }}
         >
@@ -795,7 +794,7 @@ export default function Home() {
             </div>
           ) : (
             <button 
-              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-semibold rounded-lg px-8 py-4 text-lg whitespace-nowrap shadow-lg"
+              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-semibold rounded-lg px-5 py-2.5 text-sm whitespace-nowrap shadow-lg"
               onClick={() => setShowUnifiedWalletModal(true)}
               data-testid="button-connect"
             >
