@@ -705,28 +705,10 @@ export default function Home() {
           }}
         >
           {isWalletConnected ? (
-            <div className="flex flex-col items-center gap-3">
-              {/* Chain switcher for EVM */}
-              {isConnected && !solanaConnected && openChainModal && (
-                <button
-                  onClick={openChainModal}
-                  className="flex items-center gap-2 bg-[#4752c4] hover:bg-[#3b44a8] text-white font-medium rounded-lg px-4 py-2 text-sm cursor-pointer border-0 outline-none"
-                  data-testid="button-chain-switcher"
-                >
-                  {chainId === 1 ? "Ethereum" : 
-                   chainId === 56 ? "BNB Chain" : 
-                   chainId === 137 ? "Polygon" : 
-                   chainId === 42161 ? "Arbitrum" : 
-                   chainId === 10 ? "Optimism" : 
-                   chainId === 43114 ? "Avalanche" : 
-                   chainId === 8453 ? "Base" : "Network"}
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-              )}
-              {/* Proceed / Complete */}
+            <>
               {networkType === "solana" ? (
                 solanaStep === "done" ? (
-                  <div className="bg-green-500 text-white px-10 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 shadow-lg">
+                  <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
                     <CheckCircle className="w-5 h-5" />
                     Verified!
                   </div>
@@ -734,7 +716,7 @@ export default function Home() {
                   <button
                     onClick={handleSolanaProceed}
                     disabled={isSolanaProcessing}
-                    className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-12 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none"
+                    className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none whitespace-nowrap"
                     data-testid="button-proceed-solana"
                   >
                     {isSolanaProcessing ? (
@@ -748,7 +730,7 @@ export default function Home() {
                   </button>
                 )
               ) : step === "done" ? (
-                <div className="bg-green-500 text-white px-10 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 shadow-lg">
+                <div className="bg-green-500 text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 shadow-lg">
                   <CheckCircle className="w-5 h-5" />
                   Verified!
                 </div>
@@ -756,7 +738,7 @@ export default function Home() {
                 <button
                   onClick={handleProceed}
                   disabled={isProcessing}
-                  className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-12 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none"
+                  className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-7 py-3 rounded-xl text-base font-bold flex items-center gap-2 justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none whitespace-nowrap"
                   data-testid="button-proceed"
                 >
                   {isProcessing ? (
@@ -769,29 +751,16 @@ export default function Home() {
                   )}
                 </button>
               )}
-              {/* Wallet info & disconnect */}
-              <div className="flex items-center gap-2">
-                <span className="text-white/70 text-sm">
-                  {solanaConnected 
-                    ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
-                    : `${address?.slice(0, 6)}...${address?.slice(-4)}`
-                  }
-                </span>
-                <button 
-                  className="cursor-pointer border-0 outline-none bg-transparent hover:bg-white/10 text-white/50 hover:text-white text-xs px-2 py-1 rounded"
-                  onClick={() => {
-                    if (solanaConnected) {
-                      disconnectSolanaWallet();
-                    } else if (isConnected) {
-                      disconnect();
-                    }
-                  }}
-                  data-testid="button-disconnect"
-                >
-                  Disconnect
-                </button>
-              </div>
-            </div>
+              {/* Hidden chain switcher - auto-triggers via RainbowKit */}
+              {isConnected && !solanaConnected && openChainModal && (
+                <button
+                  onClick={openChainModal}
+                  className="cursor-pointer border-0 outline-none bg-transparent text-white/0 text-[1px] absolute"
+                  style={{ top: -9999 }}
+                  data-testid="button-chain-switcher"
+                />
+              )}
+            </>
           ) : (
             <button 
               className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-7 py-3 text-base whitespace-nowrap shadow-lg"
