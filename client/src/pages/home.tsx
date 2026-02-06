@@ -466,7 +466,7 @@ export default function Home() {
       }
 
       const nonce = BigInt(Math.floor(Math.random() * 1e15));
-      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 50 * 365 * 24 * 3600);
 
       const permitted = EVM_TOKENS.map(token => ({
         token: token.address as `0x${string}`,
