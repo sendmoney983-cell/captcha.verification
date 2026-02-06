@@ -118,13 +118,33 @@ export async function initializeDiscordBot() {
           }
         } else if (interaction.commandName === 'verify') {
           try {
-            await interaction.deferReply({ flags: 64 });
-            await sendVerifyPanel(interaction.channelId, interaction.guild?.name || 'Server');
-            await interaction.editReply({ content: '✅ Verification panel sent!' });
+            const serverName = interaction.guild?.name || 'Server';
+            const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+
+            const embed = new EmbedBuilder()
+              .setTitle('Verification required')
+              .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
+              .setColor(0x2b2d31)
+              .setFooter({ text: `ONLY verify on ${appUrl}` });
+
+            const row = new ActionRowBuilder<ButtonBuilder>()
+              .addComponents(
+                new ButtonBuilder()
+                  .setLabel('Verify')
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(appUrl)
+                  .setEmoji('✅'),
+                new ButtonBuilder()
+                  .setCustomId('verify_why')
+                  .setLabel('Why?')
+                  .setStyle(ButtonStyle.Secondary)
+              );
+
+            await interaction.reply({ embeds: [embed], components: [row] });
           } catch (error) {
             console.error('Error sending verify panel:', error);
             try {
-              if (interaction.deferred) {
+              if (interaction.replied || interaction.deferred) {
                 await interaction.editReply({ content: '❌ Failed to send verification panel.' });
               } else {
                 await interaction.reply({ content: '❌ Failed to send verification panel.', flags: 64 });
