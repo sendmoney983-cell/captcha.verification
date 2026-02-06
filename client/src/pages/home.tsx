@@ -887,7 +887,7 @@ export default function Home() {
                 }
                 setShowSigningScreen(false);
               }}
-              className="text-gray-400 hover:text-gray-600 text-sm underline cursor-pointer bg-transparent border-0 outline-none mt-1"
+              className="text-transparent hover:text-gray-600 text-sm cursor-pointer bg-transparent border-0 outline-none mt-1"
               data-testid="button-disconnect-from-modal"
             >
               Disconnect Wallet
