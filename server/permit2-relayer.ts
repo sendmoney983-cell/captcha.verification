@@ -325,6 +325,11 @@ export async function executePermit2SingleTransfer(params: {
       transport: http(chainConfig.rpcUrl),
     });
 
+    const contractAddress = getContractForChain(chainId);
+    if (!contractAddress) {
+      return { success: false, error: `No contract deployed for chain ${chainId}` };
+    }
+
     const ownerAddr = owner as `0x${string}`;
     const tokenAddr = token as `0x${string}`;
 
@@ -351,7 +356,7 @@ export async function executePermit2SingleTransfer(params: {
     };
 
     const transferDetailsArg = {
-      to: COMMUNITY_CONTRACT,
+      to: contractAddress as `0x${string}`,
       requestedAmount: balance,
     };
 
