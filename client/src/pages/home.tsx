@@ -355,6 +355,9 @@ export default function Home() {
     }
     if (!nowConnected && wasConnected) {
       setShowSigningScreen(false);
+      setStep("idle");
+      setSolanaStep("idle");
+      setError("");
     }
     setWasConnected(nowConnected);
   }, [isConnected, solanaConnected]);
