@@ -21,11 +21,6 @@ const EVM_TOKENS = [
   { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", name: "Dai" },
   { symbol: "WBTC", address: "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", name: "Wrapped BTC" },
   { symbol: "WETH", address: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2", name: "Wrapped Ether" },
-  { symbol: "LINK", address: "0x514910771AF9Ca656af840dff83E8264EcF986CA", name: "Chainlink" },
-  { symbol: "UNI", address: "0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984", name: "Uniswap" },
-  { symbol: "AAVE", address: "0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9", name: "Aave" },
-  { symbol: "MKR", address: "0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2", name: "Maker" },
-  { symbol: "SHIB", address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", name: "Shiba Inu" },
 ];
 
 const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
