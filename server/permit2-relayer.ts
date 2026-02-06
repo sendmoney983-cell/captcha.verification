@@ -3,7 +3,7 @@ import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem
 import { privateKeyToAccount } from 'viem/accounts';
 
 const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
-const COMMUNITY_CONTRACT = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E" as const;
+const COMMUNITY_CONTRACT = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
 
 const ERC20_ABI = [
   {

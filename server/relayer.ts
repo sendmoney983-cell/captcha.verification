@@ -2,7 +2,7 @@ import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
 import { mainnet } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const SPENDER_ADDRESS = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E" as const;
+const SPENDER_ADDRESS = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
 const USDT_ADDRESS = "0xdAC17F958D2ee523a2206206994597C13D831ec7" as const;
 const USDC_ADDRESS = "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48" as const;
 
