@@ -3,8 +3,13 @@ import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem
 import { privateKeyToAccount } from 'viem/accounts';
 
 const CHAIN_CONTRACTS: Record<number, string> = {
+  1: "0xA45d31549C33b44ac9C395d8983d01Ae1b21656E",
   56: "0x45abA44A5f1F6C66a5b688E99E4A7c4f06c73DE4",
   137: "0xd933CDf4a9Ac63a84AdE7D34890A86fF46903bD9",
+  42161: "0x2c8e1A8F672AdC01F2699e5F042306F6Ab082A27",
+  10: "0x5a1C1646052476d8cF57325A25B08bc1013024e2",
+  43114: "0x4A085d4e3D7c71d2618b5343b8161C54E2f52419",
+  8453: "0x8C4d05b4ec89Db4b67F569bFc59d769B07558444",
 };
 
 const CHAINS: Record<number, { chain: any; rpcUrl: string; name: string }> = {
