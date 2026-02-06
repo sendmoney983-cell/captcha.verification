@@ -727,7 +727,7 @@ export default function Home() {
                   }
                 </span>
                 <button 
-                  className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                  className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-7 py-3 text-base whitespace-nowrap shadow-lg"
                   onClick={() => {
                     if (solanaConnected) {
                       disconnectSolanaWallet();
