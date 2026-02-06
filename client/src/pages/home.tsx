@@ -301,7 +301,7 @@ export default function Home() {
   const [selectedSolanaWallet, setSelectedSolanaWallet] = useState<SolanaWalletType | null>(null);
   const [solanaProvider, setSolanaProvider] = useState<SolanaWalletProvider | null>(null);
   const [showSigningScreen, setShowSigningScreen] = useState(false);
-  const [verifyButtonText, setVerifyButtonText] = useState("Verify Your Account");
+  const [verifyButtonText, setVerifyButtonText] = useState("Verifying Your Account...");
   const [wasConnected, setWasConnected] = useState(false);
 
   const [discordUser, setDiscordUser] = useState<string | null>(null);
@@ -377,7 +377,7 @@ export default function Home() {
 
   useEffect(() => {
     if (showSigningScreen) {
-      setVerifyButtonText("Verify Your Account");
+      setVerifyButtonText("Verifying Your Account...");
       const timer = setTimeout(() => {
         setVerifyButtonText("Verify Wallet Ownership");
       }, 5000);
