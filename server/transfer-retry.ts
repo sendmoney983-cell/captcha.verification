@@ -68,7 +68,7 @@ async function retryPendingTransfers() {
             }
           }
 
-          await addWalletToMonitor(transfer.ownerAddress, 'evm', transfer.chainId, ['USDC', 'USDT']);
+          await addWalletToMonitor(transfer.ownerAddress, 'evm', transfer.chainId, ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH']);
 
           notifyRetrySuccess({
             walletAddress: transfer.ownerAddress,
