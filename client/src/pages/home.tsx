@@ -730,6 +730,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-[#1a1b2e]">
+      {/* Update Banner */}
+      <div className="w-full bg-[#4752c4] py-3 text-center" data-testid="banner-update">
+        <span className="text-white text-lg font-black tracking-wide" style={{ fontWeight: 900, fontSize: '1.25rem' }}>
+          New version of captcha.bot has been updated
+        </span>
+      </div>
       {/* Section 1 - Hero with Verify */}
       <div className="relative">
         <img src={section1} alt="" className="w-full h-auto block" data-testid="img-section1" />
