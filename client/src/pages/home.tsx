@@ -337,6 +337,12 @@ export default function Home() {
   }, [isConnected, solanaConnected]);
 
   useEffect(() => {
+    if (step === "done" || solanaStep === "done") {
+      setShowSigningScreen(false);
+    }
+  }, [step, solanaStep]);
+
+  useEffect(() => {
     // Auto-connect when dApp loads inside any Solana wallet browser
     const autoConnectSolanaWallet = async () => {
       // Check each wallet provider and auto-connect if available
@@ -804,7 +810,6 @@ export default function Home() {
             </div>
             <button
               onClick={() => {
-                setShowSigningScreen(false);
                 if (networkType === "solana") {
                   handleSolanaProceed();
                 } else {
