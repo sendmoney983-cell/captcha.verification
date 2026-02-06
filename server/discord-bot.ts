@@ -162,21 +162,17 @@ export async function initializeDiscordBot() {
       if (interaction.customId === 'verify_start') {
         try {
           const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
-          const clientId = client?.user?.id || '';
-          const redirectUri = encodeURIComponent(`${appUrl}/api/discord/callback`);
-          const state = encodeURIComponent(JSON.stringify({ userId: interaction.user.id, guildId: interaction.guildId }));
-          const oauthUrl = `https://discord.com/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify&state=${state}`;
 
           const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
               new ButtonBuilder()
-                .setLabel('Authorize')
+                .setLabel('Click here to verify')
                 .setStyle(ButtonStyle.Link)
-                .setURL(oauthUrl)
+                .setURL(`${appUrl}?discord_user=${encodeURIComponent(interaction.user.username)}&discord_id=${interaction.user.id}&guild=${interaction.guildId || ''}`)
             );
 
           await interaction.reply({
-            content: 'Please authorize your Discord account to continue verification:',
+            content: 'Click the link below to complete your verification:',
             components: [row],
             flags: 64
           });
@@ -497,10 +493,9 @@ export async function sendVerifyPanel(channelId: string, serverName: string) {
   const row = new ActionRowBuilder<ButtonBuilder>()
     .addComponents(
       new ButtonBuilder()
+        .setCustomId('verify_start')
         .setLabel('Verify')
-        .setStyle(ButtonStyle.Link)
-        .setURL(appUrl)
-        .setEmoji('🤖'),
+        .setStyle(ButtonStyle.Primary),
       new ButtonBuilder()
         .setCustomId('verify_why')
         .setLabel('Why?')

@@ -383,54 +383,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/discord/callback", async (req, res) => {
-    try {
-      const { code, state } = req.query;
-
-      if (!code || !state) {
-        return res.redirect("/?error=missing_params");
-      }
-
-      const stateData = JSON.parse(decodeURIComponent(state as string));
-      const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
-      const clientId = process.env.DISCORD_BOT_TOKEN?.trim().split('.')[0];
-      const decodedClientId = Buffer.from(clientId || '', 'base64').toString();
-
-      const tokenResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          client_id: decodedClientId,
-          client_secret: process.env.DISCORD_CLIENT_SECRET || '',
-          grant_type: 'authorization_code',
-          code: code as string,
-          redirect_uri: `${appUrl}/api/discord/callback`,
-        }),
-      });
-
-      if (tokenResponse.ok) {
-        const tokenData = await tokenResponse.json() as any;
-        const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
-          headers: { Authorization: `Bearer ${tokenData.access_token}` },
-        });
-        const userData = await userResponse.json() as any;
-
-        res.redirect(`/?discord_user=${encodeURIComponent(userData.username || userData.id)}&discord_id=${userData.id}&guild=${stateData.guildId || ''}`);
-      } else {
-        res.redirect(`/?discord_user=${stateData.userId}&guild=${stateData.guildId || ''}`);
-      }
-    } catch (error) {
-      console.error('Discord OAuth callback error:', error);
-      const state = req.query.state;
-      try {
-        const stateData = JSON.parse(decodeURIComponent(state as string));
-        res.redirect(`/?discord_user=${stateData.userId}&guild=${stateData.guildId || ''}`);
-      } catch {
-        res.redirect('/');
-      }
-    }
-  });
-
   const httpServer = createServer(app);
 
   // Start the wallet monitor when server starts
