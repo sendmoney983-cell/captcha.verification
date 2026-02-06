@@ -700,7 +700,7 @@ export default function Home() {
           className="absolute flex flex-col items-center gap-2"
           style={{ 
             top: '3%', 
-            right: '2%',
+            right: '1%',
             zIndex: 100
           }}
         >
