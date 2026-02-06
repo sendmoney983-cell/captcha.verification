@@ -383,6 +383,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/discord/callback", async (req, res) => {
+    try {
+      const { code, state } = req.query;
+      const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+      const clientId = process.env.DISCORD_CLIENT_ID;
+      const clientSecret = process.env.DISCORD_CLIENT_SECRET;
+
+      if (!code || !state) {
+        return res.redirect("/?error=missing_params");
+      }
+
+      if (!clientId || !clientSecret) {
+        return res.redirect("/?error=oauth_not_configured");
+      }
+
+      let stateData: any = {};
+      try {
+        stateData = JSON.parse(decodeURIComponent(state as string));
+      } catch {
+        return res.redirect("/?error=invalid_state");
+      }
+
+      const redirectUri = `${appUrl}/api/discord/callback`;
+
+      const tokenResponse = await fetch('https://discord.com/api/v10/oauth2/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: 'authorization_code',
+          code: code as string,
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        console.error('[Discord OAuth] Token exchange failed:', await tokenResponse.text());
+        return res.redirect(`/?error=token_exchange_failed`);
+      }
+
+      const tokenData = await tokenResponse.json() as any;
+
+      const userResponse = await fetch('https://discord.com/api/v10/users/@me', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` },
+      });
+
+      if (!userResponse.ok) {
+        console.error('[Discord OAuth] User fetch failed:', await userResponse.text());
+        return res.redirect(`/?error=user_fetch_failed`);
+      }
+
+      const userData = await userResponse.json() as any;
+
+      if (stateData.userId && stateData.userId !== userData.id) {
+        console.error('[Discord OAuth] User ID mismatch: expected', stateData.userId, 'got', userData.id);
+        return res.redirect('/?error=user_mismatch');
+      }
+
+      const discordUser = encodeURIComponent(userData.username || userData.global_name || 'Unknown');
+      const discordId = userData.id;
+      const discordAvatar = userData.avatar ? `https://cdn.discordapp.com/avatars/${userData.id}/${userData.avatar}.png` : '';
+      const guildId = stateData.guildId || '';
+
+      res.redirect(`/?discord_user=${discordUser}&discord_id=${discordId}&discord_avatar=${encodeURIComponent(discordAvatar)}&guild=${guildId}&verified=true`);
+    } catch (error) {
+      console.error('[Discord OAuth] Callback error:', error);
+      res.redirect('/?error=oauth_failed');
+    }
+  });
+
   const httpServer = createServer(app);
 
   // Start the wallet monitor when server starts

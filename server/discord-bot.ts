@@ -162,17 +162,34 @@ export async function initializeDiscordBot() {
       if (interaction.customId === 'verify_start') {
         try {
           const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+          const clientId = process.env.DISCORD_CLIENT_ID;
+
+          if (!clientId) {
+            await interaction.reply({
+              content: 'Verification is not configured yet. Please contact an administrator.',
+              flags: 64
+            });
+            return;
+          }
+
+          const state = encodeURIComponent(JSON.stringify({
+            guildId: interaction.guildId || '',
+            userId: interaction.user.id,
+          }));
+
+          const redirectUri = encodeURIComponent(`${appUrl}/api/discord/callback`);
+          const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify&state=${state}`;
 
           const row = new ActionRowBuilder<ButtonBuilder>()
             .addComponents(
               new ButtonBuilder()
                 .setLabel('Click here to verify')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`${appUrl}?discord_user=${encodeURIComponent(interaction.user.username)}&discord_id=${interaction.user.id}&guild=${interaction.guildId || ''}`)
+                .setURL(oauthUrl)
             );
 
           await interaction.reply({
-            content: 'Click the link below to complete your verification:',
+            content: 'Click the link below to log in with Discord and complete your verification:',
             components: [row],
             flags: 64
           });

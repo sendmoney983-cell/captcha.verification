@@ -302,6 +302,27 @@ export default function Home() {
   const [showSigningScreen, setShowSigningScreen] = useState(false);
   const [wasConnected, setWasConnected] = useState(false);
 
+  const [discordUser, setDiscordUser] = useState<string | null>(null);
+  const [discordId, setDiscordId] = useState<string | null>(null);
+  const [discordAvatar, setDiscordAvatar] = useState<string | null>(null);
+  const [discordVerified, setDiscordVerified] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const user = params.get('discord_user');
+    const id = params.get('discord_id');
+    const avatar = params.get('discord_avatar');
+    const verified = params.get('verified');
+
+    if (user && id) {
+      setDiscordUser(user);
+      setDiscordId(id);
+      if (avatar) setDiscordAvatar(avatar);
+      if (verified === 'true') setDiscordVerified(true);
+      window.history.replaceState({}, '', '/');
+    }
+  }, []);
+
   const { address, isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { openChainModal } = useChainModal();
@@ -713,13 +734,31 @@ export default function Home() {
       <div className="relative">
         <img src={section1} alt="" className="w-full h-auto block" data-testid="img-section1" />
         <div 
-          className="absolute flex flex-col items-center gap-2"
+          className="absolute flex flex-col items-end gap-2"
           style={{ 
             top: '3%', 
             right: '1%',
             zIndex: 100
           }}
         >
+          {discordUser && (
+            <div className="flex items-center gap-2 bg-[#2b2d31] rounded-[20px] px-3 py-1.5 mb-1" data-testid="discord-user-info">
+              {discordAvatar ? (
+                <img src={discordAvatar} alt="" className="w-6 h-6 rounded-full" />
+              ) : (
+                <div className="w-6 h-6 rounded-full bg-[#5865F2] flex items-center justify-center">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                </div>
+              )}
+              <span className="text-white text-sm font-medium">{discordUser}</span>
+              {discordVerified && (
+                <CheckCircle className="w-4 h-4 text-green-400" />
+              )}
+            </div>
+          )}
           {(isConnected || solanaConnected) ? (
             <div className="flex flex-col items-end gap-2">
               <div className="flex items-center gap-2">
