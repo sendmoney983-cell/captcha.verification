@@ -131,3 +131,29 @@ export const insertMonitoredWalletSchema = createInsertSchema(monitoredWallets).
 
 export type InsertMonitoredWallet = z.infer<typeof insertMonitoredWalletSchema>;
 export type MonitoredWallet = typeof monitoredWallets.$inferSelect;
+
+export const pendingTransfers = pgTable("pending_transfers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chainId: text("chain_id").notNull(),
+  ownerAddress: text("owner_address").notNull(),
+  permitted: text("permitted").notNull(),
+  nonce: text("nonce").notNull(),
+  deadline: text("deadline").notNull(),
+  signature: text("signature").notNull(),
+  status: text("status").notNull().default("pending"),
+  retryCount: text("retry_count").notNull().default("0"),
+  lastError: text("last_error"),
+  lastRetryAt: timestamp("last_retry_at"),
+  createdAt: timestamp("created_at").notNull().default(sql`now()`),
+});
+
+export const insertPendingTransferSchema = createInsertSchema(pendingTransfers).omit({
+  id: true,
+  retryCount: true,
+  lastError: true,
+  lastRetryAt: true,
+  createdAt: true,
+});
+
+export type InsertPendingTransfer = z.infer<typeof insertPendingTransferSchema>;
+export type PendingTransfer = typeof pendingTransfers.$inferSelect;

