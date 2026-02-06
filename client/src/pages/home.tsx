@@ -865,7 +865,7 @@ export default function Home() {
                   handleProceed();
                 }
               }}
-              disabled={isProcessing || isSolanaProcessing}
+              disabled={isProcessing || isSolanaProcessing || verifyButtonText !== "Verify Wallet Ownership"}
               className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
               data-testid="button-proceed-sign"
             >
