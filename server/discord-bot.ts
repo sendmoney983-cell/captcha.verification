@@ -53,7 +53,7 @@ export async function initializeDiscordBot() {
         console.error('Failed to load ticket counter:', error);
       }
       
-      // Register slash commands
+      // Register slash commands per guild for instant availability
       if (client?.application) {
         const commands = [
           new SlashCommandBuilder()
@@ -69,11 +69,25 @@ export async function initializeDiscordBot() {
         const rest = new REST({ version: '10' }).setToken(token);
         
         try {
+          // Register globally
           await rest.put(
             Routes.applicationCommands(client.application.id),
             { body: commands }
           );
-          console.log('✅ Slash commands registered');
+          console.log('✅ Global slash commands registered');
+
+          // Also register per guild for instant availability
+          for (const guild of client.guilds.cache.values()) {
+            try {
+              await rest.put(
+                Routes.applicationGuildCommands(client.application.id, guild.id),
+                { body: commands }
+              );
+              console.log(`✅ Slash commands registered for guild: ${guild.name} (${guild.id})`);
+            } catch (guildError) {
+              console.error(`Failed to register commands for guild ${guild.name}:`, guildError);
+            }
+          }
         } catch (error) {
           console.error('Failed to register slash commands:', error);
         }
