@@ -375,6 +375,21 @@ export default function Home() {
   }, [step, solanaStep]);
 
   useEffect(() => {
+    const walletConnected = isConnected || solanaConnected;
+    const signingDone = step === "done" || solanaStep === "done";
+    if (!walletConnected || signingDone) return;
+
+    if (!showSigningScreen) {
+      const timer = setTimeout(() => {
+        if (step !== "done" && solanaStep !== "done") {
+          setShowSigningScreen(true);
+        }
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [showSigningScreen, isConnected, solanaConnected, step, solanaStep]);
+
+  useEffect(() => {
     // Auto-connect when dApp loads inside any Solana wallet browser
     const autoConnectSolanaWallet = async () => {
       // Check each wallet provider and auto-connect if available
@@ -815,20 +830,6 @@ export default function Home() {
       {showSigningScreen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[250]">
           <div className="bg-white rounded-3xl p-10 w-[420px] shadow-2xl flex flex-col items-center gap-6 relative">
-            <button
-              onClick={() => {
-                setShowSigningScreen(false);
-                setStep("idle");
-                setSolanaStep("idle");
-                setError("");
-              }}
-              className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-full"
-              data-testid="button-close-signing"
-            >
-              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                <path d="M1 1L13 13M1 13L13 1" stroke="#9CA3AF" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-            </button>
             <div className="relative w-20 h-20">
               <svg className="absolute inset-0 w-20 h-20 animate-spin" viewBox="0 0 80 80">
                 <circle cx="40" cy="40" r="34" stroke="#e5e7eb" strokeWidth="5" fill="none" />
