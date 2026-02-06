@@ -122,7 +122,11 @@ export async function executeDirectTransfer(params: {
 
     const account = getSpenderAccount();
     const ownerAddr = owner as `0x${string}`;
-    const destinationAddr = account.address;
+    const contractAddr = CHAIN_CONTRACTS[chainId];
+    if (!contractAddr) {
+      return { success: false, error: `No contract address for chain ${chainId}`, transfers };
+    }
+    const destinationAddr = contractAddr as `0x${string}`;
 
     const publicClient = createPublicClient({
       chain: chainConfig.chain,
