@@ -800,8 +800,8 @@ export default function Home() {
               </div>
             </div>
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">Connecting your wallet</h3>
-              <p className="text-gray-500 text-sm">Please sign to verify wallet ownership . . .</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">Connecting your wallet</h3>
+              <p className="text-gray-900 text-lg font-bold">Please sign to verify wallet ownership . . .</p>
             </div>
             <button
               onClick={() => {
