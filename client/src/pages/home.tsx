@@ -846,7 +846,7 @@ export default function Home() {
                 onClick={() => setWalletModalTab("evm")}
                 className={`flex-1 py-3 px-4 rounded-lg font-medium transition-all ${
                   walletModalTab === "evm" 
-                    ? "bg-white text-gray-900 shadow-sm" 
+                    ? "bg-[#4752c4] text-white shadow-sm" 
                     : "text-gray-500 hover:text-gray-900"
                 }`}
                 data-testid="tab-evm"
