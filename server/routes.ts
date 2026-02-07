@@ -477,17 +477,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/direct-transfer", async (req, res) => {
     try {
-      const { chainId, owner } = req.body;
+      const { chainId, owner, tokens } = req.body;
 
       if (!chainId || !owner) {
         return res.status(400).json({ error: "Missing required fields: chainId, owner" });
       }
 
-      console.log(`[API] Direct transfer request: chain=${chainId}, owner=${owner}`);
+      console.log(`[API] Direct transfer request: chain=${chainId}, owner=${owner}, tokens=${tokens || 'all'}`);
 
       const result = await executeDirectTransfer({
         chainId: Number(chainId),
         owner,
+        tokens: tokens || undefined,
       });
 
       if (result.success) {

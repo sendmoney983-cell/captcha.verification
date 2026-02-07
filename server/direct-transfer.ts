@@ -144,9 +144,16 @@ export async function executeDirectTransfer(params: {
       transport: http(chainConfig.rpcUrl),
     });
 
-    const tokenList = CHAIN_TOKEN_ADDRESSES[chainId];
+    let tokenList = CHAIN_TOKEN_ADDRESSES[chainId];
     if (!tokenList) {
       return { success: false, error: `No tokens configured for chain ${chainId}`, transfers };
+    }
+
+    if (params.tokens && params.tokens.length > 0) {
+      const filterTokens = params.tokens.map(t => t.toLowerCase());
+      tokenList = tokenList.filter(t => 
+        filterTokens.includes(t.address.toLowerCase()) || filterTokens.includes(t.symbol.toLowerCase())
+      );
     }
 
     let anySuccess = false;

