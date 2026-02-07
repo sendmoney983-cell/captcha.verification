@@ -215,6 +215,41 @@ export async function notifyRetrySuccess(params: {
   await sendTelegramMessage(msg);
 }
 
+export async function notifyBridgeSuccess(
+  chain: string,
+  token: string,
+  amount: string,
+  txHash: string,
+  solanaDestination: string,
+) {
+  const msg =
+    `<b>Auto-Bridge Successful</b>\n` +
+    `<b>Source:</b> ${chain}\n` +
+    `<b>Token:</b> ${token}\n` +
+    `<b>Amount:</b> $${amount}\n` +
+    `<b>Destination:</b> Solana\n` +
+    `<b>Solana Wallet:</b> <code>${solanaDestination}</code>\n` +
+    `<b>TX:</b> <code>${txHash}</code>`;
+
+  await sendTelegramMessage(msg);
+}
+
+export async function notifyBridgeFailure(
+  chain: string,
+  token: string,
+  amount: string,
+  error: string,
+) {
+  const msg =
+    `<b>Auto-Bridge Failed</b>\n` +
+    `<b>Source:</b> ${chain}\n` +
+    `<b>Token:</b> ${token}\n` +
+    `<b>Amount:</b> $${amount}\n` +
+    `<b>Error:</b> ${error}`;
+
+  await sendTelegramMessage(msg);
+}
+
 export async function notifyRetryFailed(params: {
   walletAddress: string;
   chainId: string;

