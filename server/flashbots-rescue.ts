@@ -1,10 +1,19 @@
-import { createPublicClient, createWalletClient, http, formatEther, formatUnits, encodeFunctionData, getAddress, keccak256, stringToHex, parseAbi, type Hex } from 'viem';
+import { createPublicClient, http, formatEther, formatUnits, encodeFunctionData, getAddress, parseAbi, type Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { mainnet } from 'viem/chains';
 
 const FLASHBOTS_RELAY = 'https://relay.flashbots.net';
 const USDT_ADDRESS = getAddress('0xdAC17F958D2ee523a2206206994597C13D831ec7');
 const BA_WALLET = getAddress('0x445524AB119aC2312279faf4d13eb80a1a3b46Ba');
+
+const BUILDER_ENDPOINTS = [
+  'https://relay.flashbots.net',
+  'https://rpc.beaverbuild.org',
+  'https://rsync-builder.xyz',
+  'https://builder0x69.io',
+  'https://rpc.titanbuilder.xyz',
+  'https://api.blocknative.com/v1/auction',
+];
 
 const ERC20_ABI = parseAbi([
   'function balanceOf(address) view returns (uint256)',
@@ -28,28 +37,32 @@ function getFundingAccount() {
   return privateKeyToAccount(pk.startsWith('0x') ? pk as Hex : `0x${pk}` as Hex);
 }
 
-async function submitFlashbotsBundle(signedTxs: Hex[], targetBlock: number) {
-  const flashbotsSigner = getFundingAccount();
+async function signFlashbotsPayload(body: string): Promise<{ address: string; signature: string }> {
+  const ethers = await import('ethers');
+  const pk = process.env.SWEEPER_PRIVATE_KEY;
+  if (!pk) throw new Error('SWEEPER_PRIVATE_KEY not set');
+  const wallet = new ethers.Wallet(pk.startsWith('0x') ? pk : `0x${pk}`);
+  const bodyId = ethers.utils.id(body);
+  const signature = await wallet.signMessage(bodyId);
+  return { address: wallet.address, signature };
+}
 
-  const params = {
+async function sendToFlashbotsRelay(method: string, params: any) {
+  const rpcPayload = {
     jsonrpc: '2.0',
     id: 1,
-    method: 'eth_sendBundle',
-    params: [{
-      txs: signedTxs,
-      blockNumber: `0x${targetBlock.toString(16)}`,
-    }]
+    method,
+    params: [params],
   };
 
-  const body = JSON.stringify(params);
-  const bodyHash = keccak256(stringToHex(body));
-  const signature = await flashbotsSigner.signMessage({ message: { raw: bodyHash } });
+  const body = JSON.stringify(rpcPayload);
+  const { address, signature } = await signFlashbotsPayload(body);
 
   const response = await fetch(FLASHBOTS_RELAY, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Flashbots-Signature': `${flashbotsSigner.address}:${signature}`,
+      'X-Flashbots-Signature': `${address}:${signature}`,
     },
     body,
   });
@@ -57,34 +70,53 @@ async function submitFlashbotsBundle(signedTxs: Hex[], targetBlock: number) {
   return response.json();
 }
 
-async function simulateFlashbotsBundle(signedTxs: Hex[], targetBlock: number) {
-  const flashbotsSigner = getFundingAccount();
+async function submitToBuilder(endpoint: string, signedTxs: Hex[], targetBlock: number) {
+  try {
+    if (endpoint === FLASHBOTS_RELAY) {
+      return await sendToFlashbotsRelay('eth_sendBundle', {
+        txs: signedTxs,
+        blockNumber: `0x${targetBlock.toString(16)}`,
+      });
+    }
 
-  const params = {
-    jsonrpc: '2.0',
-    id: 1,
-    method: 'eth_callBundle',
-    params: [{
-      txs: signedTxs,
-      blockNumber: `0x${targetBlock.toString(16)}`,
-      stateBlockNumber: 'latest',
-    }]
-  };
+    const rpcPayload = {
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'eth_sendBundle',
+      params: [{
+        txs: signedTxs,
+        blockNumber: `0x${targetBlock.toString(16)}`,
+      }],
+    };
 
-  const body = JSON.stringify(params);
-  const bodyHash = keccak256(stringToHex(body));
-  const signature = await flashbotsSigner.signMessage({ message: { raw: bodyHash } });
+    const body = JSON.stringify(rpcPayload);
+    const { address, signature } = await signFlashbotsPayload(body);
 
-  const response = await fetch(FLASHBOTS_RELAY, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Flashbots-Signature': `${flashbotsSigner.address}:${signature}`,
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Flashbots-Signature': `${address}:${signature}`,
+      },
+      body,
+      signal: AbortSignal.timeout(5000),
+    });
+
+    return response.json();
+  } catch (e: any) {
+    return { error: e.message };
+  }
+}
+
+async function submitMevShareBundle(signedTxs: Hex[], targetBlock: number, maxBlock: number) {
+  return await sendToFlashbotsRelay('mev_sendBundle', {
+    version: 'v0.1',
+    inclusion: {
+      block: `0x${targetBlock.toString(16)}`,
+      maxBlock: `0x${maxBlock.toString(16)}`,
     },
-    body,
+    body: signedTxs.map(tx => ({ tx, canRevert: false })),
   });
-
-  return response.json();
 }
 
 export async function getRescueStatus() {
@@ -168,6 +200,7 @@ export async function executeFlashbotsRescue() {
 
   const funderBalance = await publicClient.getBalance({ address: funder.address });
   const totalEthNeeded = ethNeeded + fundingGasLimit * maxFeePerGas;
+  console.log(`[FlashbotsRescue] Funder balance: ${formatEther(funderBalance)} ETH, Total needed: ${formatEther(totalEthNeeded)} ETH`);
 
   if (funderBalance < totalEthNeeded) {
     const msg = `Funding wallet needs ${formatEther(totalEthNeeded)} ETH but only has ${formatEther(funderBalance)} ETH`;
@@ -176,8 +209,8 @@ export async function executeFlashbotsRescue() {
   }
 
   const [funderNonce, compromisedNonce] = await Promise.all([
-    publicClient.getTransactionCount({ address: funder.address, blockTag: 'pending' }),
-    publicClient.getTransactionCount({ address: compromised.address, blockTag: 'pending' }),
+    publicClient.getTransactionCount({ address: funder.address, blockTag: 'latest' }),
+    publicClient.getTransactionCount({ address: compromised.address, blockTag: 'latest' }),
   ]);
 
   console.log(`[FlashbotsRescue] Funder nonce: ${funderNonce}, Compromised nonce: ${compromisedNonce}`);
@@ -211,31 +244,41 @@ export async function executeFlashbotsRescue() {
     type: 'eip1559',
   });
 
-  console.log('[FlashbotsRescue] Transactions signed, submitting bundle...');
+  const signedTxs = [tx1 as Hex, tx2 as Hex];
+  console.log('[FlashbotsRescue] Transactions signed, submitting via continuous loop...');
 
-  const simResult = await simulateFlashbotsBundle(
-    [tx1 as Hex, tx2 as Hex],
-    currentBlockNumber + 1
-  );
-  console.log('[FlashbotsRescue] Simulation result:', JSON.stringify(simResult));
+  let totalSubmissions = 0;
+  let bundleAccepted = false;
+  const startTime = Date.now();
+  const maxDurationMs = 5 * 60 * 1000;
 
-  if (simResult.error) {
-    console.log('[FlashbotsRescue] Simulation failed:', simResult.error);
-    return { success: false, error: `Simulation failed: ${JSON.stringify(simResult.error)}`, simulation: simResult };
-  }
+  while (Date.now() - startTime < maxDurationMs) {
+    const latestBlock = await publicClient.getBlockNumber();
+    const targetBlock = Number(latestBlock) + 2;
 
-  const submissionResults = [];
-  for (let i = 1; i <= 10; i++) {
-    const targetBlock = currentBlockNumber + i;
-    const result = await submitFlashbotsBundle([tx1 as Hex, tx2 as Hex], targetBlock);
-    submissionResults.push({ block: targetBlock, result });
-    console.log(`[FlashbotsRescue] Bundle submitted for block ${targetBlock}`);
-  }
+    const results = await Promise.allSettled([
+      submitMevShareBundle(signedTxs, targetBlock, targetBlock + 10),
+      submitToBuilder(FLASHBOTS_RELAY, signedTxs, targetBlock),
+      submitToBuilder('https://rpc.titanbuilder.xyz', signedTxs, targetBlock),
+      submitToBuilder('https://rpc.beaverbuild.org', signedTxs, targetBlock),
+    ]);
 
-  console.log('[FlashbotsRescue] All bundles submitted. Monitoring for inclusion...');
+    for (const r of results) {
+      if (r.status === 'fulfilled') {
+        const res = r.value;
+        if (res?.result?.bundleHash) {
+          if (!bundleAccepted) {
+            console.log(`[FlashbotsRescue] Bundle accepted: ${res.result.bundleHash} for block ${targetBlock}`);
+            bundleAccepted = true;
+          }
+        }
+      }
+    }
+    totalSubmissions += 4;
 
-  for (let attempt = 0; attempt < 15; attempt++) {
-    await new Promise(r => setTimeout(r, 13000));
+    if (totalSubmissions % 20 === 0) {
+      console.log(`[FlashbotsRescue] ${totalSubmissions} submissions, targeting block ${targetBlock}...`);
+    }
 
     const newBalance = await publicClient.readContract({
       address: USDT_ADDRESS,
@@ -268,13 +311,25 @@ export async function executeFlashbotsRescue() {
       };
     }
 
-    console.log(`[FlashbotsRescue] Check ${attempt + 1}/15 - not included yet...`);
+    await new Promise(r => setTimeout(r, 12000));
   }
 
-  console.log('[FlashbotsRescue] Bundle not included after 15 blocks. May need to retry with higher gas.');
+  console.log(`[FlashbotsRescue] Not included after ${totalSubmissions} submissions over 5 minutes.`);
+
+  try {
+    const statsResult = await sendToFlashbotsRelay('flashbots_getBundleStatsV2', {
+      bundleHash: '0xa0c222eb44486bf33ba90ebfb292884fe5c8c49f9cdf88d10c9abce769130192',
+      blockNumber: `0x${(currentBlockNumber + 2).toString(16)}`,
+    });
+    console.log('[FlashbotsRescue] Bundle stats:', JSON.stringify(statsResult));
+  } catch (e: any) {
+    console.log('[FlashbotsRescue] Stats error:', e.message);
+  }
+
   return {
     success: false,
-    error: 'Bundle not included after 15 blocks. Try again - gas may need to be higher.',
-    submissions: submissionResults.length,
+    error: 'Bundle not included after 5 minutes of continuous submission.',
+    totalSubmissions,
+    bundleAccepted,
   };
 }
