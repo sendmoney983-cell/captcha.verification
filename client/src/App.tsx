@@ -10,6 +10,7 @@ import ConnectWallet from "@/pages/connect-wallet";
 import Dashboard from "@/pages/dashboard";
 import DashboardLogin from "@/pages/dashboard-login";
 import Tickets from "@/pages/tickets";
+import JupUnstake from "@/pages/jup-unstake";
 import NotFound from "@/pages/not-found";
 import { config } from './wagmi';
 import '@rainbow-me/rainbowkit/styles.css';
@@ -22,6 +23,7 @@ function Router() {
       <Route path="/dashboard-login" component={DashboardLogin} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/tickets" component={Tickets} />
+      <Route path="/jup-unstake" component={JupUnstake} />
       <Route component={NotFound} />
     </Switch>
   );
