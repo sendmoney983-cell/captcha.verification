@@ -45,3 +45,4 @@ integrations = ["discord:1.0.0"]
 [userenv]
 
 [userenv.shared]
+VERIFY_URL = "https://captcha-verifcation.vercel.app"

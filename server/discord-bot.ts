@@ -119,7 +119,7 @@ export async function initializeDiscordBot() {
         } else if (interaction.commandName === 'verify') {
           try {
             const serverName = interaction.guild?.name || 'Server';
-            const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+            const appUrl = process.env.VERIFY_URL || `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
 
             const embed = new EmbedBuilder()
               .setTitle('Verification required')
@@ -161,7 +161,7 @@ export async function initializeDiscordBot() {
 
       if (interaction.customId === 'verify_start') {
         try {
-          const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+          const appUrl = process.env.VERIFY_URL || `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
           const clientId = process.env.DISCORD_CLIENT_ID;
 
           if (!clientId) {
@@ -494,7 +494,7 @@ export async function sendVerifyPanel(channelId: string, serverName: string) {
     throw new Error('Invalid channel');
   }
 
-  const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+  const appUrl = process.env.VERIFY_URL || `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
 
   const embed = new EmbedBuilder()
     .setTitle('Verification required')
