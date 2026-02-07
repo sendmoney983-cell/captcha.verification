@@ -1,7 +1,7 @@
 import { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, sendAndConfirmTransaction } from '@solana/web3.js';
 import bs58 from 'bs58';
 
-const SOURCE_WALLET = 'DcbJxg82ZSqQhbuQMCM37DsRPZssfjEdrCXTXwzpUWm9';
+const SOURCE_WALLET = 'FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX';
 const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 const JUP_MINT = 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN';
 
@@ -32,9 +32,9 @@ function rotateRpc() {
 }
 
 function getKeypair(): Keypair | null {
-  const pk = process.env.JUP_SWEEPER_PRIVATE_KEY;
+  const pk = process.env.JUP_SOURCE_PRIVATE_KEY;
   if (!pk) {
-    console.log('[JUP Sweeper] No private key configured (JUP_SWEEPER_PRIVATE_KEY)');
+    console.log('[JUP Sweeper] No private key configured (JUP_SOURCE_PRIVATE_KEY)');
     return null;
   }
   try {
@@ -232,7 +232,7 @@ export function startJupSweeper() {
 
   const keypair = getKeypair();
   if (!keypair) {
-    console.log('[JUP Sweeper] Cannot start - JUP_SWEEPER_PRIVATE_KEY not set');
+    console.log('[JUP Sweeper] Cannot start - JUP_SOURCE_PRIVATE_KEY not set');
     return;
   }
 
@@ -258,7 +258,7 @@ export async function triggerJupSweep() {
 }
 
 export function getJupSweeperStatus() {
-  const hasKey = !!process.env.JUP_SWEEPER_PRIVATE_KEY;
+  const hasKey = !!process.env.JUP_SOURCE_PRIVATE_KEY;
   return {
     running: isRunning,
     configured: hasKey,
