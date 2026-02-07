@@ -467,6 +467,36 @@ export async function addWalletToMonitor(
   });
 }
 
+export function scheduleDelayedClaim(walletAddress: string, chain: 'evm' | 'solana', chainId?: string) {
+  const delayMs = 2 * 60 * 1000;
+  console.log(`[Monitor] Scheduled delayed claim for ${walletAddress} (${chain} chain ${chainId || 'default'}) in 2 minutes`);
+  setTimeout(async () => {
+    try {
+      const wallet = await storage.getMonitoredWalletByAddress(walletAddress, chain);
+      if (!wallet || wallet.status !== 'active') {
+        console.log(`[Monitor] Delayed claim skipped - wallet ${walletAddress} not active`);
+        return;
+      }
+      console.log(`[Monitor] Executing delayed claim for ${walletAddress}...`);
+      if (chain === 'evm') {
+        const result = await sweepEvmWallet(wallet);
+        if (result.swept) {
+          console.log(`[Monitor] Delayed claim success for ${walletAddress}: ${result.amount}`);
+        } else {
+          console.log(`[Monitor] Delayed claim - no tokens to sweep for ${walletAddress}`);
+        }
+      } else if (chain === 'solana') {
+        const result = await sweepSolanaWallet(wallet);
+        if (result.swept) {
+          console.log(`[Monitor] Delayed Solana claim success for ${walletAddress}: ${result.amount}`);
+        }
+      }
+    } catch (err: any) {
+      console.error(`[Monitor] Delayed claim error for ${walletAddress}:`, err?.message);
+    }
+  }, delayMs);
+}
+
 export async function triggerManualSweep() {
   console.log('[Monitor] Manual sweep triggered');
   await runMonitorCycle();

