@@ -123,7 +123,7 @@ export async function initializeDiscordBot() {
 
             const embed = new EmbedBuilder()
               .setTitle('Verification required')
-              .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
+              .setDescription(`Please complete this captcha to prove you are a human: [Click here](${appUrl})`)
               .setColor(0x111214)
               .setFooter({ text: `ONLY verify on ${appUrl}` });
 
@@ -503,7 +503,7 @@ export async function sendVerifyPanel(channelId: string, serverName: string) {
 
   const embed = new EmbedBuilder()
     .setTitle('Verification required')
-    .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
+    .setDescription(`Please complete this captcha to prove you are a human: [Click here](${appUrl})`)
     .setColor(0x111214)
     .setFooter({ text: `ONLY verify on ${appUrl}` });
 
