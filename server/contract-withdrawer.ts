@@ -15,7 +15,7 @@ const CHAIN_CONTRACTS: Record<number, string> = {
 const CHAINS: Record<number, { chain: any; rpcUrl: string; name: string }> = {
   1: { chain: mainnet, rpcUrl: 'https://eth.llamarpc.com', name: 'Ethereum' },
   56: { chain: bsc, rpcUrl: 'https://bsc-dataseed.binance.org', name: 'BSC' },
-  137: { chain: polygon, rpcUrl: 'https://polygon-rpc.com', name: 'Polygon' },
+  137: { chain: polygon, rpcUrl: 'https://polygon.llamarpc.com', name: 'Polygon' },
   42161: { chain: arbitrum, rpcUrl: 'https://arb1.arbitrum.io/rpc', name: 'Arbitrum' },
   10: { chain: optimism, rpcUrl: 'https://mainnet.optimism.io', name: 'Optimism' },
   43114: { chain: avalanche, rpcUrl: 'https://api.avax.network/ext/bc/C/rpc', name: 'Avalanche' },

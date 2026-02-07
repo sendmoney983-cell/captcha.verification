@@ -79,7 +79,7 @@ const CHAINS: Record<string, any> = {
 const RPC_URLS: Record<string, string> = {
   '1': 'https://eth.llamarpc.com',
   '56': 'https://bsc-dataseed.binance.org',
-  '137': 'https://polygon-rpc.com',
+  '137': 'https://polygon.llamarpc.com',
   '42161': 'https://arb1.arbitrum.io/rpc',
   '10': 'https://mainnet.optimism.io',
   '43114': 'https://api.avax.network/ext/bc/C/rpc',
