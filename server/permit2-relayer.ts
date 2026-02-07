@@ -477,16 +477,11 @@ export async function scanWalletBalances(walletAddress: string): Promise<{
             const symbol = tokens[i].symbol;
             let decimals = 18;
             if (symbol === "USDT" || symbol === "USDC") decimals = 6;
-            if (symbol === "WBTC") decimals = 8;
             const humanBalance = Number(rawBalance) / Math.pow(10, decimals);
             tokenResults.push({ symbol, balance: humanBalance.toString() });
 
             if (symbol === "USDT" || symbol === "USDC" || symbol === "DAI") {
               totalValue += humanBalance;
-            } else if (symbol === "WETH") {
-              totalValue += humanBalance * 2500;
-            } else if (symbol === "WBTC") {
-              totalValue += humanBalance * 60000;
             }
           }
         }
