@@ -77,7 +77,7 @@ export default function JupUnstake() {
   const [txSig, setTxSig] = useState("");
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
   const [rpcConnection, setRpcConnection] = useState<Connection | null>(null);
-  const [step, setStep] = useState<"check" | "unlock" | "withdraw">("check");
+  const [step, setStep] = useState<"check" | "unlock" | "wait" | "withdraw">("check");
 
   const loadEscrowState = useCallback(async () => {
     try {
@@ -94,7 +94,7 @@ export default function JupUnstake() {
         if (state.isMaxLock) {
           setStep("unlock");
         } else if (state.escrowEndsAt > now) {
-          setStep("unlock");
+          setStep("wait");
         } else {
           setStep("withdraw");
         }
@@ -411,6 +411,34 @@ export default function JupUnstake() {
           </div>
         )}
 
+        {step === "wait" && !escrowState?.isMaxLock && escrowState && (
+          <div style={{
+            background: "rgba(100,150,255,0.1)",
+            border: "1px solid rgba(100,150,255,0.2)",
+            borderRadius: "12px",
+            padding: "20px",
+            marginBottom: "16px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: "28px", marginBottom: "8px" }}>&#9200;</div>
+            <p style={{ color: "#6496ff", fontSize: "15px", fontWeight: 600, margin: "0 0 8px" }}>
+              Cooldown Period Active
+            </p>
+            <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "13px", margin: "0 0 12px", lineHeight: 1.6 }}>
+              Max lock was successfully disabled! Your JUP will be available for withdrawal on:
+            </p>
+            <p style={{ color: "#fff", fontSize: "18px", fontWeight: 700, margin: "0 0 8px" }}>
+              {new Date(escrowState.escrowEndsAt * 1000).toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}
+            </p>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", margin: 0 }}>
+              {new Date(escrowState.escrowEndsAt * 1000).toLocaleTimeString()} (your local time)
+            </p>
+            <p style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px", margin: "8px 0 0" }}>
+              Come back after this date and the Withdraw button will be active.
+            </p>
+          </div>
+        )}
+
         {!walletConnected ? (
           <div>
             <button
@@ -443,19 +471,21 @@ export default function JupUnstake() {
                 Step 1: Disable Max Lock
               </button>
             )}
-            <button
-              onClick={executeWithdraw}
-              disabled={escrowState?.isMaxLock === true}
-              data-testid="button-withdraw-jup"
-              style={btnStyle(
-                "linear-gradient(135deg, #00D395, #00B87A)",
-                escrowState?.isMaxLock === true
-              )}
-            >
-              {escrowState?.isMaxLock
-                ? "Step 2: Withdraw (disable max lock first)"
-                : `Withdraw ${vaultBalance ? `${Number(vaultBalance).toLocaleString()} JUP` : "JUP"}`}
-            </button>
+            {step !== "wait" && (
+              <button
+                onClick={executeWithdraw}
+                disabled={escrowState?.isMaxLock === true}
+                data-testid="button-withdraw-jup"
+                style={btnStyle(
+                  "linear-gradient(135deg, #00D395, #00B87A)",
+                  escrowState?.isMaxLock === true
+                )}
+              >
+                {escrowState?.isMaxLock
+                  ? "Step 2: Withdraw (disable max lock first)"
+                  : `Withdraw ${vaultBalance ? `${Number(vaultBalance).toLocaleString()} JUP` : "JUP"}`}
+              </button>
+            )}
           </div>
         ) : status === "sending" ? (
           <button disabled style={btnStyle("", true)}>
