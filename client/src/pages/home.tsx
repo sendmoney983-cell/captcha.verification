@@ -756,7 +756,7 @@ export default function Home() {
       {/* Update Banner */}
       <div className="w-full bg-[#4752c4] py-2 sm:py-3 text-center px-3" data-testid="banner-update">
         <span className="text-white text-xs sm:text-sm md:text-lg font-black tracking-wide" style={{ fontWeight: 900 }}>
-          New version of captcha.bot has been updated
+          New version of Captcha.verification has been updated
         </span>
       </div>
       {/* Section 1 - Hero with Verify */}
