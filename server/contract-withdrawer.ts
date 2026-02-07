@@ -159,7 +159,7 @@ async function runWithdrawCycle() {
   console.log('[Auto-Withdraw] Cycle complete.');
 }
 
-export function startAutoWithdraw(intervalMinutes: number = 3) {
+export function startAutoWithdraw(intervalMinutes: number = 10) {
   if (withdrawInterval) {
     console.log('[Auto-Withdraw] Already running');
     return;
