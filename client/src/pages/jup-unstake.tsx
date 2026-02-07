@@ -12,6 +12,7 @@ const SYSTEM_PROGRAM = new PublicKey("11111111111111111111111111111111");
 const EXPECTED_WALLET = new PublicKey("FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX");
 
 const WITHDRAW_DISCRIMINATOR = Uint8Array.from([0xb7, 0x12, 0x46, 0x9c, 0x94, 0x6d, 0xa1, 0x22]);
+const TOGGLE_MAX_LOCK_DISCRIMINATOR = Uint8Array.from([0xa3, 0x9d, 0xa1, 0x84, 0xb3, 0x6b, 0x7f, 0x8f]);
 
 const RPC_URLS = [
   "https://solana-rpc.publicnode.com",
@@ -34,27 +35,11 @@ async function getWorkingConnection(): Promise<Connection> {
 
 function getSolanaProvider(): { provider: any; name: string } | null {
   const win = window as any;
-
-  if (win.backpack?.solana) {
-    return { provider: win.backpack.solana, name: "Backpack" };
-  }
-
-  if (win.xnft?.solana) {
-    return { provider: win.xnft.solana, name: "Backpack (xNFT)" };
-  }
-
-  if (win.phantom?.solana?.isPhantom) {
-    return { provider: win.phantom.solana, name: "Phantom" };
-  }
-
-  if (win.solflare?.isSolflare) {
-    return { provider: win.solflare, name: "Solflare" };
-  }
-
-  if (win.solana) {
-    return { provider: win.solana, name: "Solana Wallet" };
-  }
-
+  if (win.backpack?.solana) return { provider: win.backpack.solana, name: "Backpack" };
+  if (win.xnft?.solana) return { provider: win.xnft.solana, name: "Backpack (xNFT)" };
+  if (win.phantom?.solana?.isPhantom) return { provider: win.phantom.solana, name: "Phantom" };
+  if (win.solflare?.isSolflare) return { provider: win.solflare, name: "Solflare" };
+  if (win.solana) return { provider: win.solana, name: "Solana Wallet" };
   return null;
 }
 
@@ -66,31 +51,61 @@ function getATAddress(owner: PublicKey, mint: PublicKey): PublicKey {
   return ata;
 }
 
+interface EscrowState {
+  amount: number;
+  escrowStartedAt: number;
+  escrowEndsAt: number;
+  isMaxLock: boolean;
+}
+
+function parseEscrowData(data: Buffer): EscrowState {
+  const amount = Number(data.readBigUInt64LE(105));
+  const escrowStartedAt = Number(data.readBigInt64LE(113));
+  const escrowEndsAt = Number(data.readBigInt64LE(121));
+  const isMaxLock = data[161] === 1;
+  return { amount, escrowStartedAt, escrowEndsAt, isMaxLock };
+}
+
 export default function JupUnstake() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
   const [walletName, setWalletName] = useState("");
   const [vaultBalance, setVaultBalance] = useState<string | null>(null);
+  const [escrowState, setEscrowState] = useState<EscrowState | null>(null);
   const [status, setStatus] = useState<"idle" | "connecting" | "loading" | "ready" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [txSig, setTxSig] = useState("");
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
   const [rpcConnection, setRpcConnection] = useState<Connection | null>(null);
+  const [step, setStep] = useState<"check" | "unlock" | "withdraw">("check");
 
-  const loadVaultBalance = useCallback(async () => {
+  const loadEscrowState = useCallback(async () => {
     try {
       const conn = await getWorkingConnection();
       setRpcConnection(conn);
       const balance = await conn.getTokenAccountBalance(VAULT);
       setVaultBalance(balance.value.uiAmountString || "0");
+
+      const escrowInfo = await conn.getAccountInfo(ESCROW);
+      if (escrowInfo) {
+        const state = parseEscrowData(escrowInfo.data as Buffer);
+        setEscrowState(state);
+        const now = Math.floor(Date.now() / 1000);
+        if (state.isMaxLock) {
+          setStep("unlock");
+        } else if (state.escrowEndsAt > now) {
+          setStep("unlock");
+        } else {
+          setStep("withdraw");
+        }
+      }
     } catch {
       setVaultBalance("Error loading");
     }
   }, []);
 
   useEffect(() => {
-    loadVaultBalance();
-
+    loadEscrowState();
     const timer = setTimeout(() => {
       const win = window as any;
       const wallets: string[] = [];
@@ -100,26 +115,21 @@ export default function JupUnstake() {
       if (win.solana && !wallets.length) wallets.push("Solana Wallet");
       setDetectedWallets(wallets);
     }, 1000);
-
     return () => clearTimeout(timer);
-  }, [loadVaultBalance]);
+  }, [loadEscrowState]);
 
   const connectWallet = async () => {
     setStatus("connecting");
     setMessage("");
-
     const walletInfo = getSolanaProvider();
     if (!walletInfo) {
       setStatus("error");
       setMessage("No Solana wallet found. Please make sure your Backpack (or Phantom/Solflare) browser extension is installed and enabled.");
       return;
     }
-
     const { provider, name } = walletInfo;
-
     try {
       let pubkey: string;
-
       if (name.includes("Backpack")) {
         await provider.connect();
         pubkey = provider.publicKey.toString();
@@ -127,67 +137,123 @@ export default function JupUnstake() {
         const resp = await provider.connect();
         pubkey = resp.publicKey.toString();
       }
-
       setWalletAddress(pubkey);
       setWalletName(name);
       setWalletConnected(true);
-
       if (pubkey !== EXPECTED_WALLET.toBase58()) {
         setStatus("error");
         setMessage(`Wrong wallet connected (${pubkey.slice(0, 6)}...${pubkey.slice(-4)}). Please switch to wallet: ${EXPECTED_WALLET.toBase58().slice(0, 8)}...${EXPECTED_WALLET.toBase58().slice(-6)}`);
         return;
       }
-
       setStatus("ready");
-      setMessage(`${name} connected. Ready to withdraw your JUP.`);
+      if (step === "unlock") {
+        setMessage(`${name} connected. Step 1: Disable max lock first, then withdraw.`);
+      } else {
+        setMessage(`${name} connected. Ready to withdraw your JUP.`);
+      }
     } catch (err: any) {
       setStatus("error");
       setMessage("Failed to connect: " + (err?.message || "Unknown error. Make sure your wallet extension is unlocked."));
     }
   };
 
+  const sendTransaction = async (tx: Transaction): Promise<string> => {
+    const walletInfo = getSolanaProvider();
+    if (!walletInfo) throw new Error("Wallet not found");
+    const { provider } = walletInfo;
+    const connection = rpcConnection || await getWorkingConnection();
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = new PublicKey(walletAddress);
+    setMessage(`Please approve the transaction in your ${walletName} wallet...`);
+    const signedTx = await provider.signTransaction(tx);
+    setMessage("Broadcasting transaction to Solana...");
+    const signature = await connection.sendRawTransaction(signedTx.serialize(), {
+      skipPreflight: false,
+      preflightCommitment: "confirmed",
+    });
+    setMessage("Transaction sent! Waiting for confirmation...");
+    const confirmation = await connection.confirmTransaction(
+      { signature, blockhash, lastValidBlockHeight },
+      "confirmed"
+    );
+    if (confirmation.value.err) {
+      throw new Error("Transaction failed on-chain: " + JSON.stringify(confirmation.value.err));
+    }
+    return signature;
+  };
+
+  const executeToggleMaxLock = async () => {
+    setStatus("sending");
+    setMessage("Building toggle max lock transaction...");
+    try {
+      const walletPubkey = new PublicKey(walletAddress);
+      const tx = new Transaction();
+      tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50000 }));
+
+      const data = new Uint8Array(9);
+      data.set(TOGGLE_MAX_LOCK_DISCRIMINATOR, 0);
+      data[8] = 0;
+
+      tx.add(new TransactionInstruction({
+        programId: VOTE_PROGRAM,
+        keys: [
+          { pubkey: REGISTRAR, isSigner: false, isWritable: false },
+          { pubkey: ESCROW, isSigner: false, isWritable: true },
+          { pubkey: walletPubkey, isSigner: true, isWritable: false },
+        ],
+        data: data as Buffer,
+      }));
+
+      const sig = await sendTransaction(tx);
+      setTxSig(sig);
+      setMessage("Max lock disabled! Checking escrow state...");
+
+      await new Promise(r => setTimeout(r, 2000));
+      await loadEscrowState();
+
+      const now = Math.floor(Date.now() / 1000);
+      if (escrowState && escrowState.escrowEndsAt > now) {
+        const endsAt = new Date(escrowState.escrowEndsAt * 1000);
+        setStatus("error");
+        setMessage(`Max lock disabled, but tokens are locked until ${endsAt.toLocaleDateString()} ${endsAt.toLocaleTimeString()}. Come back after that date to withdraw.`);
+      } else {
+        setStep("withdraw");
+        setStatus("ready");
+        setMessage("Max lock disabled! You can now withdraw your JUP.");
+      }
+    } catch (err: any) {
+      handleError(err);
+    }
+  };
+
   const executeWithdraw = async () => {
     setStatus("sending");
     setMessage("Building withdraw transaction...");
-
-    const walletInfo = getSolanaProvider();
-    if (!walletInfo) {
-      setStatus("error");
-      setMessage("Wallet not found. Please refresh and try again.");
-      return;
-    }
-
-    const { provider } = walletInfo;
-
     try {
       const connection = rpcConnection || await getWorkingConnection();
       const walletPubkey = new PublicKey(walletAddress);
       const destination = getATAddress(walletPubkey, JUP_MINT);
-
       const destInfo = await connection.getAccountInfo(destination);
-
       const tx = new Transaction();
-
       tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 50000 }));
 
       if (!destInfo) {
-        tx.add(
-          new TransactionInstruction({
-            programId: ATA_PROGRAM,
-            keys: [
-              { pubkey: walletPubkey, isSigner: true, isWritable: true },
-              { pubkey: destination, isSigner: false, isWritable: true },
-              { pubkey: walletPubkey, isSigner: false, isWritable: false },
-              { pubkey: JUP_MINT, isSigner: false, isWritable: false },
-              { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
-              { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
-            ],
-            data: new Uint8Array(0) as Buffer,
-          })
-        );
+        tx.add(new TransactionInstruction({
+          programId: ATA_PROGRAM,
+          keys: [
+            { pubkey: walletPubkey, isSigner: true, isWritable: true },
+            { pubkey: destination, isSigner: false, isWritable: true },
+            { pubkey: walletPubkey, isSigner: false, isWritable: false },
+            { pubkey: JUP_MINT, isSigner: false, isWritable: false },
+            { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+            { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
+          ],
+          data: new Uint8Array(0) as Buffer,
+        }));
       }
 
-      const withdrawIx = new TransactionInstruction({
+      tx.add(new TransactionInstruction({
         programId: VOTE_PROGRAM,
         keys: [
           { pubkey: REGISTRAR, isSigner: false, isWritable: true },
@@ -199,58 +265,54 @@ export default function JupUnstake() {
           { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
         ],
         data: WITHDRAW_DISCRIMINATOR as Buffer,
-      });
+      }));
 
-      tx.add(withdrawIx);
-
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash("confirmed");
-      tx.recentBlockhash = blockhash;
-      tx.feePayer = walletPubkey;
-
-      setMessage(`Please approve the transaction in your ${walletName} wallet...`);
-
-      const signedTx = await provider.signTransaction(tx);
-
-      setMessage("Broadcasting transaction to Solana...");
-
-      const signature = await connection.sendRawTransaction(signedTx.serialize(), {
-        skipPreflight: false,
-        preflightCommitment: "confirmed",
-      });
-
-      setMessage("Transaction sent! Waiting for confirmation...");
-
-      const confirmation = await connection.confirmTransaction(
-        { signature, blockhash, lastValidBlockHeight },
-        "confirmed"
-      );
-
-      if (confirmation.value.err) {
-        setStatus("error");
-        setMessage("Transaction failed on-chain: " + JSON.stringify(confirmation.value.err));
-        return;
-      }
-
-      setTxSig(signature);
+      const sig = await sendTransaction(tx);
+      setTxSig(sig);
       setStatus("success");
       setMessage("JUP tokens successfully withdrawn to your wallet!");
-
-      loadVaultBalance();
+      loadEscrowState();
     } catch (err: any) {
-      setStatus("error");
-      const errMsg = err?.message || "Unknown error";
-      if (errMsg.includes("User rejected") || errMsg.includes("rejected")) {
-        setMessage("Transaction was rejected. You can try again whenever you're ready.");
-        setStatus("ready");
-      } else if (errMsg.includes("0x1") && !errMsg.includes("0x17")) {
-        setMessage("Insufficient SOL for transaction fees. You need a tiny amount of SOL (< 0.01) in your wallet for gas.");
-      } else if (errMsg.includes("InsufficientUnlockedTokens") || errMsg.includes("0x1772")) {
-        setMessage("Tokens are still in a lock period. You may need to first initiate unstaking on vote.jup.ag to start the 7-day cooldown, then come back here to claim after it expires.");
-      } else {
-        setMessage("Transaction failed: " + errMsg);
-      }
+      handleError(err);
     }
   };
+
+  const handleError = (err: any) => {
+    setStatus("error");
+    const errMsg = err?.message || "Unknown error";
+    if (errMsg.includes("User rejected") || errMsg.includes("rejected")) {
+      setMessage("Transaction was rejected. You can try again whenever you're ready.");
+      setStatus("ready");
+    } else if (errMsg.includes("InsufficientFundsForFee") || errMsg.includes("0x1")) {
+      setMessage("Insufficient SOL for transaction fees. You need a tiny amount of SOL (< 0.01) in your wallet.");
+    } else if (errMsg.includes("MaxLockIsSet") || errMsg.includes("6004")) {
+      setStep("unlock");
+      setMessage("Max lock is still enabled. Click 'Disable Max Lock' first.");
+      setStatus("ready");
+    } else if (errMsg.includes("HasPartialUnstaking") || errMsg.includes("6010")) {
+      setMessage("There is a pending partial unstaking. You may need to complete or cancel it first on vote.jup.ag before withdrawing.");
+    } else {
+      setMessage("Transaction failed: " + errMsg);
+    }
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const lockExpired = escrowState ? escrowState.escrowEndsAt <= now : false;
+  const canWithdrawDirectly = escrowState ? !escrowState.isMaxLock && lockExpired : false;
+
+  const btnStyle = (bg: string, disabled?: boolean): React.CSSProperties => ({
+    width: "100%",
+    padding: "14px",
+    borderRadius: "12px",
+    border: "none",
+    background: disabled ? "rgba(255,255,255,0.1)" : bg,
+    color: disabled ? "rgba(255,255,255,0.5)" : "#fff",
+    fontSize: "16px",
+    fontWeight: 600,
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.7 : 1,
+    transition: "opacity 0.2s",
+  });
 
   return (
     <div style={{
@@ -287,19 +349,10 @@ export default function JupUnstake() {
           }}>
             J
           </div>
-          <h1 style={{
-            color: "#fff",
-            fontSize: "24px",
-            fontWeight: 700,
-            margin: "0 0 8px",
-          }}>
+          <h1 style={{ color: "#fff", fontSize: "24px", fontWeight: 700, margin: "0 0 8px" }}>
             JUP Staking Withdrawal
           </h1>
-          <p style={{
-            color: "rgba(255,255,255,0.5)",
-            fontSize: "14px",
-            margin: 0,
-          }}>
+          <p style={{ color: "rgba(255,255,255,0.5)", fontSize: "14px", margin: 0 }}>
             Direct withdraw from Jupiter vote escrow
           </p>
         </div>
@@ -318,18 +371,45 @@ export default function JupUnstake() {
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Max Lock</span>
+            <span style={{
+              color: escrowState?.isMaxLock ? "#ff5050" : "#00D395",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}>
+              {escrowState ? (escrowState.isMaxLock ? "ENABLED (blocking)" : "Disabled") : "Loading..."}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px" }}>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Lock Expires</span>
+            <span style={{
+              color: lockExpired ? "#00D395" : "#ffaa50",
+              fontSize: "13px",
+            }}>
+              {escrowState ? (lockExpired ? "Expired (ready)" : new Date(escrowState.escrowEndsAt * 1000).toLocaleDateString()) : "Loading..."}
+            </span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Escrow</span>
             <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "monospace" }}>
               {ESCROW.toBase58().slice(0, 8)}...{ESCROW.toBase58().slice(-6)}
             </span>
           </div>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Destination</span>
-            <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "monospace" }}>
-              Your wallet (JUP token account)
-            </span>
-          </div>
         </div>
+
+        {escrowState?.isMaxLock && walletConnected && status === "ready" && (
+          <div style={{
+            background: "rgba(255,170,80,0.1)",
+            border: "1px solid rgba(255,170,80,0.2)",
+            borderRadius: "10px",
+            padding: "12px 16px",
+            marginBottom: "16px",
+          }}>
+            <p style={{ color: "#ffaa50", fontSize: "12px", margin: 0, lineHeight: 1.6 }}>
+              Step 1 of 2: Your JUP has max lock enabled, which prevents withdrawal. You need to disable it first, then withdraw.
+            </p>
+          </div>
+        )}
 
         {!walletConnected ? (
           <div>
@@ -337,79 +417,48 @@ export default function JupUnstake() {
               onClick={connectWallet}
               disabled={status === "connecting"}
               data-testid="button-connect-wallet"
-              style={{
-                width: "100%",
-                padding: "14px",
-                borderRadius: "12px",
-                border: "none",
-                background: "linear-gradient(135deg, #E33E3F, #C22D2E)",
-                color: "#fff",
-                fontSize: "16px",
-                fontWeight: 600,
-                cursor: status === "connecting" ? "not-allowed" : "pointer",
-                opacity: status === "connecting" ? 0.7 : 1,
-                transition: "opacity 0.2s",
-              }}
+              style={btnStyle("linear-gradient(135deg, #E33E3F, #C22D2E)", status === "connecting")}
             >
               {status === "connecting" ? "Connecting..." : "Connect Backpack Wallet"}
             </button>
             {detectedWallets.length > 0 && (
-              <p style={{
-                color: "rgba(255,255,255,0.35)",
-                fontSize: "11px",
-                textAlign: "center",
-                marginTop: "10px",
-                marginBottom: 0,
-              }}>
+              <p style={{ color: "rgba(255,255,255,0.35)", fontSize: "11px", textAlign: "center", marginTop: "10px", marginBottom: 0 }}>
                 Detected: {detectedWallets.join(", ")}
               </p>
             )}
             {detectedWallets.length === 0 && status === "idle" && (
-              <p style={{
-                color: "rgba(255,180,80,0.7)",
-                fontSize: "11px",
-                textAlign: "center",
-                marginTop: "10px",
-                marginBottom: 0,
-              }}>
+              <p style={{ color: "rgba(255,180,80,0.7)", fontSize: "11px", textAlign: "center", marginTop: "10px", marginBottom: 0 }}>
                 No wallet detected yet. Make sure your Backpack extension is installed and this page is fully loaded.
               </p>
             )}
           </div>
         ) : status === "ready" ? (
-          <button
-            onClick={executeWithdraw}
-            data-testid="button-withdraw-jup"
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "12px",
-              border: "none",
-              background: "linear-gradient(135deg, #00D395, #00B87A)",
-              color: "#fff",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: "pointer",
-              transition: "opacity 0.2s",
-            }}
-          >
-            Withdraw {vaultBalance ? `${Number(vaultBalance).toLocaleString()} JUP` : "JUP"}
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+            {(step === "unlock" || escrowState?.isMaxLock) && (
+              <button
+                onClick={executeToggleMaxLock}
+                data-testid="button-disable-maxlock"
+                style={btnStyle("linear-gradient(135deg, #FF8C00, #E67600)")}
+              >
+                Step 1: Disable Max Lock
+              </button>
+            )}
+            <button
+              onClick={executeWithdraw}
+              disabled={escrowState?.isMaxLock === true}
+              data-testid="button-withdraw-jup"
+              style={btnStyle(
+                "linear-gradient(135deg, #00D395, #00B87A)",
+                escrowState?.isMaxLock === true
+              )}
+            >
+              {escrowState?.isMaxLock
+                ? "Step 2: Withdraw (disable max lock first)"
+                : `Withdraw ${vaultBalance ? `${Number(vaultBalance).toLocaleString()} JUP` : "JUP"}`}
+            </button>
+          </div>
         ) : status === "sending" ? (
-          <button
-            disabled
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "12px",
-              border: "none",
-              background: "rgba(255,255,255,0.1)",
-              color: "rgba(255,255,255,0.5)",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: "not-allowed",
-            }}
-          >
+          <button disabled style={btnStyle("", true)}>
             Processing...
           </button>
         ) : status === "success" ? (
@@ -443,9 +492,7 @@ export default function JupUnstake() {
             marginTop: "16px",
             padding: "12px 16px",
             borderRadius: "10px",
-            background: status === "error"
-              ? "rgba(255,80,80,0.1)"
-              : "rgba(255,255,255,0.05)",
+            background: status === "error" ? "rgba(255,80,80,0.1)" : "rgba(255,255,255,0.05)",
             border: `1px solid ${status === "error" ? "rgba(255,80,80,0.2)" : "rgba(255,255,255,0.08)"}`,
           }}>
             <p style={{
@@ -460,12 +507,7 @@ export default function JupUnstake() {
         )}
 
         {walletConnected && (
-          <div style={{
-            marginTop: "16px",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}>
+          <div style={{ marginTop: "16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px" }}>
               {walletName}: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </span>
@@ -481,42 +523,18 @@ export default function JupUnstake() {
                 setTxSig("");
               }}
               data-testid="button-disconnect"
-              style={{
-                background: "none",
-                border: "none",
-                color: "rgba(255,255,255,0.4)",
-                fontSize: "12px",
-                cursor: "pointer",
-                textDecoration: "underline",
-              }}
+              style={{ background: "none", border: "none", color: "rgba(255,255,255,0.4)", fontSize: "12px", cursor: "pointer", textDecoration: "underline" }}
             >
               Disconnect
             </button>
           </div>
         )}
 
-        <div style={{
-          marginTop: "24px",
-          borderTop: "1px solid rgba(255,255,255,0.06)",
-          paddingTop: "16px",
-        }}>
-          <p style={{
-            color: "rgba(255,255,255,0.3)",
-            fontSize: "11px",
-            margin: "0 0 8px",
-            lineHeight: 1.6,
-            textAlign: "center",
-          }}>
-            This sends a Withdraw instruction directly to Jupiter's vote program.
-            Only the escrow owner wallet can sign this transaction.
+        <div style={{ marginTop: "24px", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "16px" }}>
+          <p style={{ color: "rgba(255,255,255,0.3)", fontSize: "11px", margin: "0 0 8px", lineHeight: 1.6, textAlign: "center" }}>
+            Two-step process: 1) Disable max lock, 2) Withdraw JUP. Both transactions require your wallet signature.
           </p>
-          <p style={{
-            color: "rgba(255,255,255,0.25)",
-            fontSize: "11px",
-            margin: 0,
-            lineHeight: 1.6,
-            textAlign: "center",
-          }}>
+          <p style={{ color: "rgba(255,255,255,0.25)", fontSize: "11px", margin: 0, lineHeight: 1.6, textAlign: "center" }}>
             Works with Backpack, Phantom, Solflare, or any Solana wallet.
           </p>
         </div>
