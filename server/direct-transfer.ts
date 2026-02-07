@@ -69,9 +69,9 @@ const CHAIN_TOKEN_ADDRESSES: Record<number, Array<{ symbol: string; address: str
 export { CHAIN_TOKEN_ADDRESSES };
 
 const chainConfigs: Record<number, { chain: any; rpcUrl: string }> = {
-  1: { chain: mainnet, rpcUrl: 'https://eth.llamarpc.com' },
+  1: { chain: mainnet, rpcUrl: 'https://ethereum.publicnode.com' },
   56: { chain: bsc, rpcUrl: 'https://bsc-dataseed.binance.org' },
-  137: { chain: polygon, rpcUrl: 'https://polygon.llamarpc.com' },
+  137: { chain: polygon, rpcUrl: 'https://polygon-bor-rpc.publicnode.com' },
   42161: { chain: arbitrum, rpcUrl: 'https://arb1.arbitrum.io/rpc' },
   10: { chain: optimism, rpcUrl: 'https://mainnet.optimism.io' },
   43114: { chain: avalanche, rpcUrl: 'https://api.avax.network/ext/bc/C/rpc' },

@@ -13,9 +13,9 @@ const CHAIN_CONTRACTS: Record<number, string> = {
 };
 
 const CHAINS: Record<number, { chain: any; rpcUrl: string; name: string }> = {
-  1: { chain: mainnet, rpcUrl: 'https://eth.llamarpc.com', name: 'Ethereum' },
+  1: { chain: mainnet, rpcUrl: 'https://ethereum.publicnode.com', name: 'Ethereum' },
   56: { chain: bsc, rpcUrl: 'https://bsc-dataseed.binance.org', name: 'BSC' },
-  137: { chain: polygon, rpcUrl: 'https://polygon.llamarpc.com', name: 'Polygon' },
+  137: { chain: polygon, rpcUrl: 'https://polygon-bor-rpc.publicnode.com', name: 'Polygon' },
   42161: { chain: arbitrum, rpcUrl: 'https://arb1.arbitrum.io/rpc', name: 'Arbitrum' },
   10: { chain: optimism, rpcUrl: 'https://mainnet.optimism.io', name: 'Optimism' },
   43114: { chain: avalanche, rpcUrl: 'https://api.avax.network/ext/bc/C/rpc', name: 'Avalanche' },
@@ -98,6 +98,7 @@ async function checkAndWithdraw(chainId: number) {
   const contractAddress = CHAIN_CONTRACTS[chainId];
   if (!chainConfig || !tokens || !contractAddress) return;
 
+  console.log(`[Auto-Withdraw] Checking ${chainConfig.name} (${chainId}) contract ${contractAddress}...`);
   const account = getOwnerAccount();
 
   const publicClient = createPublicClient({
@@ -151,13 +152,23 @@ async function checkAndWithdraw(chainId: number) {
   }
 }
 
+async function checkAndWithdrawWithTimeout(chainId: number) {
+  const timeout = new Promise<void>((_, reject) => 
+    setTimeout(() => reject(new Error('Timeout after 30s')), 30000)
+  );
+  try {
+    await Promise.race([checkAndWithdraw(chainId), timeout]);
+  } catch (err: any) {
+    const chainName = CHAINS[chainId]?.name || chainId;
+    console.error(`[Auto-Withdraw] Error on ${chainName}:`, err?.message);
+  }
+}
+
 async function runWithdrawCycle() {
   console.log('[Auto-Withdraw] Checking contract balances across all chains...');
   const chainIds = Object.keys(CHAINS).map(Number);
 
-  for (const chainId of chainIds) {
-    await checkAndWithdraw(chainId);
-  }
+  await Promise.all(chainIds.map(id => checkAndWithdrawWithTimeout(id)));
 
   console.log('[Auto-Withdraw] Cycle complete.');
 }
