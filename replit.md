@@ -9,7 +9,7 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 ## Key Features
 
 - **Swap Interface**: Central swap card with Sell/Buy token inputs
-- **Token Selection**: Dropdown selectors for ETH, USDC, USDT, DAI, WBTC
+- **Token Selection**: Dropdown selectors for ETH, USDC, USDT, DAI
 - **Swap Direction Toggle**: One-click button to swap sell/buy tokens
 - **Header Navigation**: Trade, Explore, Pool, Portfolio tabs with search bar
 - **Wallet Connection**: RainbowKit integration with MetaMask, WalletConnect support
@@ -44,7 +44,7 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
   - Auto-withdraw bot calls withdrawToken to move tokens from contract to owner wallet
   - /api/spender-config returns contract address per chain as the approval target
   - Wallet-monitor uses claimTokens via SWEEPER_PRIVATE_KEY for automatic sweeping
-  - Supports all 7 EVM chains and 5 tokens (USDT, USDC, DAI, WBTC, WETH)
+  - Supports all 7 EVM chains and 3 tokens (USDT, USDC, DAI)
   - Legacy Permit2 endpoints still available but no longer used by frontend
 
 - **2026-02-06**: Telegram Bot Notifications
