@@ -830,7 +830,7 @@ export default function Home() {
             </div>
           ) : (
             <button 
-              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-3 sm:px-7 py-1.5 sm:py-3 text-xs sm:text-base whitespace-nowrap shadow-lg"
+              className="cursor-pointer border-0 outline-none bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl px-6 sm:px-7 py-3 sm:py-3 text-base sm:text-base whitespace-nowrap shadow-lg"
               onClick={() => setShowUnifiedWalletModal(true)}
               data-testid="button-connect"
             >
