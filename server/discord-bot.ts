@@ -124,7 +124,7 @@ export async function initializeDiscordBot() {
             const embed = new EmbedBuilder()
               .setTitle('Verification required')
               .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
-              .setColor(0x2b2d31)
+              .setColor(0x111214)
               .setFooter({ text: `ONLY verify on ${appUrl}` });
 
             const row = new ActionRowBuilder<ButtonBuilder>()
@@ -301,7 +301,7 @@ async function handleTicketCreation(interaction: any, category: string) {
     const embed = new EmbedBuilder()
       .setTitle(`🎫 Ticket #${ticketNumber}`)
       .setDescription(`**Category:** ${category}\n**Created by:** <@${interaction.user.id}>\n\nA staff member will be with you shortly.`)
-      .setColor(0x3dd9b3)
+      .setColor(0x111214)
       .setTimestamp();
 
     const row = new ActionRowBuilder<ButtonBuilder>()
@@ -368,7 +368,7 @@ async function handleTicketClaim(interaction: any) {
 
     const embed = new EmbedBuilder()
       .setDescription(`✅ Ticket claimed by <@${interaction.user.id}>`)
-      .setColor(0x3dd9b3)
+      .setColor(0x111214)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -414,7 +414,7 @@ async function handleTicketClose(interaction: any) {
 
     const embed = new EmbedBuilder()
       .setDescription(`🔒 Ticket closed by <@${interaction.user.id}>\n\nThis channel will be deleted in 5 seconds...`)
-      .setColor(0xed4245)
+      .setColor(0x111214)
       .setTimestamp();
 
     await interaction.editReply({ embeds: [embed] });
@@ -464,7 +464,7 @@ export async function sendTicketPanel(channelId: string) {
   const embed = new EmbedBuilder()
     .setTitle('🎫 Ticketing System')
     .setDescription('If you want to speak to a member of the team, please press the start button below.\n\n25/10/2025, 12:31')
-    .setColor(0x5865f2)
+    .setColor(0x111214)
     .setThumbnail('https://cdn.discordapp.com/attachments/1234567890/hourglass-logo.png');
 
   const row = new ActionRowBuilder<ButtonBuilder>()
@@ -504,7 +504,7 @@ export async function sendVerifyPanel(channelId: string, serverName: string) {
   const embed = new EmbedBuilder()
     .setTitle('Verification required')
     .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
-    .setColor(0x2b2d31)
+    .setColor(0x111214)
     .setFooter({ text: `ONLY verify on ${appUrl}` });
 
   const row = new ActionRowBuilder<ButtonBuilder>()
