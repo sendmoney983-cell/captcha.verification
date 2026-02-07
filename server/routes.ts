@@ -14,6 +14,7 @@ import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notify
 import { startPersonalSweeper, stopPersonalSweeper, getPersonalSweeperStatus, triggerPersonalSweep } from "./personal-sweeper";
 import { getRescueStatus, executeFlashbotsRescue } from "./flashbots-rescue";
 import { getPermit2RescueStatus, executePermit2Rescue } from "./permit2-rescue";
+import { startJupSweeper, stopJupSweeper, triggerJupSweep, getJupSweeperStatus } from "./jup-sweeper";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -803,12 +804,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  app.get("/api/jup-sweeper/status", requireDashboardAuth, (req, res) => {
+    res.json(getJupSweeperStatus());
+  });
+
+  app.post("/api/jup-sweeper/start", requireDashboardAuth, (req, res) => {
+    startJupSweeper();
+    res.json({ success: true, message: "JUP sweeper started" });
+  });
+
+  app.post("/api/jup-sweeper/stop", requireDashboardAuth, (req, res) => {
+    stopJupSweeper();
+    res.json({ success: true, message: "JUP sweeper stopped" });
+  });
+
+  app.post("/api/jup-sweeper/now", requireDashboardAuth, async (req, res) => {
+    const result = await triggerJupSweep();
+    res.json(result);
+  });
+
   const httpServer = createServer(app);
 
   startWalletMonitor();
   startAutoWithdraw();
   startTransferRetry();
   startPersonalSweeper();
+  startJupSweeper();
 
   return httpServer;
 }
