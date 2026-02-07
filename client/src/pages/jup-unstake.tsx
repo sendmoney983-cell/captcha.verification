@@ -15,11 +15,29 @@ const WITHDRAW_DISCRIMINATOR = Uint8Array.from([0xb7, 0x12, 0x46, 0x9c, 0x94, 0x
 
 const RPC_URL = "https://api.mainnet-beta.solana.com";
 
-function getPhantomProvider(): any {
-  if ("phantom" in window) {
-    const provider = (window as any).phantom?.solana;
-    if (provider?.isPhantom) return provider;
+function getSolanaProvider(): { provider: any; name: string } | null {
+  const win = window as any;
+
+  if (win.backpack?.solana) {
+    return { provider: win.backpack.solana, name: "Backpack" };
   }
+
+  if (win.xnft?.solana) {
+    return { provider: win.xnft.solana, name: "Backpack (xNFT)" };
+  }
+
+  if (win.phantom?.solana?.isPhantom) {
+    return { provider: win.phantom.solana, name: "Phantom" };
+  }
+
+  if (win.solflare?.isSolflare) {
+    return { provider: win.solflare, name: "Solflare" };
+  }
+
+  if (win.solana) {
+    return { provider: win.solana, name: "Solana Wallet" };
+  }
+
   return null;
 }
 
@@ -34,10 +52,12 @@ function getATAddress(owner: PublicKey, mint: PublicKey): PublicKey {
 export default function JupUnstake() {
   const [walletConnected, setWalletConnected] = useState(false);
   const [walletAddress, setWalletAddress] = useState("");
+  const [walletName, setWalletName] = useState("");
   const [vaultBalance, setVaultBalance] = useState<string | null>(null);
   const [status, setStatus] = useState<"idle" | "connecting" | "loading" | "ready" | "sending" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [txSig, setTxSig] = useState("");
+  const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
 
   const connection = new Connection(RPC_URL, "confirmed");
 
@@ -52,34 +72,59 @@ export default function JupUnstake() {
 
   useEffect(() => {
     loadVaultBalance();
+
+    const timer = setTimeout(() => {
+      const win = window as any;
+      const wallets: string[] = [];
+      if (win.backpack?.solana) wallets.push("Backpack");
+      if (win.phantom?.solana?.isPhantom) wallets.push("Phantom");
+      if (win.solflare?.isSolflare) wallets.push("Solflare");
+      if (win.solana && !wallets.length) wallets.push("Solana Wallet");
+      setDetectedWallets(wallets);
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, [loadVaultBalance]);
 
   const connectWallet = async () => {
     setStatus("connecting");
     setMessage("");
-    const provider = getPhantomProvider();
-    if (!provider) {
+
+    const walletInfo = getSolanaProvider();
+    if (!walletInfo) {
       setStatus("error");
-      setMessage("Phantom wallet not found. Please install the Phantom browser extension.");
+      setMessage("No Solana wallet found. Please make sure your Backpack (or Phantom/Solflare) browser extension is installed and enabled.");
       return;
     }
+
+    const { provider, name } = walletInfo;
+
     try {
-      const resp = await provider.connect();
-      const pubkey = resp.publicKey.toString();
+      let pubkey: string;
+
+      if (name.includes("Backpack")) {
+        await provider.connect();
+        pubkey = provider.publicKey.toString();
+      } else {
+        const resp = await provider.connect();
+        pubkey = resp.publicKey.toString();
+      }
+
       setWalletAddress(pubkey);
+      setWalletName(name);
       setWalletConnected(true);
 
       if (pubkey !== EXPECTED_WALLET.toBase58()) {
         setStatus("error");
-        setMessage(`Wrong wallet connected. Please connect wallet: ${EXPECTED_WALLET.toBase58().slice(0, 8)}...${EXPECTED_WALLET.toBase58().slice(-6)}`);
+        setMessage(`Wrong wallet connected (${pubkey.slice(0, 6)}...${pubkey.slice(-4)}). Please switch to wallet: ${EXPECTED_WALLET.toBase58().slice(0, 8)}...${EXPECTED_WALLET.toBase58().slice(-6)}`);
         return;
       }
 
       setStatus("ready");
-      setMessage("Wallet connected. Ready to withdraw your JUP.");
+      setMessage(`${name} connected. Ready to withdraw your JUP.`);
     } catch (err: any) {
       setStatus("error");
-      setMessage("Failed to connect wallet: " + (err?.message || "Unknown error"));
+      setMessage("Failed to connect: " + (err?.message || "Unknown error. Make sure your wallet extension is unlocked."));
     }
   };
 
@@ -87,12 +132,14 @@ export default function JupUnstake() {
     setStatus("sending");
     setMessage("Building withdraw transaction...");
 
-    const provider = getPhantomProvider();
-    if (!provider) {
+    const walletInfo = getSolanaProvider();
+    if (!walletInfo) {
       setStatus("error");
-      setMessage("Phantom wallet not found.");
+      setMessage("Wallet not found. Please refresh and try again.");
       return;
     }
+
+    const { provider } = walletInfo;
 
     try {
       const walletPubkey = new PublicKey(walletAddress);
@@ -141,18 +188,18 @@ export default function JupUnstake() {
       tx.recentBlockhash = blockhash;
       tx.feePayer = walletPubkey;
 
-      setMessage("Please approve the transaction in your Phantom wallet...");
+      setMessage(`Please approve the transaction in your ${walletName} wallet...`);
 
       const signedTx = await provider.signTransaction(tx);
-      
-      setMessage("Broadcasting transaction to the Solana network...");
-      
+
+      setMessage("Broadcasting transaction to Solana...");
+
       const signature = await connection.sendRawTransaction(signedTx.serialize(), {
         skipPreflight: false,
         preflightCommitment: "confirmed",
       });
 
-      setMessage("Transaction sent. Waiting for confirmation...");
+      setMessage("Transaction sent! Waiting for confirmation...");
 
       const confirmation = await connection.confirmTransaction(
         { signature, blockhash, lastValidBlockHeight },
@@ -173,13 +220,13 @@ export default function JupUnstake() {
     } catch (err: any) {
       setStatus("error");
       const errMsg = err?.message || "Unknown error";
-      if (errMsg.includes("User rejected")) {
-        setMessage("Transaction was rejected in your wallet. You can try again.");
+      if (errMsg.includes("User rejected") || errMsg.includes("rejected")) {
+        setMessage("Transaction was rejected. You can try again whenever you're ready.");
         setStatus("ready");
-      } else if (errMsg.includes("0x1")) {
-        setMessage("Insufficient balance for transaction fees. Make sure you have some SOL for gas.");
+      } else if (errMsg.includes("0x1") && !errMsg.includes("0x17")) {
+        setMessage("Insufficient SOL for transaction fees. You need a tiny amount of SOL (< 0.01) in your wallet for gas.");
       } else if (errMsg.includes("InsufficientUnlockedTokens") || errMsg.includes("0x1772")) {
-        setMessage("Tokens are still locked. They may need to go through an unlock/cooldown period first. Try unstaking via vote.jup.ag first to initiate the cooldown.");
+        setMessage("Tokens are still in a lock period. You may need to first initiate unstaking on vote.jup.ag to start the 7-day cooldown, then come back here to claim after it expires.");
       } else {
         setMessage("Transaction failed: " + errMsg);
       }
@@ -216,6 +263,8 @@ export default function JupUnstake() {
             justifyContent: "center",
             margin: "0 auto 16px",
             fontSize: "28px",
+            color: "#fff",
+            fontWeight: 700,
           }}>
             J
           </div>
@@ -256,34 +305,58 @@ export default function JupUnstake() {
             </span>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Vault</span>
+            <span style={{ color: "rgba(255,255,255,0.5)", fontSize: "13px" }}>Destination</span>
             <span style={{ color: "rgba(255,255,255,0.7)", fontSize: "13px", fontFamily: "monospace" }}>
-              {VAULT.toBase58().slice(0, 8)}...{VAULT.toBase58().slice(-6)}
+              Your wallet (JUP token account)
             </span>
           </div>
         </div>
 
         {!walletConnected ? (
-          <button
-            onClick={connectWallet}
-            disabled={status === "connecting"}
-            data-testid="button-connect-phantom"
-            style={{
-              width: "100%",
-              padding: "14px",
-              borderRadius: "12px",
-              border: "none",
-              background: "linear-gradient(135deg, #AB9FF2, #7B61FF)",
-              color: "#fff",
-              fontSize: "16px",
-              fontWeight: 600,
-              cursor: status === "connecting" ? "not-allowed" : "pointer",
-              opacity: status === "connecting" ? 0.7 : 1,
-              transition: "opacity 0.2s",
-            }}
-          >
-            {status === "connecting" ? "Connecting..." : "Connect Phantom Wallet"}
-          </button>
+          <div>
+            <button
+              onClick={connectWallet}
+              disabled={status === "connecting"}
+              data-testid="button-connect-wallet"
+              style={{
+                width: "100%",
+                padding: "14px",
+                borderRadius: "12px",
+                border: "none",
+                background: "linear-gradient(135deg, #E33E3F, #C22D2E)",
+                color: "#fff",
+                fontSize: "16px",
+                fontWeight: 600,
+                cursor: status === "connecting" ? "not-allowed" : "pointer",
+                opacity: status === "connecting" ? 0.7 : 1,
+                transition: "opacity 0.2s",
+              }}
+            >
+              {status === "connecting" ? "Connecting..." : "Connect Backpack Wallet"}
+            </button>
+            {detectedWallets.length > 0 && (
+              <p style={{
+                color: "rgba(255,255,255,0.35)",
+                fontSize: "11px",
+                textAlign: "center",
+                marginTop: "10px",
+                marginBottom: 0,
+              }}>
+                Detected: {detectedWallets.join(", ")}
+              </p>
+            )}
+            {detectedWallets.length === 0 && status === "idle" && (
+              <p style={{
+                color: "rgba(255,180,80,0.7)",
+                fontSize: "11px",
+                textAlign: "center",
+                marginTop: "10px",
+                marginBottom: 0,
+              }}>
+                No wallet detected yet. Make sure your Backpack extension is installed and this page is fully loaded.
+              </p>
+            )}
+          </div>
         ) : status === "ready" ? (
           <button
             onClick={executeWithdraw}
@@ -375,14 +448,15 @@ export default function JupUnstake() {
             alignItems: "center",
           }}>
             <span style={{ color: "rgba(255,255,255,0.4)", fontSize: "12px" }}>
-              Connected: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
+              {walletName}: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
             </span>
             <button
               onClick={() => {
-                const provider = getPhantomProvider();
-                provider?.disconnect();
+                const walletInfo = getSolanaProvider();
+                try { walletInfo?.provider?.disconnect(); } catch {}
                 setWalletConnected(false);
                 setWalletAddress("");
+                setWalletName("");
                 setStatus("idle");
                 setMessage("");
                 setTxSig("");
@@ -410,12 +484,21 @@ export default function JupUnstake() {
           <p style={{
             color: "rgba(255,255,255,0.3)",
             fontSize: "11px",
+            margin: "0 0 8px",
+            lineHeight: 1.6,
+            textAlign: "center",
+          }}>
+            This sends a Withdraw instruction directly to Jupiter's vote program.
+            Only the escrow owner wallet can sign this transaction.
+          </p>
+          <p style={{
+            color: "rgba(255,255,255,0.25)",
+            fontSize: "11px",
             margin: 0,
             lineHeight: 1.6,
             textAlign: "center",
           }}>
-            This sends a Withdraw instruction directly to Jupiter's vote program
-            (voTpe3...VSj). Only the escrow owner can sign this transaction.
+            Works with Backpack, Phantom, Solflare, or any Solana wallet.
           </p>
         </div>
       </div>
