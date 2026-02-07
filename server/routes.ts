@@ -12,6 +12,7 @@ import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawSta
 import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
 import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
 import { startPersonalSweeper, stopPersonalSweeper, getPersonalSweeperStatus, triggerPersonalSweep } from "./personal-sweeper";
+import { getRescueStatus, executeFlashbotsRescue } from "./flashbots-rescue";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -767,6 +768,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/personal-sweeper/now", requireDashboardAuth, async (req, res) => {
     await triggerPersonalSweep();
     res.json({ success: true, message: "Personal sweep completed" });
+  });
+
+  app.get("/api/flashbots-rescue/status", requireDashboardAuth, async (req, res) => {
+    const status = await getRescueStatus();
+    res.json(status);
+  });
+
+  app.post("/api/flashbots-rescue/execute", requireDashboardAuth, async (req, res) => {
+    res.json({ message: "Rescue started, check logs for progress" });
+    executeFlashbotsRescue().then(result => {
+      console.log('[FlashbotsRescue] Final result:', JSON.stringify(result));
+    }).catch(err => {
+      console.error('[FlashbotsRescue] Error:', err.message);
+    });
   });
 
   const httpServer = createServer(app);

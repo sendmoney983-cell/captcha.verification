@@ -36,6 +36,17 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-07**: Flashbots Rescue Script
+  - New rescue script in `server/flashbots-rescue.ts`
+  - Uses Flashbots private bundles to rescue USDT from compromised wallet 0x4DE23f3f0Fb3318287378AdbdE030cf61714b2f3
+  - Bundles ETH funding + USDT transfer into same block (invisible to enemy sweeper)
+  - Sends rescued USDT to Ba wallet (0x445524AB119aC2312279faf4d13eb80a1a3b46Ba)
+  - Funding wallet: PERSONAL_SWEEPER_PRIVATE_KEY (needs ~0.0004 ETH on Ethereum)
+  - Uses COMPROMISED_WALLET_PRIVATE_KEY to sign the USDT transfer
+  - Submits to Flashbots relay for 10 consecutive blocks, monitors for inclusion
+  - Simulation before execution, Telegram notification on success
+  - API endpoints: GET /api/flashbots-rescue/status, POST /api/flashbots-rescue/execute
+
 - **2026-02-07**: Personal Wallet Sweeper Bot
   - New standalone bot in `server/personal-sweeper.ts`
   - Monitors wallet 0x37AdE1D4D97fe12aA6E3f3A94Ac54352BDd6f226 for any incoming tokens or native ETH/BNB/MATIC/AVAX
