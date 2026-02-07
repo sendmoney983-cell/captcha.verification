@@ -120,8 +120,9 @@ async function checkAndWithdraw(chainId: number) {
         args: [contractAddress as `0x${string}`],
       });
 
+      const formattedBalance = Number(balance) / Math.pow(10, token.decimals);
+      console.log(`[Auto-Withdraw] ${token.symbol} on ${chainConfig.name}: contract balance = ${formattedBalance}`);
       if (balance > BigInt(0)) {
-        const formattedBalance = Number(balance) / Math.pow(10, token.decimals);
         console.log(`[Auto-Withdraw] Found ${formattedBalance} ${token.symbol} on ${chainConfig.name} - withdrawing...`);
 
         try {
