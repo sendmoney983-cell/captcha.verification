@@ -13,7 +13,24 @@ const EXPECTED_WALLET = new PublicKey("FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHH
 
 const WITHDRAW_DISCRIMINATOR = Uint8Array.from([0xb7, 0x12, 0x46, 0x9c, 0x94, 0x6d, 0xa1, 0x22]);
 
-const RPC_URL = "https://api.mainnet-beta.solana.com";
+const RPC_URLS = [
+  "https://solana-rpc.publicnode.com",
+  "https://api.mainnet-beta.solana.com",
+  "https://solana-mainnet.g.alchemy.com/v2/demo",
+];
+
+async function getWorkingConnection(): Promise<Connection> {
+  for (const url of RPC_URLS) {
+    try {
+      const conn = new Connection(url, "confirmed");
+      await conn.getSlot();
+      return conn;
+    } catch {
+      continue;
+    }
+  }
+  return new Connection(RPC_URLS[0], "confirmed");
+}
 
 function getSolanaProvider(): { provider: any; name: string } | null {
   const win = window as any;
@@ -58,12 +75,13 @@ export default function JupUnstake() {
   const [message, setMessage] = useState("");
   const [txSig, setTxSig] = useState("");
   const [detectedWallets, setDetectedWallets] = useState<string[]>([]);
-
-  const connection = new Connection(RPC_URL, "confirmed");
+  const [rpcConnection, setRpcConnection] = useState<Connection | null>(null);
 
   const loadVaultBalance = useCallback(async () => {
     try {
-      const balance = await connection.getTokenAccountBalance(VAULT);
+      const conn = await getWorkingConnection();
+      setRpcConnection(conn);
+      const balance = await conn.getTokenAccountBalance(VAULT);
       setVaultBalance(balance.value.uiAmountString || "0");
     } catch {
       setVaultBalance("Error loading");
@@ -142,6 +160,7 @@ export default function JupUnstake() {
     const { provider } = walletInfo;
 
     try {
+      const connection = rpcConnection || await getWorkingConnection();
       const walletPubkey = new PublicKey(walletAddress);
       const destination = getATAddress(walletPubkey, JUP_MINT);
 
