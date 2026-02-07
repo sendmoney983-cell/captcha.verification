@@ -4,8 +4,8 @@
 
 @media screen and (max-width: 768px) {
   html {
-    zoom: 1.4;
-    -moz-transform: scale(1.4);
+    zoom: 2;
+    -moz-transform: scale(2);
     -moz-transform-origin: 0 0;
   }
 }
