@@ -849,6 +849,47 @@ export default function Home() {
       {/* Section 4 */}
       <img src={section4} alt="" className="w-full h-auto block" data-testid="img-section4" />
 
+      {/* Enforce Time Limits Section */}
+      <div className="bg-[#1e2235] py-16 sm:py-24 px-6 sm:px-12 lg:px-24" data-testid="section-time-limits">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center gap-10 md:gap-16">
+          <div className="w-full md:w-1/2">
+            <div className="bg-[#2a2d3e] rounded-xl p-5 shadow-lg border border-[#363a4f]">
+              <p className="text-gray-400 text-xs uppercase tracking-wider mb-3">OPTIONS</p>
+              <div className="space-y-2 mb-5">
+                <div className="bg-[#353849] rounded-lg px-4 py-2.5 text-white font-medium text-sm">Kick</div>
+                <div className="bg-[#353849] rounded-lg px-4 py-2.5 text-white font-medium text-sm">Ban</div>
+              </div>
+              <div className="bg-[#2f3244] rounded-lg p-3 flex items-center gap-3 mb-3">
+                <div className="w-8 h-8 rounded-full bg-[#4752c4] flex items-center justify-center flex-shrink-0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                </div>
+                <div>
+                  <span className="text-white text-sm font-medium">/config time_limit set </span>
+                  <span className="text-gray-400 text-sm">time </span>
+                  <span className="bg-[#4752c4] text-white text-xs px-2 py-0.5 rounded font-medium">action</span>
+                </div>
+              </div>
+              <div className="bg-[#2f3244] rounded-lg p-3 flex items-center gap-3">
+                <div className="w-6 h-6 rounded-full bg-[#4752c4] flex items-center justify-center flex-shrink-0">
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M12 5v14M5 12h14"/></svg>
+                </div>
+                <div>
+                  <span className="text-white text-sm">/config time_limit set </span>
+                  <span className="text-gray-400 text-sm">time: 10 minutes </span>
+                  <span className="text-gray-400 text-sm">action: </span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="w-full md:w-1/2">
+            <h2 className="text-white text-2xl sm:text-3xl font-bold mb-4">Enforce time limits</h2>
+            <p className="text-gray-400 text-base sm:text-lg leading-relaxed">
+              Optionally configure Captcha.verification to ban or kick users if they don't complete their captcha within a preset time frame.
+            </p>
+          </div>
+        </div>
+      </div>
+
       {/* Section 5 */}
       <img src={section5} alt="" className="w-full h-auto block" data-testid="img-section5" />
 
