@@ -2,13 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@media screen and (max-width: 768px) {
-  html {
-    zoom: 2;
-    -moz-transform: scale(2);
-    -moz-transform-origin: 0 0;
-  }
-}
 
 /* LIGHT MODE - Uniswap Style */
 :root {
