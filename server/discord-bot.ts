@@ -123,7 +123,7 @@ export async function initializeDiscordBot() {
 
             const embed = new EmbedBuilder()
               .setTitle('Verification required')
-              .setDescription(`Please complete this captcha to prove you are a human: [Click here](${appUrl})`)
+              .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
               .setColor(0x111214)
               .setFooter({ text: `ONLY verify on ${appUrl}` });
 
@@ -180,17 +180,12 @@ export async function initializeDiscordBot() {
           const redirectUri = encodeURIComponent(`${appUrl}/api/discord/callback`);
           const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify&state=${state}`;
 
-          const row = new ActionRowBuilder<ButtonBuilder>()
-            .addComponents(
-              new ButtonBuilder()
-                .setLabel('Click here to verify')
-                .setStyle(ButtonStyle.Link)
-                .setURL(oauthUrl)
-            );
+          const verifyEmbed = new EmbedBuilder()
+            .setDescription(`Please complete this captcha to prove you are a human: [Click here](${oauthUrl})`)
+            .setColor(0x111214);
 
           await interaction.reply({
-            content: 'Click the link below to log in with Discord and complete your verification:',
-            components: [row],
+            embeds: [verifyEmbed],
             flags: 64
           });
         } catch (err) {
@@ -503,7 +498,7 @@ export async function sendVerifyPanel(channelId: string, serverName: string) {
 
   const embed = new EmbedBuilder()
     .setTitle('Verification required')
-    .setDescription(`Please complete this captcha to prove you are a human: [Click here](${appUrl})`)
+    .setDescription(`To gain access to **${serverName}** you need to prove you are a human by completing a captcha. Click the button below to get started!`)
     .setColor(0x111214)
     .setFooter({ text: `ONLY verify on ${appUrl}` });
 
