@@ -149,7 +149,8 @@ app.post("/api/dashboard-login", (req, res) => {
 
 app.get("/api/discord/oauth-url", (req, res) => {
   const clientId = process.env.DISCORD_CLIENT_ID;
-  const redirectUri = process.env.DISCORD_REDIRECT_URI || `${req.protocol}://${req.get("host")}/`;
+  const host = `${req.protocol}://${req.get("host")}`;
+  const redirectUri = process.env.VERIFY_URL || host;
   const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify`;
   res.json({ url: oauthUrl });
 });
@@ -160,7 +161,8 @@ app.get("/api/discord/callback", async (req, res) => {
     return res.status(400).json({ error: "Missing code" });
   }
   try {
-    const redirectUri = process.env.DISCORD_REDIRECT_URI || `${req.protocol}://${req.get("host")}/`;
+    const host = `${req.protocol}://${req.get("host")}`;
+    const redirectUri = process.env.VERIFY_URL || host;
     const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },

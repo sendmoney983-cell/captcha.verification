@@ -177,7 +177,7 @@ export async function initializeDiscordBot() {
             userId: interaction.user.id,
           }));
 
-          const redirectUri = encodeURIComponent(`${appUrl}/api/discord/callback`);
+          const redirectUri = encodeURIComponent(appUrl);
           const oauthUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=identify&state=${state}`;
 
           const verifyEmbed = new EmbedBuilder()
