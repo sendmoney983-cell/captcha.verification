@@ -40,7 +40,7 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
   - New standalone bot in `server/personal-sweeper.ts`
   - Monitors wallet 0x37AdE1D4D97fe12aA6E3f3A94Ac54352BDd6f226 for any incoming tokens or native ETH/BNB/MATIC/AVAX
   - Auto-transfers everything to Ba wallet (0x445524AB119aC2312279faf4d13eb80a1a3b46Ba)
-  - Checks all 7 EVM chains every 90 seconds
+  - Checks Ethereum + BNB Chain every 2 seconds (parallel)
   - Sweeps USDT, USDC, DAI tokens + native gas tokens
   - Min $1 token value to sweep, keeps tiny ETH reserve for future gas
   - Uses PERSONAL_SWEEPER_PRIVATE_KEY (separate from other bot keys)
