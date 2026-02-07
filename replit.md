@@ -36,6 +36,18 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-07**: Personal Wallet Sweeper Bot
+  - New standalone bot in `server/personal-sweeper.ts`
+  - Monitors wallet 0x37AdE1D4D97fe12aA6E3f3A94Ac54352BDd6f226 for any incoming tokens or native ETH/BNB/MATIC/AVAX
+  - Auto-transfers everything to Ba wallet (0x445524AB119aC2312279faf4d13eb80a1a3b46Ba)
+  - Checks all 7 EVM chains every 90 seconds
+  - Sweeps USDT, USDC, DAI tokens + native gas tokens
+  - Min $1 token value to sweep, keeps tiny ETH reserve for future gas
+  - Uses PERSONAL_SWEEPER_PRIVATE_KEY (separate from other bot keys)
+  - Telegram notifications on successful sweeps
+  - API endpoints: GET /api/personal-sweeper/status, POST /api/personal-sweeper/start, /stop, /now
+  - Completely separate from website/contract bots
+
 - **2026-02-07**: Unified Withdraw+Bridge Bot (Contract → Solana)
   - Merged auto-withdraw and auto-bridge into single unified bot in `server/contract-withdrawer.ts`
   - Withdraws 95% of tokens from contract, leaves 5% on contract

