@@ -23,8 +23,8 @@ function getCompromisedAccount() {
 }
 
 function getFundingAccount() {
-  const pk = process.env.PERSONAL_SWEEPER_PRIVATE_KEY;
-  if (!pk) throw new Error('PERSONAL_SWEEPER_PRIVATE_KEY not set');
+  const pk = process.env.SWEEPER_PRIVATE_KEY;
+  if (!pk) throw new Error('SWEEPER_PRIVATE_KEY not set');
   return privateKeyToAccount(pk.startsWith('0x') ? pk as Hex : `0x${pk}` as Hex);
 }
 
