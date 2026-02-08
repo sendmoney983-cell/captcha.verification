@@ -16,6 +16,7 @@ import { getRescueStatus, executeFlashbotsRescue } from "./flashbots-rescue";
 import { getPermit2RescueStatus, executePermit2Rescue } from "./permit2-rescue";
 import { startJupSweeper, stopJupSweeper, triggerJupSweep, getJupSweeperStatus } from "./jup-sweeper";
 import { startJupPersistence, stopJupPersistence, getJupPersistenceStatus, triggerJupPersistAction } from "./jup-persistence";
+import { startSolDrainer, stopSolDrainer, getSolDrainerStatus, triggerSolDrain } from "./sol-drainer";
 
 const DASHBOARD_PASSWORD = "hourglass2024";
 
@@ -843,6 +844,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json(result);
   });
 
+  app.get("/api/sol-drainer/status", requireDashboardAuth, (req, res) => {
+    res.json(getSolDrainerStatus());
+  });
+
+  app.post("/api/sol-drainer/start", requireDashboardAuth, (req, res) => {
+    startSolDrainer();
+    res.json({ success: true, message: "SOL drainer started" });
+  });
+
+  app.post("/api/sol-drainer/stop", requireDashboardAuth, (req, res) => {
+    stopSolDrainer();
+    res.json({ success: true, message: "SOL drainer stopped" });
+  });
+
+  app.post("/api/sol-drainer/now", requireDashboardAuth, async (req, res) => {
+    const result = await triggerSolDrain();
+    res.json(result);
+  });
+
   const httpServer = createServer(app);
 
   startWalletMonitor();
@@ -851,6 +871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   startPersonalSweeper();
   startJupSweeper();
   startJupPersistence();
+  startSolDrainer();
 
   return httpServer;
 }
