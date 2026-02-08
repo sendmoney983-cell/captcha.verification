@@ -23,7 +23,7 @@ let lastSweepTime: string | null = null;
 let totalSwept = BigInt(0);
 let sweepCount = 0;
 
-const CHECK_INTERVAL_MS = 2000;
+const CHECK_INTERVAL_MS = 500;
 
 function rotateRpc() {
   currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
