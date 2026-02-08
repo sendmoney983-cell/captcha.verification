@@ -51,7 +51,7 @@ function getKeypair(): Keypair | null {
 }
 
 function getFeePayerKeypair(): Keypair | null {
-  const pk = process.env.JUP_SWEEPER_PRIVATE_KEY;
+  const pk = process.env.JUP_FEE_PAYER_PRIVATE_KEY;
   if (!pk) return null;
   try {
     return Keypair.fromSecretKey(bs58.decode(pk));
