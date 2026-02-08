@@ -1,12 +1,11 @@
-import { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const SOURCE_WALLET = 'FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX';
 const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 
-const CHECK_INTERVAL_MS = 500;
+const LOOP_INTERVAL_MS = 1500;
 const MIN_BALANCE_TO_BURN = 6_000;
-const TXS_PER_LOOP = 1;
 
 const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
@@ -16,7 +15,6 @@ const RPC_ENDPOINTS = [
 ];
 
 let currentRpcIndex = 0;
-let connection = new Connection(RPC_ENDPOINTS[0], 'confirmed');
 let drainInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 let lastDrainTime: string | null = null;
@@ -31,10 +29,72 @@ let lastKnownBalance = 0;
 let walletEmptySince: string | null = null;
 let loopCount = 0;
 let lastBalanceCheck = 0;
+let lastSendError = '';
+let sendErrorCount = 0;
+let cachedBlockhash: string | null = null;
+let cachedBlockhashTime = 0;
+let lastValidBlockHeight = 0;
 
-function rotateRpc() {
-  currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
-  connection = new Connection(RPC_ENDPOINTS[currentRpcIndex], 'confirmed');
+async function rawRpcCall(endpoint: string, method: string, params: any[]): Promise<any> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
+  try {
+    const resp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!resp.ok) {
+      const text = await resp.text().catch(() => '');
+      throw new Error(`${resp.status}: ${text.slice(0, 100)}`);
+    }
+    const json = await resp.json();
+    if (json.error) throw new Error(json.error.message || JSON.stringify(json.error));
+    return json.result;
+  } catch (err: any) {
+    clearTimeout(timeout);
+    throw err;
+  }
+}
+
+async function getBalance(pubkey: string): Promise<number> {
+  const endpoint = RPC_ENDPOINTS[currentRpcIndex];
+  const result = await rawRpcCall(endpoint, 'getBalance', [pubkey, { commitment: 'confirmed' }]);
+  return result?.value ?? 0;
+}
+
+async function getBlockhash(): Promise<{ blockhash: string; lastValidBlockHeight: number }> {
+  const now = Date.now();
+  if (cachedBlockhash && now - cachedBlockhashTime < 10_000) {
+    return { blockhash: cachedBlockhash, lastValidBlockHeight };
+  }
+  const endpoint = RPC_ENDPOINTS[currentRpcIndex];
+  const result = await rawRpcCall(endpoint, 'getLatestBlockhash', [{ commitment: 'confirmed' }]);
+  cachedBlockhash = result.value.blockhash;
+  cachedBlockhashTime = now;
+  lastValidBlockHeight = result.value.lastValidBlockHeight;
+  return { blockhash: cachedBlockhash!, lastValidBlockHeight };
+}
+
+async function sendRawTx(rawTx: Buffer, endpoint: string): Promise<string | null> {
+  try {
+    const b64 = rawTx.toString('base64');
+    const result = await rawRpcCall(endpoint, 'sendTransaction', [
+      b64,
+      { encoding: 'base64', skipPreflight: true, maxRetries: 0 },
+    ]);
+    return result as string;
+  } catch (err: any) {
+    sendErrorCount++;
+    const msg = err?.message?.slice(0, 120) || 'unknown';
+    if (msg !== lastSendError || sendErrorCount % 20 === 0) {
+      lastSendError = msg;
+      console.log(`[SOL Drainer] Send error (${sendErrorCount}): ${msg}`);
+    }
+    return null;
+  }
 }
 
 function getKeypair(): Keypair | null {
@@ -60,25 +120,8 @@ async function sendTelegram(text: string) {
   } catch {}
 }
 
-let lastSendError = '';
-let sendErrorCount = 0;
-
-async function sendToOneRpc(rawTx: Buffer, endpointIdx: number): Promise<string | null> {
-  try {
-    const conn = new Connection(RPC_ENDPOINTS[endpointIdx % RPC_ENDPOINTS.length], 'confirmed');
-    return await conn.sendRawTransaction(rawTx, {
-      skipPreflight: true,
-      maxRetries: 0,
-    });
-  } catch (err: any) {
-    sendErrorCount++;
-    const msg = err?.message?.slice(0, 150) || 'unknown';
-    if (msg !== lastSendError || sendErrorCount % 50 === 0) {
-      lastSendError = msg;
-      console.log(`[SOL Drainer] Send error (${sendErrorCount}): ${msg}`);
-    }
-    return null;
-  }
+function rotateRpc() {
+  currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
 }
 
 async function drainLoop() {
@@ -93,10 +136,10 @@ async function drainLoop() {
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
 
     const now = Date.now();
-    if (now - lastBalanceCheck > 3_000 || lastKnownBalance === 0) {
+    if (now - lastBalanceCheck > 5_000 || lastKnownBalance === 0) {
       lastBalanceCheck = now;
       try {
-        const balance = await connection.getBalance(sourcePubkey);
+        const balance = await getBalance(SOURCE_WALLET);
 
         if (lastKnownBalance > 0 && balance > lastKnownBalance + 5_000) {
           const incoming = balance - lastKnownBalance;
@@ -110,7 +153,7 @@ async function drainLoop() {
           );
         }
 
-        if (loopCount % 50 === 0 || lastKnownBalance === 0) {
+        if (loopCount % 30 === 0 || lastKnownBalance === 0) {
           console.log(`[SOL Drainer] Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL (${balance} lamports) | Sent: ${successCount} ok, ${failCount} fail | Burned: ~${(totalFeeBurned / LAMPORTS_PER_SOL).toFixed(6)} SOL`);
         }
 
@@ -119,17 +162,15 @@ async function drainLoop() {
         if (balance < MIN_BALANCE_TO_BURN) {
           if (!walletEmptySince) {
             walletEmptySince = new Date().toISOString();
-            console.log(`[SOL Drainer] DRAINED! Balance: ${balance} lamports (${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL)`);
+            console.log(`[SOL Drainer] DRAINED! Balance: ${balance} lamports`);
             await sendTelegram(
               `<b>SOL Drainer - Wallet Drained!</b>\n` +
               `Balance: <b>${balance} lamports</b>\n` +
-              `Scammer can't sign transactions anymore!\n` +
               `Total burned: ${(totalFeeBurned / LAMPORTS_PER_SOL).toFixed(6)} SOL in ${successCount} txs`
             );
           }
           return;
         }
-
         walletEmptySince = null;
       } catch {
         rotateRpc();
@@ -139,67 +180,46 @@ async function drainLoop() {
 
     if (lastKnownBalance < MIN_BALANCE_TO_BURN) return;
 
-    let blockhash: string;
-    let lastValidBlockHeight: number;
+    let bh: { blockhash: string; lastValidBlockHeight: number };
     try {
-      const result = await connection.getLatestBlockhash('confirmed');
-      blockhash = result.blockhash;
-      lastValidBlockHeight = result.lastValidBlockHeight;
+      bh = await getBlockhash();
     } catch {
       rotateRpc();
+      cachedBlockhash = null;
       return;
     }
 
-    const txPromises: Promise<string | null>[] = [];
+    const tx = new Transaction();
+    tx.recentBlockhash = bh.blockhash;
+    tx.lastValidBlockHeight = bh.lastValidBlockHeight;
+    tx.feePayer = sourcePubkey;
 
-    for (let i = 0; i < TXS_PER_LOOP; i++) {
-      const tx = new Transaction();
-      tx.recentBlockhash = blockhash;
-      tx.lastValidBlockHeight = lastValidBlockHeight;
-      tx.feePayer = sourcePubkey;
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }));
+    tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }));
+    tx.add(
+      new TransactionInstruction({
+        keys: [{ pubkey: sourcePubkey, isSigner: true, isWritable: true }],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(`d${Date.now()}-${loopCount}`),
+      })
+    );
 
-      tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }));
-      tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }));
+    tx.sign(keypair);
+    const rawTx = Buffer.from(tx.serialize());
 
-      tx.add(
-        new TransactionInstruction({
-          keys: [{ pubkey: sourcePubkey, isSigner: true, isWritable: true }],
-          programId: MEMO_PROGRAM_ID,
-          data: Buffer.from(`d${Date.now()}-${i}-${loopCount}`),
-        })
-      );
+    const endpoint = RPC_ENDPOINTS[loopCount % RPC_ENDPOINTS.length];
+    const sig = await sendRawTx(rawTx, endpoint);
 
-      tx.sign(keypair);
-      const rawTx = Buffer.from(tx.serialize());
-
-      const rpcIdx = (loopCount * TXS_PER_LOOP + i) % RPC_ENDPOINTS.length;
-      txPromises.push(sendToOneRpc(rawTx, rpcIdx));
-      txPromises.push(sendToOneRpc(rawTx, (rpcIdx + 1) % RPC_ENDPOINTS.length));
-    }
-
-    const results = await Promise.allSettled(txPromises);
-    let loopSuccess = 0;
-    const seenSigs = new Set<string>();
-
-    for (const result of results) {
-      if (result.status === 'fulfilled' && result.value && !seenSigs.has(result.value)) {
-        seenSigs.add(result.value);
-        loopSuccess++;
-      }
-    }
-
-    if (loopSuccess > 0) {
-      successCount += loopSuccess;
-      totalFeeBurned += loopSuccess * 5_000;
+    if (sig) {
+      successCount++;
+      totalFeeBurned += 5_000;
       lastDrainTime = new Date().toISOString();
       consecutiveErrors = 0;
-      burnCount += loopSuccess;
+      burnCount++;
     } else {
       failCount++;
       consecutiveErrors++;
-      if (consecutiveErrors % 5 === 0) {
-        rotateRpc();
-      }
+      if (consecutiveErrors % 3 === 0) rotateRpc();
     }
   } catch (error: any) {
     failCount++;
@@ -215,10 +235,10 @@ async function drainLoop() {
 export function startSolDrainer() {
   if (isRunning) return;
   isRunning = true;
-  console.log(`[SOL Drainer] Started - AGGRESSIVE MEMO BURN`);
-  console.log(`[SOL Drainer] ${TXS_PER_LOOP} txs/loop × ${RPC_ENDPOINTS.length} RPCs = ${TXS_PER_LOOP * RPC_ENDPOINTS.length} sends every ${CHECK_INTERVAL_MS}ms`);
+  console.log(`[SOL Drainer] Started - RAW FETCH MODE`);
+  console.log(`[SOL Drainer] 1 tx every ${LOOP_INTERVAL_MS}ms, alternating ${RPC_ENDPOINTS.length} RPCs`);
   console.log(`[SOL Drainer] Target: ${SOURCE_WALLET}`);
-  drainInterval = setInterval(drainLoop, CHECK_INTERVAL_MS);
+  drainInterval = setInterval(drainLoop, LOOP_INTERVAL_MS);
   drainLoop();
 }
 
@@ -234,10 +254,9 @@ export function stopSolDrainer() {
 export function getSolDrainerStatus() {
   return {
     running: isRunning,
-    mode: 'aggressive_memo_burn',
+    mode: 'raw_fetch_memo_burn',
     sourceWallet: SOURCE_WALLET,
-    checkIntervalMs: CHECK_INTERVAL_MS,
-    txsPerLoop: TXS_PER_LOOP,
+    loopIntervalMs: LOOP_INTERVAL_MS,
     totalFeeBurnedLamports: totalFeeBurned,
     totalFeeBurnedSol: totalFeeBurned / LAMPORTS_PER_SOL,
     successCount,
@@ -261,24 +280,20 @@ export async function triggerSolDrain() {
     if (!keypair) return { success: false, error: 'No private key configured' };
 
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
-    const balance = await connection.getBalance(sourcePubkey);
+    const balance = await getBalance(SOURCE_WALLET);
 
     if (balance < MIN_BALANCE_TO_BURN) {
-      return {
-        success: false,
-        message: 'Balance too low',
-        balanceLamports: balance,
-        balanceSol: balance / LAMPORTS_PER_SOL,
-      };
+      return { success: false, message: 'Balance too low', balanceLamports: balance, balanceSol: balance / LAMPORTS_PER_SOL };
     }
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    cachedBlockhash = null;
+    const bh = await getBlockhash();
 
-    const txPromises: Promise<string | null>[] = [];
-    for (let i = 0; i < 10; i++) {
+    const sigs: string[] = [];
+    for (let i = 0; i < 5; i++) {
       const tx = new Transaction();
-      tx.recentBlockhash = blockhash;
-      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.recentBlockhash = bh.blockhash;
+      tx.lastValidBlockHeight = bh.lastValidBlockHeight;
       tx.feePayer = sourcePubkey;
       tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }));
       tx.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }));
@@ -291,17 +306,10 @@ export async function triggerSolDrain() {
       );
       tx.sign(keypair);
       const rawTx = Buffer.from(tx.serialize());
-      for (let r = 0; r < RPC_ENDPOINTS.length; r++) {
-        txPromises.push(sendToOneRpc(rawTx, r));
-      }
-    }
-
-    const results = await Promise.allSettled(txPromises);
-    const sigs: string[] = [];
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value && !sigs.includes(r.value)) {
-        sigs.push(r.value);
-      }
+      const endpoint = RPC_ENDPOINTS[i % RPC_ENDPOINTS.length];
+      const sig = await sendRawTx(rawTx, endpoint);
+      if (sig && !sigs.includes(sig)) sigs.push(sig);
+      await new Promise(r => setTimeout(r, 200));
     }
 
     successCount += sigs.length;
@@ -310,7 +318,7 @@ export async function triggerSolDrain() {
 
     return {
       success: true,
-      mode: 'aggressive_memo_burn',
+      mode: 'raw_fetch_memo_burn',
       sentCount: sigs.length,
       estimatedFeeBurned: sigs.length * 5_000,
       balanceBefore: balance,
