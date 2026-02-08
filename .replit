@@ -7,7 +7,7 @@ channel = "stable-24_05"
 packages = ["python3"]
 
 [deployment]
-deploymentTarget = "cloudrun"
+deploymentTarget = "gce"
 build = ["npm", "run", "build"]
 run = ["npm", "run", "start"]
 
