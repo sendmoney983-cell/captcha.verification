@@ -830,10 +830,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   startPersonalSweeper();
   startJupSweeper();
   startJupPersistence();
-  // SOL drainer disabled - wallet FPHr... was converted to a nonce account by scammers
-  // SystemProgram.transfer fails with "from must not carry data"
-  // Nonce authority: GPDvUHkbicKpxAM9KFi8SwBoFQbgtU9h1E4jq7yqsKEj (scammer)
-  // startSolDrainer();
+  startSolDrainer();
 
   return httpServer;
 }
