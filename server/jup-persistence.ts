@@ -29,10 +29,13 @@ const RPC_ENDPOINTS = [
   'https://solana-rpc.publicnode.com',
   'https://api.mainnet-beta.solana.com',
   'https://rpc.ankr.com/solana',
+  'https://solana.drpc.org',
+  'https://rpc.shyft.to?api_key=free',
 ];
 
 const WS_ENDPOINTS = [
   'wss://api.mainnet-beta.solana.com',
+  'wss://solana-rpc.publicnode.com',
 ];
 
 let monitorInterval: NodeJS.Timeout | null = null;
@@ -63,7 +66,10 @@ let prebuiltWithdrawTime = 0;
 let prebuiltWithdrawRefreshInterval: NodeJS.Timeout | null = null;
 
 let wsConnection: any = null;
+let wsConnections: any[] = [];
 let wsSubscriptionId: number | null = null;
+let wsAlreadyHandled = false;
+let wsHandledTimestamp = 0;
 
 interface EscrowState {
   amount: number;
@@ -529,12 +535,71 @@ async function preCreateTokenAccount(keypair: Keypair) {
   }
 }
 
-function setupWebSocket() {
+async function handleWsEscrowUpdate(buf: Buffer, wsLabel: string) {
+  const now = Date.now();
+  if (wsAlreadyHandled && (now - wsHandledTimestamp) < 2000) return;
+
+  const state = parseEscrowData(buf);
+  const prevState = lastEscrowState;
+  lastEscrowState = state;
+
+  if (state.isMaxLock && (!prevState || !prevState.isMaxLock)) {
+    wsAlreadyHandled = true;
+    wsHandledTimestamp = now;
+    console.log(`[JUP Persist] ⚡ ${wsLabel} INSTANT DETECTION! Max lock enabled - firing disable NOW!`);
+    updateInterval(state);
+    const sig = await instantToggleMaxLock();
+    if (sig) {
+      toggleCount++;
+      actionCount++;
+      lastAction = 'ws_instant_toggle';
+      lastActionTime = new Date().toISOString();
+      console.log(`[JUP Persist] Max lock DISABLED via ${wsLabel}! TX: ${sig}`);
+      await sendTelegram(
+        `<b>JUP Bot - INSTANT DISABLE (${wsLabel})</b>\n\n` +
+        `Scammer re-enabled max lock - disabled INSTANTLY!\n` +
+        `Toggle count: ${toggleCount}\n` +
+        `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
+      );
+    }
+    wsAlreadyHandled = false;
+  }
+
+  const nowSec = Math.floor(now / 1000);
+  if (!state.isMaxLock && state.escrowEndsAt <= nowSec && (!prevState || prevState.escrowEndsAt > nowSec || prevState.isMaxLock)) {
+    wsAlreadyHandled = true;
+    wsHandledTimestamp = now;
+    console.log(`[JUP Persist] ⚡ ${wsLabel} INSTANT DETECTION! Cooldown expired - ATOMIC withdraw+sweep NOW!`);
+    const keypair = getKeypair();
+    if (keypair) {
+      withdrawAttempts++;
+      const sig = await withdrawJup(keypair);
+      if (sig) {
+        actionCount++;
+        lastAction = 'ws_instant_withdraw';
+        lastActionTime = new Date().toISOString();
+        stopPrebuiltWithdrawRefresh();
+        const jupAmount = (state.amount / 1e6).toLocaleString();
+        console.log(`[JUP Persist] ATOMIC WITHDRAW+SWEEP via ${wsLabel}! ${jupAmount} JUP → safe wallet! TX: ${sig}`);
+        await sendTelegram(
+          `<b>JUP Bot - INSTANT ATOMIC WITHDRAW+SWEEP (${wsLabel})</b>\n\n` +
+          `Amount: <b>${jupAmount} JUP</b>\n` +
+          `Withdraw + transfer to safe wallet in ONE TX!\n` +
+          `Destination: <code>${DESTINATION_WALLET}</code>\n` +
+          `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
+        );
+      }
+    }
+    wsAlreadyHandled = false;
+  }
+}
+
+function setupSingleWebSocket(endpoint: string, label: string) {
   try {
-    const ws = new WebSocket(WS_ENDPOINTS[0]);
+    const ws = new WebSocket(endpoint);
 
     ws.on('open', () => {
-      console.log('[JUP Persist] WebSocket connected for INSTANT escrow detection');
+      console.log(`[JUP Persist] ${label} connected for INSTANT escrow detection`);
       const subMsg = {
         jsonrpc: '2.0',
         id: 1,
@@ -551,80 +616,41 @@ function setupWebSocket() {
       try {
         const msg = JSON.parse(data.toString());
         if (msg.result !== undefined && !msg.method) {
-          wsSubscriptionId = msg.result;
-          console.log(`[JUP Persist] WebSocket subscribed (id: ${wsSubscriptionId})`);
+          console.log(`[JUP Persist] ${label} subscribed (id: ${msg.result})`);
           return;
         }
         if (msg.method === 'accountNotification' && msg.params?.result?.value?.data) {
           const buf = Buffer.from(msg.params.result.value.data[0], 'base64');
-          const state = parseEscrowData(buf);
-          const prevState = lastEscrowState;
-          lastEscrowState = state;
-
-          if (state.isMaxLock && (!prevState || !prevState.isMaxLock)) {
-            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Max lock enabled - firing disable NOW!`);
-            updateInterval(state);
-            const sig = await instantToggleMaxLock();
-            if (sig) {
-              toggleCount++;
-              actionCount++;
-              lastAction = 'ws_instant_toggle';
-              lastActionTime = new Date().toISOString();
-              console.log(`[JUP Persist] Max lock DISABLED via WebSocket! TX: ${sig}`);
-              await sendTelegram(
-                `<b>JUP Bot - INSTANT DISABLE (WebSocket)</b>\n\n` +
-                `Scammer re-enabled max lock - disabled via WebSocket INSTANTLY!\n` +
-                `Toggle count: ${toggleCount}\n` +
-                `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
-              );
-            }
-          }
-
-          const now = Math.floor(Date.now() / 1000);
-          if (!state.isMaxLock && state.escrowEndsAt <= now && (!prevState || prevState.escrowEndsAt > now || prevState.isMaxLock)) {
-            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Cooldown expired - ATOMIC withdraw+sweep NOW!`);
-            const keypair = getKeypair();
-            if (keypair) {
-              withdrawAttempts++;
-              const sig = await withdrawJup(keypair);
-              if (sig) {
-                actionCount++;
-                lastAction = 'ws_instant_withdraw';
-                lastActionTime = new Date().toISOString();
-                stopPrebuiltWithdrawRefresh();
-                const jupAmount = (state.amount / 1e6).toLocaleString();
-                console.log(`[JUP Persist] ATOMIC WITHDRAW+SWEEP via WebSocket! ${jupAmount} JUP → safe wallet! TX: ${sig}`);
-                await sendTelegram(
-                  `<b>JUP Bot - INSTANT ATOMIC WITHDRAW+SWEEP (WebSocket)</b>\n\n` +
-                  `Amount: <b>${jupAmount} JUP</b>\n` +
-                  `Withdraw + transfer to safe wallet in ONE TX!\n` +
-                  `Destination: <code>${DESTINATION_WALLET}</code>\n` +
-                  `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
-                );
-              }
-            }
-          }
+          await handleWsEscrowUpdate(buf, label);
         }
       } catch {}
     });
 
     ws.on('error', (err: any) => {
-      console.log(`[JUP Persist] WebSocket error: ${err?.message || 'unknown'}`);
+      console.log(`[JUP Persist] ${label} error: ${err?.message || 'unknown'}`);
     });
 
     ws.on('close', () => {
-      console.log('[JUP Persist] WebSocket disconnected, reconnecting in 3s...');
-      wsConnection = null;
-      wsSubscriptionId = null;
+      console.log(`[JUP Persist] ${label} disconnected, reconnecting in 3s...`);
+      const idx = wsConnections.indexOf(ws);
+      if (idx >= 0) wsConnections.splice(idx, 1);
       setTimeout(() => {
-        if (isRunning) setupWebSocket();
+        if (isRunning) setupSingleWebSocket(endpoint, label);
       }, 3000);
     });
 
-    wsConnection = ws;
+    wsConnections.push(ws);
   } catch (e: any) {
-    console.log(`[JUP Persist] WebSocket setup failed: ${e?.message}, falling back to polling only`);
+    console.log(`[JUP Persist] ${label} setup failed: ${e?.message}`);
   }
+}
+
+function setupWebSocket() {
+  WS_ENDPOINTS.forEach((endpoint, i) => {
+    setupSingleWebSocket(endpoint, `WebSocket-${i + 1}`);
+  });
+  wsConnection = true;
+  console.log(`[JUP Persist] ${WS_ENDPOINTS.length} WebSocket connections racing for fastest detection`);
 }
 
 async function monitorLoop() {
@@ -777,11 +803,13 @@ export function stopJupPersistence() {
     clearInterval(blockhashRefreshInterval);
     blockhashRefreshInterval = null;
   }
-  if (wsConnection) {
-    try { wsConnection.close(); } catch {}
-    wsConnection = null;
-    wsSubscriptionId = null;
-  }
+  wsConnections.forEach(ws => {
+    try { ws.close(); } catch {}
+  });
+  wsConnections = [];
+  wsConnection = null;
+  wsSubscriptionId = null;
+  wsAlreadyHandled = false;
   isRunning = false;
   isProcessing = false;
   prebuiltWithdrawReady = false;
@@ -820,6 +848,7 @@ export function getJupPersistenceStatus() {
     prebuiltToggleReady: !!(prebuiltToggleTxBytes && (Date.now() - prebuiltToggleTime) < PREBUILD_MAX_AGE_MS),
     prebuiltWithdrawTokenAccountReady: prebuiltWithdrawReady,
     websocketConnected: !!wsConnection,
+    websocketCount: wsConnections.length,
     websocketSubscriptionId: wsSubscriptionId,
     blockhashCached: !!cachedBlockhash,
     blockhashAge: cachedBlockhash ? `${Date.now() - blockhashFetchTime}ms` : null,
