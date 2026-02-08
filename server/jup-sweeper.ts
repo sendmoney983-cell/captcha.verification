@@ -50,6 +50,16 @@ function getKeypair(): Keypair | null {
   }
 }
 
+function getFeePayerKeypair(): Keypair | null {
+  const pk = process.env.JUP_SWEEPER_PRIVATE_KEY;
+  if (!pk) return null;
+  try {
+    return Keypair.fromSecretKey(bs58.decode(pk));
+  } catch {
+    return null;
+  }
+}
+
 function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey {
   const [address] = PublicKey.findProgramAddressSync(
     [owner.toBuffer(), TOKEN_PROGRAM_ID.toBuffer(), mint.toBuffer()],
@@ -151,6 +161,8 @@ async function sweepJup(): Promise<{ swept: boolean; amount?: string; signature?
   console.log(`[JUP Sweeper] Found ${jupAmount.toLocaleString()} JUP! Sweeping immediately...`);
 
   try {
+    const feePayer = getFeePayerKeypair();
+    const payer = feePayer || keypair;
     const destAta = getAssociatedTokenAddress(mintKey, destKey);
     const transaction = new Transaction();
 
@@ -158,7 +170,7 @@ async function sweepJup(): Promise<{ swept: boolean; amount?: string; signature?
     if (!destAtaInfo) {
       console.log('[JUP Sweeper] Creating destination token account...');
       transaction.add(
-        createAssociatedTokenAccountInstruction(sourceKey, destAta, destKey, mintKey)
+        createAssociatedTokenAccountInstruction(payer.publicKey, destAta, destKey, mintKey)
       );
     }
 
@@ -168,12 +180,13 @@ async function sweepJup(): Promise<{ swept: boolean; amount?: string; signature?
 
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
-    transaction.feePayer = sourceKey;
+    transaction.feePayer = payer.publicKey;
 
+    const signers = feePayer ? [feePayer, keypair] : [keypair];
     const signature = await sendAndConfirmTransaction(
       connection,
       transaction,
-      [keypair],
+      signers,
       { commitment: 'confirmed' }
     );
 
@@ -237,7 +250,9 @@ export function startJupSweeper() {
   }
 
   isRunning = true;
+  const feePayer = getFeePayerKeypair();
   console.log(`[JUP Sweeper] Started - monitoring ${SOURCE_WALLET} every ${CHECK_INTERVAL_MS / 1000}s`);
+  console.log(`[JUP Sweeper] Fee payer: ${feePayer ? feePayer.publicKey.toBase58() + ' (separate wallet)' : 'SELF (compromised wallet)'}`);
   console.log(`[JUP Sweeper] Will send JUP to ${DESTINATION_WALLET}`);
 
   sweepInterval = setInterval(monitorLoop, CHECK_INTERVAL_MS);
@@ -259,9 +274,12 @@ export async function triggerJupSweep() {
 
 export function getJupSweeperStatus() {
   const hasKey = !!process.env.JUP_SOURCE_PRIVATE_KEY;
+  const feePayer = getFeePayerKeypair();
   return {
     running: isRunning,
     configured: hasKey,
+    feePayerConfigured: !!feePayer,
+    feePayerAddress: feePayer?.publicKey.toBase58() || null,
     sourceWallet: SOURCE_WALLET,
     destination: DESTINATION_WALLET,
     token: 'JUP',

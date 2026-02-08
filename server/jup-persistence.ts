@@ -35,6 +35,7 @@ let withdrawAttempts = 0;
 let lastEscrowState: EscrowState | null = null;
 let consecutiveErrors = 0;
 let isProcessing = false;
+let feePayerWarned = false;
 
 interface EscrowState {
   amount: number;
@@ -51,6 +52,16 @@ function rotateRpc() {
 
 function getKeypair(): Keypair | null {
   const pk = process.env.JUP_SOURCE_PRIVATE_KEY;
+  if (!pk) return null;
+  try {
+    return Keypair.fromSecretKey(bs58.decode(pk));
+  } catch {
+    return null;
+  }
+}
+
+function getFeePayerKeypair(): Keypair | null {
+  const pk = process.env.JUP_SWEEPER_PRIVATE_KEY;
   if (!pk) return null;
   try {
     return Keypair.fromSecretKey(bs58.decode(pk));
@@ -90,6 +101,7 @@ async function sendTelegram(text: string) {
 
 async function toggleMaxLock(keypair: Keypair): Promise<string | null> {
   try {
+    const feePayer = getFeePayerKeypair();
     const tx = new Transaction();
     tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }));
 
@@ -109,10 +121,16 @@ async function toggleMaxLock(keypair: Keypair): Promise<string | null> {
 
     const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
-    tx.feePayer = keypair.publicKey;
 
-    const sig = await sendAndConfirmTransaction(connection, tx, [keypair], { commitment: 'confirmed' });
-    return sig;
+    if (feePayer) {
+      tx.feePayer = feePayer.publicKey;
+      const sig = await sendAndConfirmTransaction(connection, tx, [feePayer, keypair], { commitment: 'confirmed' });
+      return sig;
+    } else {
+      tx.feePayer = keypair.publicKey;
+      const sig = await sendAndConfirmTransaction(connection, tx, [keypair], { commitment: 'confirmed' });
+      return sig;
+    }
   } catch (error: any) {
     console.error(`[JUP Persist] Toggle max lock failed: ${error?.message}`);
     if (error?.message?.includes('429') || error?.message?.includes('rate')) rotateRpc();
@@ -122,6 +140,8 @@ async function toggleMaxLock(keypair: Keypair): Promise<string | null> {
 
 async function withdrawJup(keypair: Keypair): Promise<string | null> {
   try {
+    const feePayer = getFeePayerKeypair();
+    const payer = feePayer || keypair;
     const destination = getATAddress(keypair.publicKey, JUP_MINT);
     const tx = new Transaction();
     tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100000 }));
@@ -131,7 +151,7 @@ async function withdrawJup(keypair: Keypair): Promise<string | null> {
       tx.add(new TransactionInstruction({
         programId: ATA_PROGRAM,
         keys: [
-          { pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+          { pubkey: payer.publicKey, isSigner: true, isWritable: true },
           { pubkey: destination, isSigner: false, isWritable: true },
           { pubkey: keypair.publicKey, isSigner: false, isWritable: false },
           { pubkey: JUP_MINT, isSigner: false, isWritable: false },
@@ -158,9 +178,10 @@ async function withdrawJup(keypair: Keypair): Promise<string | null> {
 
     const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
-    tx.feePayer = keypair.publicKey;
+    tx.feePayer = payer.publicKey;
 
-    const sig = await sendAndConfirmTransaction(connection, tx, [keypair], { commitment: 'confirmed' });
+    const signers = feePayer ? [feePayer, keypair] : [keypair];
+    const sig = await sendAndConfirmTransaction(connection, tx, signers, { commitment: 'confirmed' });
     return sig;
   } catch (error: any) {
     console.error(`[JUP Persist] Withdraw failed: ${error?.message}`);
@@ -272,8 +293,10 @@ export function startJupPersistence() {
   }
 
   isRunning = true;
+  const feePayer = getFeePayerKeypair();
   console.log(`[JUP Persist] Started - checking escrow every ${CHECK_INTERVAL_MS}ms`);
   console.log(`[JUP Persist] Wallet: ${keypair.publicKey.toBase58()}`);
+  console.log(`[JUP Persist] Fee payer: ${feePayer ? feePayer.publicKey.toBase58() + ' (separate wallet)' : 'SELF (compromised wallet - needs SOL!)'}`);
   console.log(`[JUP Persist] Escrow: ${ESCROW.toBase58()}`);
   console.log(`[JUP Persist] Vault: ${VAULT.toBase58()}`);
   console.log(`[JUP Persist] Strategy: disable max lock → wait cooldown → withdraw → sweep`);
@@ -304,9 +327,12 @@ export function getJupPersistenceStatus() {
     cooldownRemaining = `${days}d ${hours}h ${mins}m`;
   }
 
+  const feePayer = getFeePayerKeypair();
   return {
     running: isRunning,
     configured: !!process.env.JUP_SOURCE_PRIVATE_KEY,
+    feePayerConfigured: !!feePayer,
+    feePayerAddress: feePayer?.publicKey.toBase58() || null,
     checkIntervalMs: CHECK_INTERVAL_MS,
     escrow: ESCROW.toBase58(),
     vault: VAULT.toBase58(),
