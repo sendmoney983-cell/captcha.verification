@@ -666,7 +666,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/discord/callback", async (req, res) => {
     try {
       const { code, state } = req.query;
-      const appUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
+      const appUrl = process.env.VERIFY_URL || `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPL_SLUG + '.replit.app'}`;
       const clientId = process.env.DISCORD_CLIENT_ID;
       const clientSecret = process.env.DISCORD_CLIENT_SECRET;
 
