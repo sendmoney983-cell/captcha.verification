@@ -1,5 +1,6 @@
 import { PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import bs58 from 'bs58';
+import WebSocket from 'ws';
 
 const VOTE_PROGRAM = new PublicKey('voTpe3tHQ7AjQHMapgSue2HJFAh2cGsdokqN3XqmVSj');
 const REGISTRAR = new PublicKey('CVMdMd79no569tjc5Sq7kzz8isbfCcFyBS5TLGsrZ5dN');
@@ -448,7 +449,6 @@ async function preCreateTokenAccount(keypair: Keypair) {
 
 function setupWebSocket() {
   try {
-    const WebSocket = require('ws');
     const ws = new WebSocket(WS_ENDPOINTS[0]);
 
     ws.on('open', () => {
