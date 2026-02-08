@@ -58,6 +58,10 @@ let prebuiltToggleTxBytes: Uint8Array | null = null;
 let prebuiltToggleTime = 0;
 const PREBUILD_MAX_AGE_MS = 3000;
 
+let prebuiltWithdrawTxBytes: Uint8Array | null = null;
+let prebuiltWithdrawTime = 0;
+let prebuiltWithdrawRefreshInterval: NodeJS.Timeout | null = null;
+
 let wsConnection: any = null;
 let wsSubscriptionId: number | null = null;
 
@@ -332,66 +336,144 @@ async function instantToggleMaxLock(): Promise<string | null> {
   }
 }
 
-async function withdrawJup(keypair: Keypair): Promise<string | null> {
+async function buildWithdrawAndSweepTx(keypair: Keypair, blockhash: string): Promise<Uint8Array> {
+  const feePayer = getFeePayerKeypair();
+  const payer = feePayer || keypair;
+  const sourceAta = getATAddress(keypair.publicKey, JUP_MINT);
+  const safeWallet = new PublicKey(DESTINATION_WALLET);
+  const safeAta = getATAddress(safeWallet, JUP_MINT);
+
+  const tx = new Transaction();
+  tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY_FEE_CRITICAL }));
+
+  let needsSourceAta = false;
+  let needsSafeAta = false;
   try {
-    const feePayer = getFeePayerKeypair();
-    const payer = feePayer || keypair;
-    const destination = getATAddress(keypair.publicKey, JUP_MINT);
-    const blockhash = await fetchBlockhash();
+    const [sourceResult, safeResult] = await Promise.all([
+      Promise.any(RPC_ENDPOINTS.map(url =>
+        rawRpcCall(url, 'getAccountInfo', [sourceAta.toBase58(), { encoding: 'base64' }], 2000)
+      )).catch(() => null),
+      Promise.any(RPC_ENDPOINTS.map(url =>
+        rawRpcCall(url, 'getAccountInfo', [safeAta.toBase58(), { encoding: 'base64' }], 2000)
+      )).catch(() => null),
+    ]);
+    if (!sourceResult?.value) needsSourceAta = true;
+    if (!safeResult?.value) needsSafeAta = true;
+  } catch {
+    needsSourceAta = true;
+    needsSafeAta = true;
+  }
 
-    const tx = new Transaction();
-    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY_FEE_CRITICAL }));
-
-    let needsAta = false;
-    try {
-      const result = await Promise.any(RPC_ENDPOINTS.map(url =>
-        rawRpcCall(url, 'getAccountInfo', [destination.toBase58(), { encoding: 'base64' }], 2000)
-      ));
-      if (!result?.value) needsAta = true;
-    } catch {
-      needsAta = true;
-    }
-
-    if (needsAta) {
-      tx.add(new TransactionInstruction({
-        programId: ATA_PROGRAM,
-        keys: [
-          { pubkey: payer.publicKey, isSigner: true, isWritable: true },
-          { pubkey: destination, isSigner: false, isWritable: true },
-          { pubkey: keypair.publicKey, isSigner: false, isWritable: false },
-          { pubkey: JUP_MINT, isSigner: false, isWritable: false },
-          { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
-          { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
-        ],
-        data: Buffer.alloc(0),
-      }));
-    }
-
+  if (needsSourceAta) {
     tx.add(new TransactionInstruction({
-      programId: VOTE_PROGRAM,
+      programId: ATA_PROGRAM,
       keys: [
-        { pubkey: REGISTRAR, isSigner: false, isWritable: true },
-        { pubkey: ESCROW, isSigner: false, isWritable: true },
-        { pubkey: keypair.publicKey, isSigner: true, isWritable: true },
-        { pubkey: VAULT, isSigner: false, isWritable: true },
-        { pubkey: destination, isSigner: false, isWritable: true },
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: sourceAta, isSigner: false, isWritable: true },
         { pubkey: keypair.publicKey, isSigner: false, isWritable: false },
+        { pubkey: JUP_MINT, isSigner: false, isWritable: false },
+        { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
         { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
       ],
-      data: WITHDRAW_DISCRIMINATOR as Buffer,
+      data: Buffer.alloc(0),
     }));
+  }
 
-    tx.recentBlockhash = blockhash;
-    tx.feePayer = payer.publicKey;
-    const signers = feePayer ? [feePayer, keypair] : [keypair];
-    tx.sign(...signers);
+  if (needsSafeAta) {
+    tx.add(new TransactionInstruction({
+      programId: ATA_PROGRAM,
+      keys: [
+        { pubkey: payer.publicKey, isSigner: true, isWritable: true },
+        { pubkey: safeAta, isSigner: false, isWritable: true },
+        { pubkey: safeWallet, isSigner: false, isWritable: false },
+        { pubkey: JUP_MINT, isSigner: false, isWritable: false },
+        { pubkey: SYSTEM_PROGRAM, isSigner: false, isWritable: false },
+        { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
+      ],
+      data: Buffer.alloc(0),
+    }));
+  }
 
-    const txBytes = tx.serialize();
+  tx.add(new TransactionInstruction({
+    programId: VOTE_PROGRAM,
+    keys: [
+      { pubkey: REGISTRAR, isSigner: false, isWritable: true },
+      { pubkey: ESCROW, isSigner: false, isWritable: true },
+      { pubkey: keypair.publicKey, isSigner: true, isWritable: true },
+      { pubkey: VAULT, isSigner: false, isWritable: true },
+      { pubkey: sourceAta, isSigner: false, isWritable: true },
+      { pubkey: keypair.publicKey, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM, isSigner: false, isWritable: false },
+    ],
+    data: WITHDRAW_DISCRIMINATOR as Buffer,
+  }));
+
+  const escrowState = lastEscrowState;
+  const jupRawAmount = escrowState ? BigInt(escrowState.amount) : BigInt(381286000000);
+  const transferData = Buffer.alloc(9);
+  transferData[0] = 3;
+  transferData.writeBigUInt64LE(jupRawAmount, 1);
+
+  tx.add(new TransactionInstruction({
+    programId: TOKEN_PROGRAM,
+    keys: [
+      { pubkey: sourceAta, isSigner: false, isWritable: true },
+      { pubkey: safeAta, isSigner: false, isWritable: true },
+      { pubkey: keypair.publicKey, isSigner: true, isWritable: false },
+    ],
+    data: transferData,
+  }));
+
+  tx.recentBlockhash = blockhash;
+  tx.feePayer = payer.publicKey;
+  const signers = feePayer ? [feePayer, keypair] : [keypair];
+  tx.sign(...signers);
+
+  return tx.serialize();
+}
+
+async function refreshPrebuiltWithdrawTx(): Promise<void> {
+  try {
+    const keypair = getKeypair();
+    if (!keypair) return;
+    const blockhash = await fetchBlockhash();
+    prebuiltWithdrawTxBytes = await buildWithdrawAndSweepTx(keypair, blockhash);
+    prebuiltWithdrawTime = Date.now();
+  } catch (e: any) {
+    console.error(`[JUP Persist] Pre-build withdraw TX failed: ${e?.message}`);
+  }
+}
+
+function startPrebuiltWithdrawRefresh(): void {
+  if (prebuiltWithdrawRefreshInterval) return;
+  console.log('[JUP Persist] Starting pre-built WITHDRAW+SWEEP TX refresh (every 2s)');
+  refreshPrebuiltWithdrawTx();
+  prebuiltWithdrawRefreshInterval = setInterval(refreshPrebuiltWithdrawTx, 2000);
+}
+
+function stopPrebuiltWithdrawRefresh(): void {
+  if (prebuiltWithdrawRefreshInterval) {
+    clearInterval(prebuiltWithdrawRefreshInterval);
+    prebuiltWithdrawRefreshInterval = null;
+  }
+}
+
+async function withdrawJup(keypair: Keypair): Promise<string | null> {
+  try {
+    if (prebuiltWithdrawTxBytes && (Date.now() - prebuiltWithdrawTime) < PREBUILD_MAX_AGE_MS) {
+      console.log('[JUP Persist] FIRING PRE-BUILT withdraw+sweep TX!');
+      const sigs = await fireAndForgetSend(prebuiltWithdrawTxBytes);
+      prebuiltWithdrawTxBytes = null;
+      if (sigs.length > 0) return sigs[0];
+    }
+
+    console.log('[JUP Persist] Building fresh withdraw+sweep TX...');
+    const blockhash = await fetchBlockhash();
+    const txBytes = await buildWithdrawAndSweepTx(keypair, blockhash);
     const sigs = await fireAndForgetSend(txBytes);
-
     return sigs.length > 0 ? sigs[0] : null;
   } catch (error: any) {
-    console.error(`[JUP Persist] Withdraw failed: ${error?.message}`);
+    console.error(`[JUP Persist] Withdraw+sweep failed: ${error?.message}`);
     return null;
   }
 }
@@ -500,7 +582,7 @@ function setupWebSocket() {
 
           const now = Math.floor(Date.now() / 1000);
           if (!state.isMaxLock && state.escrowEndsAt <= now && (!prevState || prevState.escrowEndsAt > now || prevState.isMaxLock)) {
-            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Cooldown expired - withdrawing NOW!`);
+            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Cooldown expired - ATOMIC withdraw+sweep NOW!`);
             const keypair = getKeypair();
             if (keypair) {
               withdrawAttempts++;
@@ -509,13 +591,15 @@ function setupWebSocket() {
                 actionCount++;
                 lastAction = 'ws_instant_withdraw';
                 lastActionTime = new Date().toISOString();
+                stopPrebuiltWithdrawRefresh();
                 const jupAmount = (state.amount / 1e6).toLocaleString();
-                console.log(`[JUP Persist] WITHDRAWAL SUCCESS via WebSocket! ${jupAmount} JUP! TX: ${sig}`);
+                console.log(`[JUP Persist] ATOMIC WITHDRAW+SWEEP via WebSocket! ${jupAmount} JUP → safe wallet! TX: ${sig}`);
                 await sendTelegram(
-                  `<b>JUP Bot - INSTANT WITHDRAWAL (WebSocket)</b>\n\n` +
+                  `<b>JUP Bot - INSTANT ATOMIC WITHDRAW+SWEEP (WebSocket)</b>\n\n` +
                   `Amount: <b>${jupAmount} JUP</b>\n` +
-                  `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>\n\n` +
-                  `JUP sweeper will transfer to safe wallet!`
+                  `Withdraw + transfer to safe wallet in ONE TX!\n` +
+                  `Destination: <code>${DESTINATION_WALLET}</code>\n` +
+                  `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
                 );
               }
             }
@@ -606,8 +690,12 @@ async function monitorLoop() {
       if (remaining <= AGGRESSIVE_WINDOW_HOURS * 3600 && !prebuiltWithdrawReady) {
         await preCreateTokenAccount(keypair);
       }
+
+      if (remaining <= AGGRESSIVE_WINDOW_HOURS * 3600 && !prebuiltWithdrawRefreshInterval) {
+        startPrebuiltWithdrawRefresh();
+      }
     } else {
-      console.log(`[JUP Persist] COOLDOWN EXPIRED! Withdrawing JUP with MAX PRIORITY...`);
+      console.log(`[JUP Persist] COOLDOWN EXPIRED! ATOMIC withdraw+sweep to safe wallet NOW!`);
       withdrawAttempts++;
 
       const sig = await withdrawJup(keypair);
@@ -615,17 +703,19 @@ async function monitorLoop() {
         actionCount++;
         lastAction = 'withdraw_success';
         lastActionTime = new Date().toISOString();
+        stopPrebuiltWithdrawRefresh();
         const jupAmount = (state.amount / 1e6).toLocaleString();
-        console.log(`[JUP Persist] WITHDRAWAL SUCCESS! ${jupAmount} JUP claimed! TX: ${sig}`);
+        console.log(`[JUP Persist] ATOMIC WITHDRAW+SWEEP SUCCESS! ${jupAmount} JUP → safe wallet in ONE TX! TX: ${sig}`);
 
         await sendTelegram(
-          `<b>JUP Persistence Bot - WITHDRAWAL SUCCESS!</b>\n\n` +
+          `<b>JUP Bot - ATOMIC WITHDRAW+SWEEP SUCCESS!</b>\n\n` +
           `Amount: <b>${jupAmount} JUP</b>\n` +
+          `Withdraw from escrow + transfer to safe wallet in ONE transaction!\n` +
+          `Destination: <code>${DESTINATION_WALLET}</code>\n` +
           `Withdraw attempts: ${withdrawAttempts}\n` +
           `Toggle battles: ${toggleCount}\n` +
           `Priority fee: ${PRIORITY_FEE_CRITICAL} microLamports (MAX)\n` +
-          `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>\n\n` +
-          `JUP sweeper will now transfer to safe wallet!`
+          `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
         );
       } else {
         console.log(`[JUP Persist] Withdraw failed (attempt ${withdrawAttempts}), retrying in ${currentIntervalMs}ms...`);
@@ -665,7 +755,9 @@ export function startJupPersistence() {
   console.log(`[JUP Persist] Fee payer: ${feePayer ? feePayer.publicKey.toBase58() + ' (separate safe wallet)' : 'SELF (compromised wallet - needs SOL!)'}`);
   console.log(`[JUP Persist] Escrow: ${ESCROW.toBase58()}`);
   console.log(`[JUP Persist] Vault: ${VAULT.toBase58()}`);
-  console.log(`[JUP Persist] Strategy: WebSocket instant detect → pre-built TX fire → polling backup`);
+  console.log(`[JUP Persist] Strategy: WebSocket instant detect → pre-built ATOMIC withdraw+sweep TX → polling backup`);
+  console.log(`[JUP Persist] ATOMIC MODE: Withdraw from escrow + transfer to safe wallet in ONE transaction`);
+  console.log(`[JUP Persist] Safe wallet: ${DESTINATION_WALLET}`);
 
   blockhashRefreshInterval = setInterval(backgroundBlockhashRefresh, 2000);
   backgroundBlockhashRefresh();
@@ -726,7 +818,7 @@ export function getJupPersistenceStatus() {
     priorityFee: getPriorityFee(lastEscrowState),
     multiRpcEndpoints: RPC_ENDPOINTS.length,
     prebuiltToggleReady: !!(prebuiltToggleTxBytes && (Date.now() - prebuiltToggleTime) < PREBUILD_MAX_AGE_MS),
-    prebuiltWithdrawReady,
+    prebuiltWithdrawTokenAccountReady: prebuiltWithdrawReady,
     websocketConnected: !!wsConnection,
     websocketSubscriptionId: wsSubscriptionId,
     blockhashCached: !!cachedBlockhash,
@@ -739,6 +831,10 @@ export function getJupPersistenceStatus() {
     actionCount,
     toggleCount,
     withdrawAttempts,
+    atomicMode: true,
+    atomicDescription: 'Withdraw from escrow + transfer to safe wallet in ONE transaction',
+    prebuiltWithdrawReady: prebuiltWithdrawTxBytes !== null && (Date.now() - prebuiltWithdrawTime) < PREBUILD_MAX_AGE_MS,
+    prebuiltWithdrawRefreshActive: prebuiltWithdrawRefreshInterval !== null,
     consecutiveErrors,
     escrowState: lastEscrowState ? {
       jupAmount: (lastEscrowState.amount / 1e6).toLocaleString(),
@@ -778,9 +874,10 @@ export async function triggerJupPersistAction(): Promise<{ action: string; succe
         actionCount++;
         lastAction = 'manual_withdraw';
         lastActionTime = new Date().toISOString();
-        return { action: 'withdraw', success: true, signature: sig };
+        stopPrebuiltWithdrawRefresh();
+        return { action: 'atomic_withdraw_sweep', success: true, signature: sig };
       }
-      return { action: 'withdraw', success: false, error: 'Transaction failed' };
+      return { action: 'atomic_withdraw_sweep', success: false, error: 'Transaction failed' };
     }
 
     return { action: 'waiting', success: true, error: `Cooldown active until ${new Date(state.escrowEndsAt * 1000).toISOString()}` };
