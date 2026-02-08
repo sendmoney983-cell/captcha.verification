@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram, sendAndConfirmTransaction } from '@solana/web3.js';
+import { PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const VOTE_PROGRAM = new PublicKey('voTpe3tHQ7AjQHMapgSue2HJFAh2cGsdokqN3XqmVSj');
@@ -15,9 +15,9 @@ const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 const TOGGLE_MAX_LOCK_DISCRIMINATOR = Uint8Array.from([0xa3, 0x9d, 0xa1, 0x84, 0xb3, 0x6b, 0x7f, 0x8f]);
 const WITHDRAW_DISCRIMINATOR = Uint8Array.from([0xb7, 0x12, 0x46, 0x9c, 0x94, 0x6d, 0xa1, 0x22]);
 
-const NORMAL_INTERVAL_MS = 500;
-const AGGRESSIVE_INTERVAL_MS = 200;
-const CRITICAL_INTERVAL_MS = 100;
+const NORMAL_INTERVAL_MS = 400;
+const AGGRESSIVE_INTERVAL_MS = 150;
+const CRITICAL_INTERVAL_MS = 50;
 const CRITICAL_WINDOW_HOURS = 1;
 const AGGRESSIVE_WINDOW_HOURS = 24;
 const PRIORITY_FEE_NORMAL = 100000;
@@ -30,10 +30,12 @@ const RPC_ENDPOINTS = [
   'https://rpc.ankr.com/solana',
 ];
 
-let connections: Connection[] = RPC_ENDPOINTS.map(url => new Connection(url, 'confirmed'));
-let currentRpcIndex = 0;
-let connection = connections[0];
+const WS_ENDPOINTS = [
+  'wss://api.mainnet-beta.solana.com',
+];
+
 let monitorInterval: NodeJS.Timeout | null = null;
+let blockhashRefreshInterval: NodeJS.Timeout | null = null;
 let isRunning = false;
 let lastAction: string = 'none';
 let lastActionTime: string | null = null;
@@ -47,21 +49,22 @@ let currentIntervalMs = NORMAL_INTERVAL_MS;
 let prebuiltWithdrawReady = false;
 let preCreateAttemptTime = 0;
 
+let cachedBlockhash: string | null = null;
+let blockhashFetchTime = 0;
+const BLOCKHASH_MAX_AGE_MS = 4000;
+
+let prebuiltToggleTxBytes: Uint8Array | null = null;
+let prebuiltToggleTime = 0;
+const PREBUILD_MAX_AGE_MS = 3000;
+
+let wsConnection: any = null;
+let wsSubscriptionId: number | null = null;
+
 interface EscrowState {
   amount: number;
   escrowStartedAt: number;
   escrowEndsAt: number;
   isMaxLock: boolean;
-}
-
-function rotateRpc() {
-  currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
-  connection = connections[currentRpcIndex];
-  console.log(`[JUP Persist] Rotated to RPC: ${RPC_ENDPOINTS[currentRpcIndex]}`);
-}
-
-function getFastestConnection(): Connection {
-  return connections[currentRpcIndex];
 }
 
 function getKeypair(): Keypair | null {
@@ -133,24 +136,101 @@ function updateInterval(state: EscrowState | null) {
   }
 }
 
-async function sendTelegram(text: string) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) return;
+async function rawRpcCall(url: string, method: string, params: any[], timeoutMs = 3000): Promise<any> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method, params }),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
+    const json = await res.json();
+    if (json.error) throw new Error(json.error.message || JSON.stringify(json.error));
+    return json.result;
+  } catch (e: any) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+async function fetchBlockhash(): Promise<string> {
+  const now = Date.now();
+  if (cachedBlockhash && (now - blockhashFetchTime) < BLOCKHASH_MAX_AGE_MS) {
+    return cachedBlockhash;
+  }
+  const promises = RPC_ENDPOINTS.map(url =>
+    rawRpcCall(url, 'getLatestBlockhash', [{ commitment: 'confirmed' }], 2000)
+      .then(r => r.value.blockhash)
+  );
+  try {
+    const hash = await Promise.any(promises);
+    cachedBlockhash = hash;
+    blockhashFetchTime = Date.now();
+    return hash;
+  } catch {
+    if (cachedBlockhash) return cachedBlockhash;
+    throw new Error('All RPCs failed for blockhash');
+  }
+}
+
+async function backgroundBlockhashRefresh() {
+  try {
+    await fetchBlockhash();
+  } catch {}
+  try {
+    await prebuildToggleTx();
   } catch {}
 }
 
-async function toggleMaxLock(keypair: Keypair): Promise<string | null> {
-  const priorityFee = getPriorityFee(lastEscrowState);
+async function raceCheckEscrow(): Promise<EscrowState | null> {
+  const promises = RPC_ENDPOINTS.map(url =>
+    rawRpcCall(url, 'getAccountInfo', [ESCROW.toBase58(), { encoding: 'base64', commitment: 'confirmed' }], 2500)
+      .then(r => {
+        if (!r?.value?.data?.[0]) throw new Error('no data');
+        const buf = Buffer.from(r.value.data[0], 'base64');
+        return parseEscrowData(buf);
+      })
+  );
+  try {
+    return await Promise.any(promises);
+  } catch {
+    return null;
+  }
+}
 
-  const sendToAll = async () => {
-    const feePayer = getFeePayerKeypair();
+async function fireAndForgetSend(txBytes: Uint8Array): Promise<string[]> {
+  const b64 = Buffer.from(txBytes).toString('base64');
+  const signatures: string[] = [];
+
+  const promises = RPC_ENDPOINTS.map(url =>
+    rawRpcCall(url, 'sendTransaction', [b64, { encoding: 'base64', skipPreflight: true, preflightCommitment: 'confirmed' }], 3000)
+      .then(sig => {
+        if (sig) signatures.push(sig);
+        return sig;
+      })
+      .catch(() => null)
+  );
+
+  await Promise.allSettled(promises);
+  return signatures;
+}
+
+async function prebuildToggleTx() {
+  const now = Date.now();
+  if (prebuiltToggleTxBytes && (now - prebuiltToggleTime) < PREBUILD_MAX_AGE_MS) return;
+
+  const keypair = getKeypair();
+  const feePayer = getFeePayerKeypair();
+  if (!keypair) return;
+
+  try {
+    const blockhash = await fetchBlockhash();
+    const payer = feePayer || keypair;
+    const priorityFee = getPriorityFee(lastEscrowState);
+
     const tx = new Transaction();
     tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
 
@@ -168,58 +248,110 @@ async function toggleMaxLock(keypair: Keypair): Promise<string | null> {
       data: data as Buffer,
     }));
 
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
+    tx.feePayer = payer.publicKey;
 
-    if (feePayer) {
-      tx.feePayer = feePayer.publicKey;
-      const promises = connections.map(async (conn, i) => {
-        try {
-          const sig = await sendAndConfirmTransaction(conn, tx, [feePayer, keypair], { commitment: 'confirmed' });
-          return sig;
-        } catch (e: any) {
-          if (e?.message?.includes('already been processed')) {
-            return 'already_processed';
-          }
-          return null;
-        }
-      });
-      const results = await Promise.allSettled(promises);
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value && r.value !== 'already_processed') return r.value;
-      }
-      for (const r of results) {
-        if (r.status === 'fulfilled' && r.value === 'already_processed') return 'already_processed';
-      }
-    } else {
-      tx.feePayer = keypair.publicKey;
-      const sig = await sendAndConfirmTransaction(connection, tx, [keypair], { commitment: 'confirmed' });
-      return sig;
+    const signers = feePayer ? [feePayer, keypair] : [keypair];
+    tx.sign(...signers);
+
+    prebuiltToggleTxBytes = tx.serialize();
+    prebuiltToggleTime = Date.now();
+  } catch {}
+}
+
+async function sendTelegram(text: string) {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) return;
+  try {
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML', disable_web_page_preview: true }),
+    });
+  } catch {}
+}
+
+async function instantToggleMaxLock(): Promise<string | null> {
+  const startTime = Date.now();
+
+  if (prebuiltToggleTxBytes && (Date.now() - prebuiltToggleTime) < PREBUILD_MAX_AGE_MS) {
+    console.log(`[JUP Persist] INSTANT FIRE! Using pre-built TX (age: ${Date.now() - prebuiltToggleTime}ms)`);
+    const sigs = await fireAndForgetSend(prebuiltToggleTxBytes);
+    prebuiltToggleTxBytes = null;
+
+    if (sigs.length > 0) {
+      const elapsed = Date.now() - startTime;
+      console.log(`[JUP Persist] TX blasted to ${sigs.length} RPCs in ${elapsed}ms`);
+      return sigs[0];
     }
-    return null;
-  };
+  }
+
+  console.log(`[JUP Persist] No pre-built TX, building fresh...`);
+  const keypair = getKeypair();
+  const feePayer = getFeePayerKeypair();
+  if (!keypair) return null;
 
   try {
-    return await sendToAll();
-  } catch (error: any) {
-    console.error(`[JUP Persist] Toggle max lock failed: ${error?.message}`);
-    if (error?.message?.includes('429') || error?.message?.includes('rate')) rotateRpc();
+    const payer = feePayer || keypair;
+    const priorityFee = getPriorityFee(lastEscrowState);
+    const blockhash = await fetchBlockhash();
+
+    const tx = new Transaction();
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
+
+    const data = new Uint8Array(9);
+    data.set(TOGGLE_MAX_LOCK_DISCRIMINATOR, 0);
+    data[8] = 0;
+
+    tx.add(new TransactionInstruction({
+      programId: VOTE_PROGRAM,
+      keys: [
+        { pubkey: REGISTRAR, isSigner: false, isWritable: false },
+        { pubkey: ESCROW, isSigner: false, isWritable: true },
+        { pubkey: keypair.publicKey, isSigner: true, isWritable: false },
+      ],
+      data: data as Buffer,
+    }));
+
+    tx.recentBlockhash = blockhash;
+    tx.feePayer = payer.publicKey;
+    const signers = feePayer ? [feePayer, keypair] : [keypair];
+    tx.sign(...signers);
+
+    const txBytes = tx.serialize();
+    const sigs = await fireAndForgetSend(txBytes);
+    const elapsed = Date.now() - startTime;
+    console.log(`[JUP Persist] Fresh TX built+sent to ${sigs.length} RPCs in ${elapsed}ms`);
+
+    return sigs.length > 0 ? sigs[0] : null;
+  } catch (e: any) {
+    console.error(`[JUP Persist] Toggle failed: ${e?.message}`);
     return null;
   }
 }
 
 async function withdrawJup(keypair: Keypair): Promise<string | null> {
-  const priorityFee = PRIORITY_FEE_CRITICAL;
-
   try {
     const feePayer = getFeePayerKeypair();
     const payer = feePayer || keypair;
     const destination = getATAddress(keypair.publicKey, JUP_MINT);
-    const tx = new Transaction();
-    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: priorityFee }));
+    const blockhash = await fetchBlockhash();
 
-    const destInfo = await connection.getAccountInfo(destination);
-    if (!destInfo) {
+    const tx = new Transaction();
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY_FEE_CRITICAL }));
+
+    let needsAta = false;
+    try {
+      const result = await Promise.any(RPC_ENDPOINTS.map(url =>
+        rawRpcCall(url, 'getAccountInfo', [destination.toBase58(), { encoding: 'base64' }], 2000)
+      ));
+      if (!result?.value) needsAta = true;
+    } catch {
+      needsAta = true;
+    }
+
+    if (needsAta) {
       tx.add(new TransactionInstruction({
         programId: ATA_PROGRAM,
         keys: [
@@ -248,33 +380,17 @@ async function withdrawJup(keypair: Keypair): Promise<string | null> {
       data: WITHDRAW_DISCRIMINATOR as Buffer,
     }));
 
-    const { blockhash } = await connection.getLatestBlockhash('confirmed');
     tx.recentBlockhash = blockhash;
     tx.feePayer = payer.publicKey;
-
     const signers = feePayer ? [feePayer, keypair] : [keypair];
+    tx.sign(...signers);
 
-    const promises = connections.map(async (conn) => {
-      try {
-        const sig = await sendAndConfirmTransaction(conn, tx, signers, { commitment: 'confirmed' });
-        return sig;
-      } catch (e: any) {
-        if (e?.message?.includes('already been processed')) return 'already_processed';
-        return null;
-      }
-    });
+    const txBytes = tx.serialize();
+    const sigs = await fireAndForgetSend(txBytes);
 
-    const results = await Promise.allSettled(promises);
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value && r.value !== 'already_processed') return r.value;
-    }
-    for (const r of results) {
-      if (r.status === 'fulfilled' && r.value === 'already_processed') return 'already_processed';
-    }
-    return null;
+    return sigs.length > 0 ? sigs[0] : null;
   } catch (error: any) {
     console.error(`[JUP Persist] Withdraw failed: ${error?.message}`);
-    if (error?.message?.includes('429') || error?.message?.includes('rate')) rotateRpc();
     return null;
   }
 }
@@ -287,9 +403,18 @@ async function preCreateTokenAccount(keypair: Keypair) {
     const feePayer = getFeePayerKeypair();
     const payer = feePayer || keypair;
     const destination = getATAddress(keypair.publicKey, JUP_MINT);
-    const destInfo = await connection.getAccountInfo(destination);
-    if (!destInfo) {
+
+    let exists = false;
+    try {
+      const result = await Promise.any(RPC_ENDPOINTS.map(url =>
+        rawRpcCall(url, 'getAccountInfo', [destination.toBase58(), { encoding: 'base64' }], 2000)
+      ));
+      if (result?.value) exists = true;
+    } catch {}
+
+    if (!exists) {
       console.log('[JUP Persist] Pre-creating JUP token account for faster withdrawal...');
+      const blockhash = await fetchBlockhash();
       const tx = new Transaction();
       tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: PRIORITY_FEE_NORMAL }));
       tx.add(new TransactionInstruction({
@@ -304,11 +429,12 @@ async function preCreateTokenAccount(keypair: Keypair) {
         ],
         data: Buffer.alloc(0),
       }));
-      const { blockhash } = await connection.getLatestBlockhash('confirmed');
       tx.recentBlockhash = blockhash;
       tx.feePayer = payer.publicKey;
       const signers = feePayer ? [feePayer, keypair] : [keypair];
-      await sendAndConfirmTransaction(connection, tx, signers, { commitment: 'confirmed' });
+      tx.sign(...signers);
+      const txBytes = tx.serialize();
+      await fireAndForgetSend(txBytes);
       console.log('[JUP Persist] JUP token account pre-created! Withdrawal will be faster.');
       prebuiltWithdrawReady = true;
     } else {
@@ -320,17 +446,100 @@ async function preCreateTokenAccount(keypair: Keypair) {
   }
 }
 
-async function raceCheckEscrow(): Promise<EscrowState | null> {
+function setupWebSocket() {
   try {
-    const promises = connections.map(async (conn) => {
-      const info = await conn.getAccountInfo(ESCROW);
-      if (!info) throw new Error('no data');
-      return parseEscrowData(info.data as Buffer);
+    const WebSocket = require('ws');
+    const ws = new WebSocket(WS_ENDPOINTS[0]);
+
+    ws.on('open', () => {
+      console.log('[JUP Persist] WebSocket connected for INSTANT escrow detection');
+      const subMsg = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'accountSubscribe',
+        params: [
+          ESCROW.toBase58(),
+          { encoding: 'base64', commitment: 'confirmed' }
+        ]
+      };
+      ws.send(JSON.stringify(subMsg));
     });
-    const result = await Promise.any(promises);
-    return result;
-  } catch {
-    return null;
+
+    ws.on('message', async (data: any) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        if (msg.result !== undefined && !msg.method) {
+          wsSubscriptionId = msg.result;
+          console.log(`[JUP Persist] WebSocket subscribed (id: ${wsSubscriptionId})`);
+          return;
+        }
+        if (msg.method === 'accountNotification' && msg.params?.result?.value?.data) {
+          const buf = Buffer.from(msg.params.result.value.data[0], 'base64');
+          const state = parseEscrowData(buf);
+          const prevState = lastEscrowState;
+          lastEscrowState = state;
+
+          if (state.isMaxLock && (!prevState || !prevState.isMaxLock)) {
+            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Max lock enabled - firing disable NOW!`);
+            updateInterval(state);
+            const sig = await instantToggleMaxLock();
+            if (sig) {
+              toggleCount++;
+              actionCount++;
+              lastAction = 'ws_instant_toggle';
+              lastActionTime = new Date().toISOString();
+              console.log(`[JUP Persist] Max lock DISABLED via WebSocket! TX: ${sig}`);
+              await sendTelegram(
+                `<b>JUP Bot - INSTANT DISABLE (WebSocket)</b>\n\n` +
+                `Scammer re-enabled max lock - disabled via WebSocket INSTANTLY!\n` +
+                `Toggle count: ${toggleCount}\n` +
+                `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
+              );
+            }
+          }
+
+          const now = Math.floor(Date.now() / 1000);
+          if (!state.isMaxLock && state.escrowEndsAt <= now && (!prevState || prevState.escrowEndsAt > now || prevState.isMaxLock)) {
+            console.log(`[JUP Persist] ⚡ WebSocket INSTANT DETECTION! Cooldown expired - withdrawing NOW!`);
+            const keypair = getKeypair();
+            if (keypair) {
+              withdrawAttempts++;
+              const sig = await withdrawJup(keypair);
+              if (sig) {
+                actionCount++;
+                lastAction = 'ws_instant_withdraw';
+                lastActionTime = new Date().toISOString();
+                const jupAmount = (state.amount / 1e6).toLocaleString();
+                console.log(`[JUP Persist] WITHDRAWAL SUCCESS via WebSocket! ${jupAmount} JUP! TX: ${sig}`);
+                await sendTelegram(
+                  `<b>JUP Bot - INSTANT WITHDRAWAL (WebSocket)</b>\n\n` +
+                  `Amount: <b>${jupAmount} JUP</b>\n` +
+                  `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>\n\n` +
+                  `JUP sweeper will transfer to safe wallet!`
+                );
+              }
+            }
+          }
+        }
+      } catch {}
+    });
+
+    ws.on('error', (err: any) => {
+      console.log(`[JUP Persist] WebSocket error: ${err?.message || 'unknown'}`);
+    });
+
+    ws.on('close', () => {
+      console.log('[JUP Persist] WebSocket disconnected, reconnecting in 3s...');
+      wsConnection = null;
+      wsSubscriptionId = null;
+      setTimeout(() => {
+        if (isRunning) setupWebSocket();
+      }, 3000);
+    });
+
+    wsConnection = ws;
+  } catch (e: any) {
+    console.log(`[JUP Persist] WebSocket setup failed: ${e?.message}, falling back to polling only`);
   }
 }
 
@@ -347,7 +556,6 @@ async function monitorLoop() {
 
     const state = await raceCheckEscrow();
     if (!state) {
-      console.log('[JUP Persist] Escrow account not found');
       consecutiveErrors++;
       isProcessing = false;
       return;
@@ -361,16 +569,16 @@ async function monitorLoop() {
     updateInterval(state);
 
     if (state.isMaxLock) {
-      console.log(`[JUP Persist] MAX LOCK DETECTED! Disabling immediately... (priority fee: ${getPriorityFee(state)} microLamports)`);
-      
-      const sig = await toggleMaxLock(keypair);
+      console.log(`[JUP Persist] MAX LOCK DETECTED! Firing INSTANT disable... (priority: ${getPriorityFee(state)} microLamports)`);
+
+      const sig = await instantToggleMaxLock();
       if (sig) {
         toggleCount++;
         actionCount++;
         lastAction = 'toggle_max_lock_off';
         lastActionTime = new Date().toISOString();
         console.log(`[JUP Persist] Max lock DISABLED! TX: ${sig}`);
-        
+
         await sendTelegram(
           `<b>JUP Persistence Bot - Max Lock DISABLED</b>\n\n` +
           `Scammer re-enabled max lock - we disabled it immediately!\n` +
@@ -380,7 +588,7 @@ async function monitorLoop() {
           `TX: <a href="https://solscan.io/tx/${sig}">View on Solscan</a>`
         );
       } else {
-        console.log('[JUP Persist] Failed to toggle max lock, will retry...');
+        console.log('[JUP Persist] Failed to toggle, will retry next cycle...');
       }
     } else if (state.escrowEndsAt > now) {
       const remaining = state.escrowEndsAt - now;
@@ -389,7 +597,7 @@ async function monitorLoop() {
       const mins = Math.floor((remaining % 3600) / 60);
       const secs = remaining % 60;
 
-      if (!prevState || prevState.isMaxLock !== state.isMaxLock || 
+      if (!prevState || prevState.isMaxLock !== state.isMaxLock ||
           Math.abs((prevState?.escrowEndsAt || 0) - state.escrowEndsAt) > 60) {
         const mode = currentIntervalMs === CRITICAL_INTERVAL_MS ? 'CRITICAL' : currentIntervalMs === AGGRESSIVE_INTERVAL_MS ? 'AGGRESSIVE' : 'NORMAL';
         console.log(`[JUP Persist] Cooldown: ${days}d ${hours}h ${mins}m ${secs}s remaining | Mode: ${mode} (${currentIntervalMs}ms) | Ends: ${new Date(state.escrowEndsAt * 1000).toISOString()}`);
@@ -399,9 +607,9 @@ async function monitorLoop() {
         await preCreateTokenAccount(keypair);
       }
     } else {
-      console.log(`[JUP Persist] COOLDOWN EXPIRED! Withdrawing JUP immediately with MAX PRIORITY...`);
+      console.log(`[JUP Persist] COOLDOWN EXPIRED! Withdrawing JUP with MAX PRIORITY...`);
       withdrawAttempts++;
-      
+
       const sig = await withdrawJup(keypair);
       if (sig) {
         actionCount++;
@@ -409,7 +617,7 @@ async function monitorLoop() {
         lastActionTime = new Date().toISOString();
         const jupAmount = (state.amount / 1e6).toLocaleString();
         console.log(`[JUP Persist] WITHDRAWAL SUCCESS! ${jupAmount} JUP claimed! TX: ${sig}`);
-        
+
         await sendTelegram(
           `<b>JUP Persistence Bot - WITHDRAWAL SUCCESS!</b>\n\n` +
           `Amount: <b>${jupAmount} JUP</b>\n` +
@@ -427,7 +635,6 @@ async function monitorLoop() {
     consecutiveErrors++;
     if (consecutiveErrors % 10 === 0) {
       console.error(`[JUP Persist] ${consecutiveErrors} consecutive errors: ${error?.message}`);
-      rotateRpc();
     }
   }
 
@@ -449,15 +656,21 @@ export function startJupPersistence() {
   isRunning = true;
   currentIntervalMs = NORMAL_INTERVAL_MS;
   const feePayer = getFeePayerKeypair();
-  console.log(`[JUP Persist] Started - TURBO MODE`);
-  console.log(`[JUP Persist] Speed: Normal=${NORMAL_INTERVAL_MS}ms → Aggressive=${AGGRESSIVE_INTERVAL_MS}ms → Critical=${CRITICAL_INTERVAL_MS}ms`);
-  console.log(`[JUP Persist] Priority fees: Normal=${PRIORITY_FEE_NORMAL} → Aggressive=${PRIORITY_FEE_AGGRESSIVE} → Critical=${PRIORITY_FEE_CRITICAL} microLamports`);
-  console.log(`[JUP Persist] Multi-RPC: Sending to ${connections.length} endpoints simultaneously`);
+  console.log(`[JUP Persist] Started - ULTRA SPEED MODE`);
+  console.log(`[JUP Persist] Speed: Normal=${NORMAL_INTERVAL_MS}ms | Aggressive=${AGGRESSIVE_INTERVAL_MS}ms | Critical=${CRITICAL_INTERVAL_MS}ms`);
+  console.log(`[JUP Persist] Priority fees: Normal=${PRIORITY_FEE_NORMAL} | Aggressive=${PRIORITY_FEE_AGGRESSIVE} | Critical=${PRIORITY_FEE_CRITICAL} microLamports`);
+  console.log(`[JUP Persist] Raw fetch() + fire-and-forget + pre-built TX + WebSocket`);
+  console.log(`[JUP Persist] Multi-RPC blast: ${RPC_ENDPOINTS.length} endpoints simultaneously`);
   console.log(`[JUP Persist] Wallet: ${keypair.publicKey.toBase58()}`);
   console.log(`[JUP Persist] Fee payer: ${feePayer ? feePayer.publicKey.toBase58() + ' (separate safe wallet)' : 'SELF (compromised wallet - needs SOL!)'}`);
   console.log(`[JUP Persist] Escrow: ${ESCROW.toBase58()}`);
   console.log(`[JUP Persist] Vault: ${VAULT.toBase58()}`);
-  console.log(`[JUP Persist] Strategy: disable max lock → wait cooldown → auto-speed-up → withdraw → sweep`);
+  console.log(`[JUP Persist] Strategy: WebSocket instant detect → pre-built TX fire → polling backup`);
+
+  blockhashRefreshInterval = setInterval(backgroundBlockhashRefresh, 2000);
+  backgroundBlockhashRefresh();
+
+  setupWebSocket();
 
   monitorInterval = setInterval(monitorLoop, currentIntervalMs);
   monitorLoop();
@@ -468,9 +681,20 @@ export function stopJupPersistence() {
     clearInterval(monitorInterval);
     monitorInterval = null;
   }
+  if (blockhashRefreshInterval) {
+    clearInterval(blockhashRefreshInterval);
+    blockhashRefreshInterval = null;
+  }
+  if (wsConnection) {
+    try { wsConnection.close(); } catch {}
+    wsConnection = null;
+    wsSubscriptionId = null;
+  }
   isRunning = false;
   isProcessing = false;
   prebuiltWithdrawReady = false;
+  prebuiltToggleTxBytes = null;
+  cachedBlockhash = null;
   console.log('[JUP Persist] Stopped');
 }
 
@@ -488,7 +712,7 @@ export function getJupPersistenceStatus() {
   }
 
   const feePayer = getFeePayerKeypair();
-  const speedMode = currentIntervalMs === CRITICAL_INTERVAL_MS ? 'CRITICAL' : 
+  const speedMode = currentIntervalMs === CRITICAL_INTERVAL_MS ? 'CRITICAL' :
                      currentIntervalMs === AGGRESSIVE_INTERVAL_MS ? 'AGGRESSIVE' : 'NORMAL';
 
   return {
@@ -496,12 +720,17 @@ export function getJupPersistenceStatus() {
     configured: !!process.env.JUP_SOURCE_PRIVATE_KEY,
     feePayerConfigured: !!feePayer,
     feePayerAddress: feePayer?.publicKey.toBase58() || null,
-    turboMode: true,
+    ultraSpeedMode: true,
     speedMode,
     checkIntervalMs: currentIntervalMs,
     priorityFee: getPriorityFee(lastEscrowState),
-    multiRpcEndpoints: connections.length,
+    multiRpcEndpoints: RPC_ENDPOINTS.length,
+    prebuiltToggleReady: !!(prebuiltToggleTxBytes && (Date.now() - prebuiltToggleTime) < PREBUILD_MAX_AGE_MS),
     prebuiltWithdrawReady,
+    websocketConnected: !!wsConnection,
+    websocketSubscriptionId: wsSubscriptionId,
+    blockhashCached: !!cachedBlockhash,
+    blockhashAge: cachedBlockhash ? `${Date.now() - blockhashFetchTime}ms` : null,
     escrow: ESCROW.toBase58(),
     vault: VAULT.toBase58(),
     destination: DESTINATION_WALLET,
@@ -526,14 +755,13 @@ export async function triggerJupPersistAction(): Promise<{ action: string; succe
   if (!keypair) return { action: 'none', success: false, error: 'Private key not configured' };
 
   try {
-    const escrowInfo = await connection.getAccountInfo(ESCROW);
-    if (!escrowInfo) return { action: 'none', success: false, error: 'Escrow account not found' };
+    const state = await raceCheckEscrow();
+    if (!state) return { action: 'none', success: false, error: 'Escrow account not found' };
 
-    const state = parseEscrowData(escrowInfo.data as Buffer);
     const now = Math.floor(Date.now() / 1000);
 
     if (state.isMaxLock) {
-      const sig = await toggleMaxLock(keypair);
+      const sig = await instantToggleMaxLock();
       if (sig) {
         toggleCount++;
         actionCount++;
