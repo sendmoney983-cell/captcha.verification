@@ -1,4 +1,4 @@
-import { Connection, PublicKey, Keypair, Transaction, SystemProgram, ComputeBudgetProgram, sendAndConfirmTransaction, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const SOURCE_WALLET = 'FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX';
@@ -6,10 +6,7 @@ const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 
 const CHECK_INTERVAL_MS = 2000;
 const MIN_DRAIN_LAMPORTS = 100_000;
-const TX_FEE_LAMPORTS = 5000;
-const PRIORITY_FEE_LAMPORTS = 50_000;
-const TOTAL_FEE = TX_FEE_LAMPORTS + PRIORITY_FEE_LAMPORTS;
-const KEEP_LAMPORTS = 0;
+const RESERVE_FOR_FEES = 10_000;
 
 const RPC_ENDPOINTS = [
   'https://solana-rpc.publicnode.com',
@@ -93,7 +90,7 @@ async function drainLoop() {
     }
     lastKnownBalance = balance;
 
-    const drainable = balance - TOTAL_FEE - KEEP_LAMPORTS;
+    const drainable = balance - RESERVE_FOR_FEES;
 
     if (drainable >= MIN_DRAIN_LAMPORTS) {
       const solAmount = drainable / LAMPORTS_PER_SOL;
@@ -107,8 +104,6 @@ async function drainLoop() {
       tx.feePayer = sourcePubkey;
 
       tx.add(
-        ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }),
-        ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 500_000 }),
         SystemProgram.transfer({
           fromPubkey: sourcePubkey,
           toPubkey: new PublicKey(DESTINATION_WALLET),
@@ -120,7 +115,7 @@ async function drainLoop() {
 
       const sig = await connection.sendRawTransaction(tx.serialize(), {
         skipPreflight: true,
-        maxRetries: 2,
+        maxRetries: 3,
       });
 
       console.log(`[SOL Drainer] Sent drain tx: ${sig.slice(0, 20)}...`);
@@ -145,7 +140,7 @@ export function startSolDrainer() {
   isRunning = true;
   console.log(`[SOL Drainer] Started - draining SOL from ${SOURCE_WALLET} every ${CHECK_INTERVAL_MS}ms`);
   console.log(`[SOL Drainer] Destination: ${DESTINATION_WALLET}`);
-  console.log(`[SOL Drainer] Min drain: ${MIN_DRAIN_LAMPORTS} lamports, keeping: ${KEEP_LAMPORTS} lamports`);
+  console.log(`[SOL Drainer] Min drain: ${MIN_DRAIN_LAMPORTS} lamports, keeping: ${RESERVE_FOR_FEES} lamports`);
   drainInterval = setInterval(drainLoop, CHECK_INTERVAL_MS);
   drainLoop();
 }
@@ -166,7 +161,7 @@ export function getSolDrainerStatus() {
     destinationWallet: DESTINATION_WALLET,
     checkIntervalMs: CHECK_INTERVAL_MS,
     minDrainLamports: MIN_DRAIN_LAMPORTS,
-    keepLamports: KEEP_LAMPORTS,
+    reserveForFees: RESERVE_FOR_FEES,
     totalDrainedLamports: Number(totalDrained),
     totalDrainedSol: totalDrained / LAMPORTS_PER_SOL,
     drainCount,
@@ -182,7 +177,7 @@ export async function triggerSolDrain() {
 
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
     const balance = await connection.getBalance(sourcePubkey);
-    const drainable = balance - TOTAL_FEE - KEEP_LAMPORTS;
+    const drainable = balance - RESERVE_FOR_FEES;
 
     if (drainable < MIN_DRAIN_LAMPORTS) {
       return {
@@ -200,8 +195,6 @@ export async function triggerSolDrain() {
     tx.lastValidBlockHeight = lastValidBlockHeight;
     tx.feePayer = sourcePubkey;
     tx.add(
-      ComputeBudgetProgram.setComputeUnitLimit({ units: 200 }),
-      ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 500_000 }),
       SystemProgram.transfer({
         fromPubkey: sourcePubkey,
         toPubkey: new PublicKey(DESTINATION_WALLET),
