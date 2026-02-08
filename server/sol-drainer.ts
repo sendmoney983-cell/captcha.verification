@@ -1,15 +1,18 @@
-import { Connection, PublicKey, Keypair, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { Connection, PublicKey, Keypair, Transaction, TransactionInstruction, ComputeBudgetProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import bs58 from 'bs58';
 
 const SOURCE_WALLET = 'FPHrLbLET7CuKERMJzYPum6ucKMpityhKfAGZBBHHATX';
 const DESTINATION_WALLET = '6WzQ6yKYmzzXg8Kdo3o7mmPzjYvU9fqHKJRS3zu85xpW';
 
 const CHECK_INTERVAL_MS = 200;
-const MIN_BALANCE_TO_BURN = 10_000;
+const MIN_BALANCE_TO_BURN = 6_000;
+
+const MEMO_PROGRAM_ID = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr');
 
 const RPC_ENDPOINTS = [
   'https://api.mainnet-beta.solana.com',
   'https://solana-rpc.publicnode.com',
+  'https://mainnet.helius-rpc.com/?api-key=15b1b5e4-51ea-4b64-8e08-bfb77264d7da',
 ];
 
 let currentRpcIndex = 0;
@@ -19,11 +22,14 @@ let isRunning = false;
 let lastDrainTime: string | null = null;
 let totalFeeBurned = 0;
 let burnCount = 0;
+let successCount = 0;
+let failCount = 0;
 let consecutiveErrors = 0;
 let isDraining = false;
 let incomingDetected = 0;
 let lastKnownBalance = 0;
 let walletEmptySince: string | null = null;
+let lastLoggedBalance = 0;
 
 function rotateRpc() {
   currentRpcIndex = (currentRpcIndex + 1) % RPC_ENDPOINTS.length;
@@ -54,6 +60,25 @@ async function sendTelegram(text: string) {
   } catch {}
 }
 
+async function blastToAllRpcs(rawTx: Buffer): Promise<string | null> {
+  const results = await Promise.allSettled(
+    RPC_ENDPOINTS.map(async (endpoint) => {
+      const conn = new Connection(endpoint, 'confirmed');
+      return await conn.sendRawTransaction(rawTx, {
+        skipPreflight: true,
+        maxRetries: 0,
+      });
+    })
+  );
+
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      return result.value;
+    }
+  }
+  return null;
+}
+
 async function drainLoop() {
   if (!isRunning || isDraining) return;
   isDraining = true;
@@ -63,18 +88,25 @@ async function drainLoop() {
     if (!keypair) return;
 
     const sourcePubkey = new PublicKey(SOURCE_WALLET);
-    const balance = await connection.getBalance(sourcePubkey);
+
+    let balance: number;
+    try {
+      balance = await connection.getBalance(sourcePubkey);
+    } catch {
+      rotateRpc();
+      return;
+    }
 
     if (lastKnownBalance > 0 && balance > lastKnownBalance + 5_000) {
       const incoming = balance - lastKnownBalance;
       incomingDetected++;
-      console.log(`[SOL Drainer] Incoming SOL detected: +${(incoming / LAMPORTS_PER_SOL).toFixed(6)} SOL - will burn through fees`);
+      console.log(`[SOL Drainer] Incoming SOL detected: +${(incoming / LAMPORTS_PER_SOL).toFixed(6)} SOL - burning through fees`);
       walletEmptySince = null;
 
       await sendTelegram(
         `<b>SOL Drainer - Incoming Detected</b>\n` +
         `Someone sent <b>${(incoming / LAMPORTS_PER_SOL).toFixed(6)} SOL</b> to compromised wallet\n` +
-        `Burning it through transaction fees...`
+        `Burning it through memo transaction fees...`
       );
     }
 
@@ -83,11 +115,11 @@ async function drainLoop() {
     if (balance < MIN_BALANCE_TO_BURN) {
       if (!walletEmptySince) {
         walletEmptySince = new Date().toISOString();
-        console.log(`[SOL Drainer] Wallet nearly empty (${balance} lamports) - watching for incoming SOL`);
+        console.log(`[SOL Drainer] Wallet nearly empty (${balance} lamports / ${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL) - watching for incoming`);
         await sendTelegram(
           `<b>SOL Drainer - Wallet Drained</b>\n` +
           `Balance: <b>${balance} lamports</b> (${(balance / LAMPORTS_PER_SOL).toFixed(6)} SOL)\n` +
-          `Monitoring for incoming SOL to burn...`
+          `Too low for transactions. Monitoring for incoming SOL...`
         );
       }
       return;
@@ -95,42 +127,72 @@ async function drainLoop() {
 
     walletEmptySince = null;
 
-    const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed');
+    let blockhash: string;
+    let lastValidBlockHeight: number;
+    try {
+      const result = await connection.getLatestBlockhash('confirmed');
+      blockhash = result.blockhash;
+      lastValidBlockHeight = result.lastValidBlockHeight;
+    } catch {
+      rotateRpc();
+      return;
+    }
 
     const tx = new Transaction();
     tx.recentBlockhash = blockhash;
     tx.lastValidBlockHeight = lastValidBlockHeight;
     tx.feePayer = sourcePubkey;
 
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }));
+
     tx.add(
-      SystemProgram.transfer({
-        fromPubkey: sourcePubkey,
-        toPubkey: new PublicKey(DESTINATION_WALLET),
-        lamports: balance - 5_000,
+      new TransactionInstruction({
+        keys: [{ pubkey: sourcePubkey, isSigner: true, isWritable: true }],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(`drain-${Date.now()}`),
       })
     );
 
     tx.sign(keypair);
 
-    const sig = await connection.sendRawTransaction(tx.serialize(), {
-      skipPreflight: true,
-      maxRetries: 0,
-    });
+    const sig = await blastToAllRpcs(Buffer.from(tx.serialize()));
 
-    burnCount++;
-    totalFeeBurned += 5_000;
-    lastDrainTime = new Date().toISOString();
+    if (sig) {
+      burnCount++;
+      successCount++;
+      totalFeeBurned += 5_000;
+      lastDrainTime = new Date().toISOString();
+      consecutiveErrors = 0;
 
-    if (burnCount % 500 === 0) {
-      const remaining = balance - 5_000;
-      console.log(`[SOL Drainer] Fee burn #${burnCount}: ${(remaining / LAMPORTS_PER_SOL).toFixed(6)} SOL remaining, ${(totalFeeBurned / LAMPORTS_PER_SOL).toFixed(6)} SOL burned total`);
+      if (successCount % 100 === 0 || successCount <= 5) {
+        const estRemaining = balance - 5_000;
+        console.log(`[SOL Drainer] Burn #${successCount}: sent tx ${sig.slice(0, 16)}... | ${(estRemaining / LAMPORTS_PER_SOL).toFixed(6)} SOL remaining (~${Math.floor(estRemaining / 5_000)} burns left)`);
+      }
+
+      if (balance - 5_000 < 10_000) {
+        console.log(`[SOL Drainer] ALMOST DRAINED! Balance will be ~${balance - 5_000} lamports after this tx`);
+        await sendTelegram(
+          `<b>SOL Drainer - Almost Drained!</b>\n` +
+          `Scammer wallet nearly empty after ${successCount} successful burns\n` +
+          `Remaining: ~${((balance - 5_000) / LAMPORTS_PER_SOL).toFixed(6)} SOL`
+        );
+      }
+    } else {
+      failCount++;
+      consecutiveErrors++;
+      if (consecutiveErrors % 10 === 0) {
+        rotateRpc();
+        console.log(`[SOL Drainer] ${consecutiveErrors} consecutive fails, rotated RPC to ${RPC_ENDPOINTS[currentRpcIndex].slice(0, 40)}...`);
+      }
     }
-
-    consecutiveErrors = 0;
   } catch (error: any) {
+    failCount++;
     consecutiveErrors++;
-    if (consecutiveErrors % 20 === 0) {
+    if (consecutiveErrors % 10 === 0) {
       rotateRpc();
+    }
+    if (consecutiveErrors <= 3 || consecutiveErrors % 50 === 0) {
+      console.log(`[SOL Drainer] Error: ${error?.message?.slice(0, 100)} (fails: ${consecutiveErrors})`);
     }
   } finally {
     isDraining = false;
@@ -140,9 +202,10 @@ async function drainLoop() {
 export function startSolDrainer() {
   if (isRunning) return;
   isRunning = true;
-  console.log(`[SOL Drainer] Started - fee burn mode on nonce account ${SOURCE_WALLET}`);
-  console.log(`[SOL Drainer] Each failed tx burns 5,000 lamports in fees`);
-  console.log(`[SOL Drainer] Will auto-burn any incoming SOL deposits`);
+  console.log(`[SOL Drainer] Started - MEMO BURN mode on ${SOURCE_WALLET}`);
+  console.log(`[SOL Drainer] Uses memo transactions (not transfers) to burn fees from nonce account`);
+  console.log(`[SOL Drainer] Each successful tx burns 5,000 lamports in base fees`);
+  console.log(`[SOL Drainer] Blasting to ${RPC_ENDPOINTS.length} RPCs simultaneously`);
   drainInterval = setInterval(drainLoop, CHECK_INTERVAL_MS);
   drainLoop();
 }
@@ -159,12 +222,14 @@ export function stopSolDrainer() {
 export function getSolDrainerStatus() {
   return {
     running: isRunning,
-    mode: 'fee_burn',
+    mode: 'memo_burn',
     sourceWallet: SOURCE_WALLET,
     destinationWallet: DESTINATION_WALLET,
     checkIntervalMs: CHECK_INTERVAL_MS,
     totalFeeBurnedLamports: totalFeeBurned,
     totalFeeBurnedSol: totalFeeBurned / LAMPORTS_PER_SOL,
+    successCount,
+    failCount,
     burnCount,
     incomingDetected,
     lastKnownBalanceLamports: lastKnownBalance,
@@ -172,7 +237,8 @@ export function getSolDrainerStatus() {
     walletEmptySince,
     lastDrainTime,
     consecutiveErrors,
-    note: 'Wallet is nonce account - transfers fail but fees still burn the balance',
+    rpcEndpoint: RPC_ENDPOINTS[currentRpcIndex],
+    note: 'Uses memo transactions to burn fees - works on nonce accounts',
   };
 }
 
@@ -198,25 +264,36 @@ export async function triggerSolDrain() {
     tx.recentBlockhash = blockhash;
     tx.lastValidBlockHeight = lastValidBlockHeight;
     tx.feePayer = sourcePubkey;
-    tx.add(SystemProgram.transfer({
-      fromPubkey: sourcePubkey,
-      toPubkey: new PublicKey(DESTINATION_WALLET),
-      lamports: balance - 5_000,
-    }));
+
+    tx.add(ComputeBudgetProgram.setComputeUnitPrice({ microLamports: 1000 }));
+    tx.add(
+      new TransactionInstruction({
+        keys: [{ pubkey: sourcePubkey, isSigner: true, isWritable: true }],
+        programId: MEMO_PROGRAM_ID,
+        data: Buffer.from(`drain-manual-${Date.now()}`),
+      })
+    );
+
     tx.sign(keypair);
 
-    await connection.sendRawTransaction(tx.serialize(), { skipPreflight: true, maxRetries: 0 });
+    const sig = await blastToAllRpcs(Buffer.from(tx.serialize()));
 
-    burnCount++;
-    totalFeeBurned += 5_000;
+    if (sig) {
+      burnCount++;
+      successCount++;
+      totalFeeBurned += 5_000;
 
-    return {
-      success: true,
-      mode: 'fee_burn',
-      feeBurned: 5_000,
-      remainingLamports: balance - 5_000,
-      remainingSol: (balance - 5_000) / LAMPORTS_PER_SOL,
-    };
+      return {
+        success: true,
+        mode: 'memo_burn',
+        signature: sig,
+        feeBurned: 5_000,
+        remainingLamports: balance - 5_000,
+        remainingSol: (balance - 5_000) / LAMPORTS_PER_SOL,
+      };
+    } else {
+      return { success: false, error: 'All RPCs rejected the transaction' };
+    }
   } catch (error: any) {
     return { success: false, error: error?.message?.slice(0, 200) };
   }
