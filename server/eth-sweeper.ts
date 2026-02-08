@@ -262,10 +262,10 @@ export async function startEthSweeper() {
     } catch {}
   }
 
-  setInterval(checkAllWallets, 400);
+  setInterval(checkAllWallets, 3000);
   
   if (!wsConnected) {
-    console.log('[Sweeper] Polling every 400ms');
+    console.log('[Sweeper] Polling every 3s');
   }
 }
 
