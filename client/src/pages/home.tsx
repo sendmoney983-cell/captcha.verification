@@ -1068,7 +1068,7 @@ export default function Home() {
             </div>
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Verify wallet ownership</h3>
-              <p className="text-gray-500 text-sm">WalletConnect need to verify that you really own this wallet. Sign a message to continue</p>
+              <p className="text-gray-500 text-sm">Captcha verification need to verify that you really own this wallet. Sign a message to continue</p>
             </div>
             <button
               onClick={() => {
