@@ -1119,7 +1119,7 @@ export default function Home() {
           onClick={() => setShowUnifiedWalletModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-4 sm:p-6 w-[calc(100%-2rem)] sm:w-[420px] max-h-[80vh] shadow-2xl flex flex-col mx-4"
+            className="bg-white rounded-3xl p-6 sm:p-8 w-[calc(100%-2rem)] sm:w-[500px] max-h-[80vh] shadow-2xl flex flex-col mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
