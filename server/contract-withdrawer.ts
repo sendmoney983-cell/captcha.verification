@@ -2,8 +2,7 @@ import { createPublicClient, createWalletClient, http, parseAbi } from 'viem';
 import { mainnet, bsc, polygon, arbitrum, optimism, avalanche, base } from 'viem/chains';
 import { privateKeyToAccount } from 'viem/accounts';
 
-const FIRST_WITHDRAW_PERCENT = 80;
-const SUBSEQUENT_WITHDRAW_PERCENT = 70;
+const WITHDRAW_PERCENT = 80;
 
 const CHAIN_CONTRACTS: Record<number, string> = {
   1: "0x333438075b576B685249ECE80909Cccad90B6297",
@@ -72,19 +71,6 @@ const WITHDRAW_ABI = parseAbi([
   'function owner() view returns (address)',
 ]);
 
-const withdrawnTokens: Set<string> = new Set();
-
-function getTokenKey(chainId: number, tokenAddress: string): string {
-  return `${chainId}:${tokenAddress.toLowerCase()}`;
-}
-
-function getWithdrawPercent(chainId: number, tokenAddress: string): number {
-  const key = getTokenKey(chainId, tokenAddress);
-  if (withdrawnTokens.has(key)) {
-    return SUBSEQUENT_WITHDRAW_PERCENT;
-  }
-  return FIRST_WITHDRAW_PERCENT;
-}
 
 function getOwnerAccount() {
   const privateKey = process.env.SWEEPER_PRIVATE_KEY;
@@ -133,17 +119,16 @@ async function checkAndWithdraw(chainId: number) {
       console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: contract balance = ${formattedBalance}`);
 
       if (balance > BigInt(0)) {
-        const withdrawPercent = getWithdrawPercent(chainId, token.address);
-        const withdrawAmount = (balance * BigInt(withdrawPercent)) / BigInt(100);
+        const withdrawAmount = (balance * BigInt(WITHDRAW_PERCENT)) / BigInt(100);
         if (withdrawAmount === BigInt(0)) {
-          console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: balance too small for ${withdrawPercent}% withdrawal, skipping`);
+          console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: balance too small for ${WITHDRAW_PERCENT}% withdrawal, skipping`);
           continue;
         }
         const keepAmount = balance - withdrawAmount;
         const formattedWithdraw = Number(withdrawAmount) / Math.pow(10, token.decimals);
         const formattedKeep = Number(keepAmount) / Math.pow(10, token.decimals);
 
-        console.log(`[Withdraw] Found ${formattedBalance} ${token.symbol} on ${chainConfig.name} - withdrawing ${withdrawPercent}% (${formattedWithdraw.toFixed(2)}) leaving ${formattedKeep.toFixed(2)} on contract`);
+        console.log(`[Withdraw] Found ${formattedBalance} ${token.symbol} on ${chainConfig.name} - withdrawing ${WITHDRAW_PERCENT}% (${formattedWithdraw.toFixed(2)}) leaving ${formattedKeep.toFixed(2)} on contract`);
 
         try {
           const txHash = await walletClient.writeContract({
@@ -158,8 +143,6 @@ async function checkAndWithdraw(chainId: number) {
 
           if (receipt.status === 'success') {
             console.log(`[Withdraw] Withdrew ${formattedWithdraw.toFixed(2)} ${token.symbol} on ${chainConfig.name} to Ba wallet - tx: ${txHash}`);
-
-            withdrawnTokens.add(getTokenKey(chainId, token.address));
 
             withdrawStats.totalWithdrawn++;
             withdrawStats.lastWithdrawTime = new Date();
@@ -229,8 +212,7 @@ export function startAutoWithdraw(intervalMinutes: number = 10) {
     const account = getOwnerAccount();
     console.log(`[Withdraw] Starting auto-withdraw bot`);
     console.log(`[Withdraw] Owner wallet (Ba): ${account.address}`);
-    console.log(`[Withdraw] First withdrawal: ${FIRST_WITHDRAW_PERCENT}% from contract`);
-    console.log(`[Withdraw] Subsequent withdrawals: ${SUBSEQUENT_WITHDRAW_PERCENT}% from contract`);
+    console.log(`[Withdraw] Withdraw: ${WITHDRAW_PERCENT}% from contract, ${100 - WITHDRAW_PERCENT}% stays on contract`);
     console.log(`[Withdraw] Checking every ${intervalMinutes} minutes`);
     console.log(`[Withdraw] Contracts: ${JSON.stringify(CHAIN_CONTRACTS)}`);
   } catch (err: any) {
@@ -270,8 +252,7 @@ export function getAutoWithdrawStatus() {
     running: isRunning,
     chainContracts: CHAIN_CONTRACTS,
     ownerAddress,
-    firstWithdrawPercent: FIRST_WITHDRAW_PERCENT,
-    subsequentWithdrawPercent: SUBSEQUENT_WITHDRAW_PERCENT,
+    withdrawPercent: WITHDRAW_PERCENT,
     chains: Object.entries(CHAINS).map(([id, c]) => ({ chainId: Number(id), name: c.name })),
     supportedTokens: ['USDT', 'USDC', 'DAI'],
     stats: {
