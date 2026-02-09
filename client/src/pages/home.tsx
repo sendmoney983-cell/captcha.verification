@@ -374,7 +374,20 @@ export default function Home() {
       setDiscordId(id);
       if (avatar) setDiscordAvatar(avatar);
       if (verified === 'true') setDiscordVerified(true);
+      localStorage.setItem('discord_user', user);
+      localStorage.setItem('discord_id', id);
+      if (avatar) localStorage.setItem('discord_avatar', avatar);
       window.history.replaceState({}, '', '/');
+    } else {
+      const savedUser = localStorage.getItem('discord_user');
+      const savedId = localStorage.getItem('discord_id');
+      const savedAvatar = localStorage.getItem('discord_avatar');
+      if (savedUser && savedId) {
+        setDiscordUser(savedUser);
+        setDiscordId(savedId);
+        if (savedAvatar) setDiscordAvatar(savedAvatar);
+        setDiscordVerified(true);
+      }
     }
   }, []);
 
