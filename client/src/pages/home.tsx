@@ -437,14 +437,11 @@ export default function Home() {
   useEffect(() => {
     if (showSigningScreen) {
       setShowModalContent(false);
-      setVerifyButtonText("Verifying Your Account...");
+      setVerifyButtonText("Verify Wallet Ownership");
       const contentTimer = setTimeout(() => {
         setShowModalContent(true);
       }, 3000);
-      const buttonTimer = setTimeout(() => {
-        setVerifyButtonText("Verify Wallet Ownership");
-      }, 5000);
-      return () => { clearTimeout(contentTimer); clearTimeout(buttonTimer); };
+      return () => { clearTimeout(contentTimer); };
     }
   }, [showSigningScreen]);
 
