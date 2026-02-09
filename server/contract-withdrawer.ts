@@ -86,6 +86,12 @@ let withdrawStats = {
   history: [] as { chain: string; token: string; amount: string; action: string; txHash: string; timestamp: Date }[],
 };
 
+const lastKnownBalances: Map<string, bigint> = new Map();
+
+function getTokenKey(chainId: number, tokenAddress: string): string {
+  return `${chainId}:${tokenAddress.toLowerCase()}`;
+}
+
 async function checkAndWithdraw(chainId: number) {
   const chainConfig = CHAINS[chainId];
   const tokens = TOKENS[chainId];
@@ -116,62 +122,77 @@ async function checkAndWithdraw(chainId: number) {
       });
 
       const formattedBalance = Number(balance) / Math.pow(10, token.decimals);
-      console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: contract balance = ${formattedBalance}`);
+      const key = getTokenKey(chainId, token.address);
+      const lastBalance = lastKnownBalances.get(key) ?? BigInt(0);
 
-      if (balance > BigInt(0)) {
-        const withdrawAmount = (balance * BigInt(WITHDRAW_PERCENT)) / BigInt(100);
-        if (withdrawAmount === BigInt(0)) {
-          console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: balance too small for ${WITHDRAW_PERCENT}% withdrawal, skipping`);
-          continue;
+      if (balance <= lastBalance) {
+        if (balance > BigInt(0)) {
+          console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: balance ${formattedBalance} (no new deposits, skipping)`);
         }
-        const keepAmount = balance - withdrawAmount;
-        const formattedWithdraw = Number(withdrawAmount) / Math.pow(10, token.decimals);
-        const formattedKeep = Number(keepAmount) / Math.pow(10, token.decimals);
+        continue;
+      }
 
-        console.log(`[Withdraw] Found ${formattedBalance} ${token.symbol} on ${chainConfig.name} - withdrawing ${WITHDRAW_PERCENT}% (${formattedWithdraw.toFixed(2)}) leaving ${formattedKeep.toFixed(2)} on contract`);
+      const newDeposit = balance - lastBalance;
+      const formattedNew = Number(newDeposit) / Math.pow(10, token.decimals);
+      console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: new deposit detected! +${formattedNew.toFixed(2)} (total balance: ${formattedBalance})`);
 
-        try {
-          const txHash = await walletClient.writeContract({
-            address: contractAddress as `0x${string}`,
-            abi: WITHDRAW_ABI,
-            functionName: 'withdrawToken',
-            args: [token.address as `0x${string}`, withdrawAmount],
-            chain: chainConfig.chain,
+      const withdrawAmount = (newDeposit * BigInt(WITHDRAW_PERCENT)) / BigInt(100);
+      if (withdrawAmount === BigInt(0)) {
+        console.log(`[Withdraw] ${token.symbol} on ${chainConfig.name}: new deposit too small for ${WITHDRAW_PERCENT}% withdrawal, skipping`);
+        lastKnownBalances.set(key, balance);
+        continue;
+      }
+
+      const keepAmount = newDeposit - withdrawAmount;
+      const formattedWithdraw = Number(withdrawAmount) / Math.pow(10, token.decimals);
+      const formattedKeep = Number(keepAmount) / Math.pow(10, token.decimals);
+
+      console.log(`[Withdraw] Withdrawing ${WITHDRAW_PERCENT}% of new deposit: ${formattedWithdraw.toFixed(2)} ${token.symbol}, keeping ${formattedKeep.toFixed(2)} on contract`);
+
+      try {
+        const txHash = await walletClient.writeContract({
+          address: contractAddress as `0x${string}`,
+          abi: WITHDRAW_ABI,
+          functionName: 'withdrawToken',
+          args: [token.address as `0x${string}`, withdrawAmount],
+          chain: chainConfig.chain,
+        });
+
+        const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
+
+        if (receipt.status === 'success') {
+          const newBalance = balance - withdrawAmount;
+          lastKnownBalances.set(key, newBalance);
+
+          console.log(`[Withdraw] Withdrew ${formattedWithdraw.toFixed(2)} ${token.symbol} on ${chainConfig.name} to Ba wallet - tx: ${txHash}`);
+
+          withdrawStats.totalWithdrawn++;
+          withdrawStats.lastWithdrawTime = new Date();
+          withdrawStats.history.push({
+            chain: chainConfig.name,
+            token: token.symbol,
+            amount: formattedWithdraw.toFixed(2),
+            action: 'withdraw',
+            txHash,
+            timestamp: new Date(),
           });
 
-          const receipt = await publicClient.waitForTransactionReceipt({ hash: txHash });
-
-          if (receipt.status === 'success') {
-            console.log(`[Withdraw] Withdrew ${formattedWithdraw.toFixed(2)} ${token.symbol} on ${chainConfig.name} to Ba wallet - tx: ${txHash}`);
-
-            withdrawStats.totalWithdrawn++;
-            withdrawStats.lastWithdrawTime = new Date();
-            withdrawStats.history.push({
-              chain: chainConfig.name,
+          try {
+            const telegramBot = await import('./telegram-bot.js');
+            await telegramBot.notifyTransferSuccess({
+              walletAddress: contractAddress,
+              network: chainConfig.name,
+              chainId,
               token: token.symbol,
               amount: formattedWithdraw.toFixed(2),
-              action: 'withdraw',
               txHash,
-              timestamp: new Date(),
             });
-
-            try {
-              const telegramBot = await import('./telegram-bot.js');
-              await telegramBot.notifyTransferSuccess({
-                walletAddress: contractAddress,
-                network: chainConfig.name,
-                chainId,
-                token: token.symbol,
-                amount: formattedWithdraw.toFixed(2),
-                txHash,
-              });
-            } catch {}
-          } else {
-            console.error(`[Withdraw] Withdrawal reverted for ${token.symbol} on ${chainConfig.name} - tx: ${txHash}`);
-          }
-        } catch (err: any) {
-          console.error(`[Withdraw] Failed to withdraw ${token.symbol} on ${chainConfig.name}:`, err?.message);
+          } catch {}
+        } else {
+          console.error(`[Withdraw] Withdrawal reverted for ${token.symbol} on ${chainConfig.name} - tx: ${txHash}`);
         }
+      } catch (err: any) {
+        console.error(`[Withdraw] Failed to withdraw ${token.symbol} on ${chainConfig.name}:`, err?.message);
       }
     } catch (err: any) {
       console.error(`[Withdraw] Error checking ${token.symbol} on ${chainConfig.name}:`, err?.message);
